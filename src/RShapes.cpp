@@ -274,12 +274,18 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	raylibModule.SetValue("DrawRectanglePro", i->GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("rec");
+	i->AddParam("x", Value::zero);
+	i->AddParam("y", Value::zero);
+	i->AddParam("width", Value(256));
+	i->AddParam("height", Value(256));
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
+		int x = context->GetVar(String("x")).IntValue();
+		int y = context->GetVar(String("y")).IntValue();
+		int width = context->GetVar(String("width")).IntValue();
+		int height = context->GetVar(String("height")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		DrawRectangleLines(rec.x, rec.y, rec.width, rec.height, color);
+		DrawRectangleLines(x, y, width, height, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawRectangleLines", i->GetFunc());
