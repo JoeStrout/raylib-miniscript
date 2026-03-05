@@ -26,9 +26,14 @@ Texture ValueToTexture(Value value);
 // Allocates the Image on the heap and stores pointer in _handle
 Value ImageToValue(Image image);
 
-// Extract a Raylib Image from a MiniScript map
-// Returns the Image by dereferencing the _handle pointer
-Image ValueToImage(Value value);
+// Extract a Raylib Image from a MiniScript map (read-only reference)
+const Image& ValueToImage(Value value);
+
+// Extract a mutable pointer to a Raylib Image from a MiniScript map
+Image* ValueToImagePtr(Value value);
+
+// After mutating an Image, sync its properties back to the MiniScript map
+void UpdateImageValue(Value value);
 
 // Convert a Raylib Font to a MiniScript map
 Value FontToValue(Font font);

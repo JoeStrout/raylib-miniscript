@@ -134,20 +134,35 @@ Value ImageToValue(Image image) {
 	return Value(map);
 }
 
-// Extract a Raylib Image from a MiniScript map
-// Returns the Image by dereferencing the _handle pointer
-Image ValueToImage(Value value) {
-	if (value.type != ValueType::Map) {
-		// Return empty image if not a map
-		return Image{nullptr, 0, 0, 0, 0};
-	}
+// Extract a Raylib Image from a MiniScript map (read-only reference)
+const Image& ValueToImage(Value value) {
+	static const Image empty = {nullptr, 0, 0, 0, 0};
+	if (value.type != ValueType::Map) return empty;
 	ValueDict map = value.GetDict();
 	Value handleVal = map.Lookup(String("_handle"), Value::zero);
 	Image* imgPtr = (Image*)ValueToPointer(handleVal);
-	if (imgPtr == nullptr) {
-		return Image{nullptr, 0, 0, 0, 0};
-	}
+	if (imgPtr == nullptr) return empty;
 	return *imgPtr;
+}
+
+// Extract a mutable pointer to a Raylib Image from a MiniScript map
+Image* ValueToImagePtr(Value value) {
+	if (value.type != ValueType::Map) return nullptr;
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	return (Image*)ValueToPointer(handleVal);
+}
+
+// After mutating an Image, sync its properties back to the MiniScript map
+void UpdateImageValue(Value value) {
+	if (value.type != ValueType::Map) return;
+	Image* imgPtr = ValueToImagePtr(value);
+	if (!imgPtr) return;
+	ValueDict map = value.GetDict();
+	map.SetValue(String("width"), Value(imgPtr->width));
+	map.SetValue(String("height"), Value(imgPtr->height));
+	map.SetValue(String("mipmaps"), Value(imgPtr->mipmaps));
+	map.SetValue(String("format"), Value(imgPtr->format));
 }
 
 // Convert a Raylib Font to a MiniScript map

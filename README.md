@@ -12,8 +12,8 @@ This project is developing raylib bindings (API wrappers) for MiniScript, enabli
 3. Symlink each of those into the directory of this repo, e.g.:
 ```
 cd raylib-miniscript
-ln -s ../raylib ./
-ln -s ../miniscript ./
+ln -s ../raylib raylib
+ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 ```
 4. Make sure the raylib lib is built (e.g. `cd ../raylib/src; make`).
 5. Build raylib-miniscript with `scripts/build-desktop.sh`

@@ -12,6 +12,7 @@
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptTypes.h"
 #include "macros.h"
+#include <iostream>
 
 using namespace MiniScript;
 
@@ -290,9 +291,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("crop");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
 		Rectangle crop = ValueToRectangle(context->GetVar(String("crop")));
-		ImageCrop(&img, crop);
+		ImageCrop(img, crop);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageCrop", i->GetFunc());
@@ -302,10 +306,13 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("newWidth");
 	i->AddParam("newHeight");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
 		int newWidth = context->GetVar(String("newWidth")).IntValue();
 		int newHeight = context->GetVar(String("newHeight")).IntValue();
-		ImageResize(&img, newWidth, newHeight);
+		ImageResize(img, newWidth, newHeight);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageResize", i->GetFunc());
@@ -315,10 +322,13 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("newWidth");
 	i->AddParam("newHeight");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
 		int newWidth = context->GetVar(String("newWidth")).IntValue();
 		int newHeight = context->GetVar(String("newHeight")).IntValue();
-		ImageResizeNN(&img, newWidth, newHeight);
+		ImageResizeNN(img, newWidth, newHeight);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageResizeNN", i->GetFunc());
@@ -326,8 +336,9 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageFlipVertical(&img);
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
+		ImageFlipVertical(img);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageFlipVertical", i->GetFunc());
@@ -335,8 +346,9 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageFlipHorizontal(&img);
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
+		ImageFlipHorizontal(img);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageFlipHorizontal", i->GetFunc());
@@ -344,8 +356,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageRotateCW(&img);
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
+		ImageRotateCW(img);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageRotateCW", i->GetFunc());
@@ -353,8 +368,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageRotateCCW(&img);
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
+		ImageRotateCCW(img);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageRotateCCW", i->GetFunc());
@@ -363,9 +381,10 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageColorTint(&img, color);
+		ImageColorTint(img, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageColorTint", i->GetFunc());
@@ -373,8 +392,9 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageColorInvert(&img);
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
+		ImageColorInvert(img);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageColorInvert", i->GetFunc());
@@ -382,8 +402,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
-		ImageColorGrayscale(&img);
+		Value imageVal = context->GetVar(String("image"));
+		Image* img = ValueToImagePtr(imageVal);
+		if (!img) return IntrinsicResult::Null;
+		ImageColorGrayscale(img);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageColorGrayscale", i->GetFunc());
@@ -392,9 +415,10 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("contrast");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
 		float contrast = context->GetVar(String("contrast")).FloatValue();
-		ImageColorContrast(&img, contrast);
+		ImageColorContrast(img, contrast);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageColorContrast", i->GetFunc());
@@ -403,9 +427,10 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("brightness");
 	i->code = INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context->GetVar(String("image")));
+		Image* img = ValueToImagePtr(context->GetVar(String("image")));
+		if (!img) return IntrinsicResult::Null;
 		int brightness = context->GetVar(String("brightness")).IntValue();
-		ImageColorBrightness(&img, brightness);
+		ImageColorBrightness(img, brightness);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageColorBrightness", i->GetFunc());
@@ -416,9 +441,10 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("dst");
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageClearBackground(&dst, color);
+		ImageClearBackground(dst, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageClearBackground", i->GetFunc());
@@ -429,11 +455,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("y", Value::zero);
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		int x = context->GetVar(String("x")).IntValue();
 		int y = context->GetVar(String("y")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawPixel(&dst, x, y, color);
+		ImageDrawPixel(dst, x, y, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawPixel", i->GetFunc());
@@ -443,10 +470,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Vector2 position = ValueToVector2(context->GetVar(String("position")));
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawPixelV(&dst, position, color);
+		ImageDrawPixelV(dst, position, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawPixelV", i->GetFunc());
@@ -459,13 +487,14 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("endPosY", Value::zero);
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		int startPosX = context->GetVar(String("startPosX")).IntValue();
 		int startPosY = context->GetVar(String("startPosY")).IntValue();
 		int endPosX = context->GetVar(String("endPosX")).IntValue();
 		int endPosY = context->GetVar(String("endPosY")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawLine(&dst, startPosX, startPosY, endPosX, endPosY, color);
+		ImageDrawLine(dst, startPosX, startPosY, endPosX, endPosY, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawLine", i->GetFunc());
@@ -476,11 +505,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("end", Vector2ToValue(Vector2{0, 0}));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Vector2 start = ValueToVector2(context->GetVar(String("start")));
 		Vector2 end = ValueToVector2(context->GetVar(String("end")));
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawLineV(&dst, start, end, color);
+		ImageDrawLineV(dst, start, end, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawLineV", i->GetFunc());
@@ -492,12 +522,13 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("radius", Value(32));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		int centerX = context->GetVar(String("centerX")).IntValue();
 		int centerY = context->GetVar(String("centerY")).IntValue();
 		int radius = context->GetVar(String("radius")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawCircle(&dst, centerX, centerY, radius, color);
+		ImageDrawCircle(dst, centerX, centerY, radius, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawCircle", i->GetFunc());
@@ -508,11 +539,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("radius", Value(32));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Vector2 center = ValueToVector2(context->GetVar(String("center")));
 		int radius = context->GetVar(String("radius")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawCircleV(&dst, center, radius, color);
+		ImageDrawCircleV(dst, center, radius, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawCircleV", i->GetFunc());
@@ -525,13 +557,14 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("height", Value(256));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		int posX = context->GetVar(String("posX")).IntValue();
 		int posY = context->GetVar(String("posY")).IntValue();
 		int width = context->GetVar(String("width")).IntValue();
 		int height = context->GetVar(String("height")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawRectangle(&dst, posX, posY, width, height, color);
+		ImageDrawRectangle(dst, posX, posY, width, height, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawRectangle", i->GetFunc());
@@ -541,10 +574,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("rec");
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawRectangleRec(&dst, rec, color);
+		ImageDrawRectangleRec(dst, rec, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawRectangleRec", i->GetFunc());
@@ -555,11 +589,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("thick", Value(1));
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
 		int thick = context->GetVar(String("thick")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawRectangleLines(&dst, rec, thick, color);
+		ImageDrawRectangleLines(dst, rec, thick, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawRectangleLines", i->GetFunc());
@@ -571,12 +606,13 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("dstRec");
 	i->AddParam("tint", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
-		Image src = ValueToImage(context->GetVar(String("src")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
+		const Image& src = ValueToImage(context->GetVar(String("src")));
 		Rectangle srcRec = ValueToRectangle(context->GetVar(String("srcRec")));
 		Rectangle dstRec = ValueToRectangle(context->GetVar(String("dstRec")));
 		Color tint = ValueToColor(context->GetVar(String("tint")));
-		ImageDraw(&dst, src, srcRec, dstRec, tint);
+		ImageDraw(dst, src, srcRec, dstRec, tint);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDraw", i->GetFunc());
@@ -589,13 +625,14 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("fontSize", Value(20));
 	i->AddParam("color", ColorToValue(BLACK));
 	i->code = INTRINSIC_LAMBDA {
-		Image dst = ValueToImage(context->GetVar(String("dst")));
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
+		if (!dst) return IntrinsicResult::Null;
 		String text = context->GetVar(String("text")).ToString();
 		int posX = context->GetVar(String("posX")).IntValue();
 		int posY = context->GetVar(String("posY")).IntValue();
 		int fontSize = context->GetVar(String("fontSize")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawText(&dst, text.c_str(), posX, posY, fontSize, color);
+		ImageDrawText(dst, text.c_str(), posX, posY, fontSize, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawText", i->GetFunc());
@@ -1087,9 +1124,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("threshold");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		float threshold = context->GetVar(String("threshold")).FloatValue();
 		Rectangle result = GetImageAlphaBorder(*image, threshold);
@@ -1115,9 +1150,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("color");
 	i->AddParam("threshold");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		Color color = ValueToColor(context->GetVar(String("color")));
 		float threshold = context->GetVar(String("threshold")).FloatValue();
@@ -1130,12 +1163,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("threshold");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		float threshold = context->GetVar(String("threshold")).FloatValue();
 		ImageAlphaCrop(image, threshold);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageAlphaCrop", i->GetFunc());
@@ -1144,9 +1177,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("alphaMask");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		Image alphaMask = ValueToImage(context->GetVar(String("alphaMask")));
 		ImageAlphaMask(image, alphaMask);
@@ -1157,9 +1188,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		ImageAlphaPremultiply(image);
 		return IntrinsicResult::Null;
@@ -1171,9 +1200,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("color");
 	i->AddParam("replace");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		Color color = ValueToColor(context->GetVar(String("color")));
 		Color replace = ValueToColor(context->GetVar(String("replace")));
@@ -1188,9 +1215,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("blurSize");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		int blurSize = context->GetVar(String("blurSize")).IntValue();
 		ImageBlurGaussian(image, blurSize);
@@ -1205,9 +1230,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("bBpp");
 	i->AddParam("aBpp");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		int rBpp = context->GetVar(String("rBpp")).IntValue();
 		int gBpp = context->GetVar(String("gBpp")).IntValue();
@@ -1222,12 +1245,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("newFormat");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		int newFormat = context->GetVar(String("newFormat")).IntValue();
 		ImageFormat(image, newFormat);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageFormat", i->GetFunc());
@@ -1259,9 +1282,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("kernel");
 	i->AddParam("kernelSize");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Image* image = ValueToImagePtr(context->GetVar(String("image")));
 		if (!image) return IntrinsicResult::Null;
 		ValueList kernelList = context->GetVar(String("kernel")).GetList();
 		int kernelSize = context->GetVar(String("kernelSize")).IntValue();
@@ -1279,11 +1300,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		ImageMipmaps(image);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageMipmaps", i->GetFunc());
@@ -1296,9 +1317,8 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("newHeight");
 	i->AddParam("fill");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		int offsetX = context->GetVar(String("offsetX")).IntValue();
 		int offsetY = context->GetVar(String("offsetY")).IntValue();
@@ -1306,6 +1326,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int newHeight = context->GetVar(String("newHeight")).IntValue();
 		Color fill = ValueToColor(context->GetVar(String("fill")));
 		ImageResizeCanvas(image, newWidth, newHeight, offsetX, offsetY, fill);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageResizeCanvas", i->GetFunc());
@@ -1314,12 +1335,12 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("image");
 	i->AddParam("degrees");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		int degrees = context->GetVar(String("degrees")).IntValue();
 		ImageRotate(image, degrees);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageRotate", i->GetFunc());
@@ -1327,11 +1348,11 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("image");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict imageMap = context->GetVar(String("image")).GetDict();
-		Value handleVal = imageMap.Lookup(String("_handle"), Value::zero);
-		Image* image = (Image*)ValueToPointer(handleVal);
+		Value imageVal = context->GetVar(String("image"));
+		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
 		ImageToPOT(image, BLACK);
+		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageToPOT", i->GetFunc());
@@ -1345,9 +1366,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("radius");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		int centerX = context->GetVar(String("centerX")).IntValue();
 		int centerY = context->GetVar(String("centerY")).IntValue();
@@ -1364,9 +1383,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("radius");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Vector2 center = ValueToVector2(context->GetVar(String("center")));
 		int radius = context->GetVar(String("radius")).IntValue();
@@ -1383,9 +1400,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("thick");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Vector2 start = ValueToVector2(context->GetVar(String("start")));
 		Vector2 end = ValueToVector2(context->GetVar(String("end")));
@@ -1401,9 +1416,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("rec");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
 		Color color = ValueToColor(context->GetVar(String("color")));
@@ -1421,9 +1434,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("spacing");
 	i->AddParam("tint");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Font font = ValueToFont(context->GetVar(String("font")));
 		String text = context->GetVar(String("text")).ToString();
@@ -1443,9 +1454,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("v3");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Vector2 v1 = ValueToVector2(context->GetVar(String("v1")));
 		Vector2 v2 = ValueToVector2(context->GetVar(String("v2")));
@@ -1465,9 +1474,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("c2");
 	i->AddParam("c3");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Vector2 v1 = ValueToVector2(context->GetVar(String("v1")));
 		Vector2 v2 = ValueToVector2(context->GetVar(String("v2")));
@@ -1485,9 +1492,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("points");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		ValueList pointsList = context->GetVar(String("points")).GetList();
 		int pointCount = pointsList.Count();
@@ -1510,9 +1515,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("v3");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		Vector2 v1 = ValueToVector2(context->GetVar(String("v1")));
 		Vector2 v2 = ValueToVector2(context->GetVar(String("v2")));
@@ -1528,9 +1531,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->AddParam("points");
 	i->AddParam("color");
 	i->code = INTRINSIC_LAMBDA {
-		ValueDict dstMap = context->GetVar(String("dst")).GetDict();
-		Value handleVal = dstMap.Lookup(String("_handle"), Value::zero);
-		Image* dst = (Image*)ValueToPointer(handleVal);
+		Image* dst = ValueToImagePtr(context->GetVar(String("dst")));
 		if (!dst) return IntrinsicResult::Null;
 		ValueList pointsList = context->GetVar(String("points")).GetList();
 		int pointCount = pointsList.Count();
