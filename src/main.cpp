@@ -364,7 +364,7 @@ void MainLoop() {
 	if (scriptState == RUNNING) {
 		if (!interpreter->Done()) {
 			try {
-				interpreter->RunUntilDone(0.1, false);
+				interpreter->RunUntilDone(0.1, true);
 			} catch (MiniscriptException& mse) {
 				PrintErr("Runtime Exception: " + mse.message);
 				interpreter->vm->Stop();

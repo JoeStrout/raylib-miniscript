@@ -7,11 +7,7 @@ print "Running main.ms"
 rl = raylib  // (just to shorten the subsequent code)
 rl.SetTraceLogLevel(rl.LOG_WARNING)
 
-fontImage = raylib.LoadImage("assets/testFont.png")
-print fontImage
-print rl.GetImageColor(fontImage, 0, 0)
-titleFont = raylib.LoadFontFromImage(fontImage, [255, 0, 255], 33)
-raylib.UnloadImage(fontImage)
+titleFont = raylib.LoadFontEx("assets/Merkin.ttf", 48)
 print titleFont
 
 
@@ -181,7 +177,7 @@ printCentered = function(s, y, fontSize=20, color)
 	
 	fontSize = titleFont.baseSize
 	size = rl.MeasureTextEx(titleFont, s, fontSize, 0)
-	raylib.DrawTextEx titleFont, s, [480 - size.x/2, y], fontSize, 0, rl.WHITE
+	raylib.DrawTextEx titleFont, s, [480 - size.x/2, y], fontSize, 0, color
 
 end function
 
@@ -189,8 +185,6 @@ end function
 while true
 	rl.BeginDrawing
 	rl.ClearBackground rl.BLACK
-
-	raylib.DrawTextEx titleFont, "!""#$%&ABC? " + titleFont.baseSize, [10, 100], titleFont.baseSize, 0, rl.WHITE
 
 	// update stuff
 	updateMouse
