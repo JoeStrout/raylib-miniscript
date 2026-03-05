@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>MSRLWeb - MiniScript + Raylib</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2b2b2b;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #61afef;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 300;
+        }
+
+        #game-container {
+            background: #000;
+            border: 2px solid #444;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas.emscripten {
+            display: block;
+            width: 960px;
+            height: 640px;
+            background-color: #000;
+        }
+
+        #output-container {
+            width: 960px;
+        }
+
+        #output-label {
+            color: #98c379;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        #output {
+            width: 100%;
+            height: 200px;
+            background-color: #1e1e1e;
+            color: #abb2bf;
+            border: 2px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+
+        #output::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        #output::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        #output::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 5px;
+        }
+
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #status {
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>MSRLWeb - MiniScript + Raylib</h1>
+
+    <div id="game-container">
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+
+    <div id="output-container">
+        <div id="output-label">Console Output:</div>
+        <textarea id="output" readonly></textarea>
+    </div>
+
+    <div class="spinner" id="spinner"></div>
+    <div id="status">Downloading...</div>
+    <progress hidden id="progress" value="0" max="100"></progress>
+
+    <script type='text/javascript'>
+        var statusElement = document.getElementById('status');
+        var progressElement = document.getElementById('progress');
+        var spinnerElement = document.getElementById('spinner');
+        var canvasElement = document.getElementById('canvas');
+        var outputElement = document.getElementById('output');
+
+        if (outputElement) {
+            outputElement.value = '';
+        }
+
+        canvasElement.addEventListener("webglcontextlost", function(e) {
+            alert('WebGL context lost. You will need to reload the page.');
+            e.preventDefault();
+        }, false);
+
+        var Module = {
+            print: (function() {
+                return function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                    console.log(text);
+                    if (outputElement) {
+                        outputElement.value += text + "\n";
+                        outputElement.scrollTop = outputElement.scrollHeight;
+                    }
+                };
+            })(),
+            canvas: (function() {
+                return canvasElement;
+            })(),
+            setStatus: function(text) {
+                if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+                if (text === Module.setStatus.last.text) return;
+                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+                var now = Date.now();
+                if (m && now - Module.setStatus.last.time < 30) return;
+                Module.setStatus.last.time = now;
+                Module.setStatus.last.text = text;
+                if (m) {
+                    text = m[1];
+                    progressElement.value = parseInt(m[2])*100;
+                    progressElement.max = parseInt(m[4])*100;
+                    progressElement.hidden = false;
+                    spinnerElement.hidden = false;
+                } else {
+                    progressElement.value = null;
+                    progressElement.max = null;
+                    progressElement.hidden = true;
+                    if (!text) spinnerElement.style.display = 'none';
+                }
+                statusElement.innerHTML = text;
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function(left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            }
+        };
+        Module.setStatus('Downloading...');
+        window.onerror = function(event) {
+            Module.setStatus('Exception thrown, see JavaScript console');
+            spinnerElement.style.display = 'none';
+            Module.setStatus = function(text) {
+                if (text) console.error('[post-exception status] ' + text);
+            };
+        };
+    </script>
+    {{{ SCRIPT }}}
+</body>
+</html>
