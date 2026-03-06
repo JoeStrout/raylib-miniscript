@@ -21,6 +21,7 @@ using namespace MiniScript;
 // Helper methods, one per Raylib module (each defined in its own .cpp file)
 void AddRAudioMethods(ValueDict raylibModule);
 void AddRCoreMethods(ValueDict raylibModule);
+void AddRModelsMethods(ValueDict raylibModule);
 void AddRShapesMethods(ValueDict raylibModule);
 void AddRTextMethods(ValueDict raylibModule);
 void AddRTexturesMethods(ValueDict raylibModule);
@@ -57,6 +58,18 @@ void AddRaylibIntrinsics() {
 	f = Intrinsic::Create("AudioStream");
 	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(AudioStreamClass()); };
 
+	f = Intrinsic::Create("Mesh");
+	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MeshClass()); };
+
+	f = Intrinsic::Create("Material");
+	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MaterialClass()); };
+
+	f = Intrinsic::Create("Model");
+	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ModelClass()); };
+
+	f = Intrinsic::Create("ModelAnimation");
+	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ModelAnimationClass()); };
+
 	// Create and register the main raylib module
 	f = Intrinsic::Create("raylib");
 	f->code = INTRINSIC_LAMBDA {
@@ -65,6 +78,7 @@ void AddRaylibIntrinsics() {
 		if (raylibModule.Count() == 0) {
 			AddRAudioMethods(raylibModule);
 			AddRCoreMethods(raylibModule);
+			AddRModelsMethods(raylibModule);
 			AddRShapesMethods(raylibModule);
 			AddRTextMethods(raylibModule);
 			AddRTexturesMethods(raylibModule);

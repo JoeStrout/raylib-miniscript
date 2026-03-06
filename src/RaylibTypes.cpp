@@ -89,6 +89,52 @@ ValueDict RenderTextureClass() {
 	return map;
 }
 
+ValueDict MeshClass() {
+	static ValueDict map;
+	if (map.Count() == 0) {
+		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("vertexCount"), Value::zero);
+		map.SetValue(String("triangleCount"), Value::zero);
+	}
+	return map;
+}
+
+ValueDict MaterialClass() {
+	static ValueDict map;
+	if (map.Count() == 0) {
+		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("shaderId"), Value::zero);
+		map.SetValue(String("_arrayHandle"), Value::zero);
+		map.SetValue(String("_arrayCount"), Value::zero);
+		map.SetValue(String("_arrayIndex"), Value::zero);
+	}
+	return map;
+}
+
+ValueDict ModelClass() {
+	static ValueDict map;
+	if (map.Count() == 0) {
+		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("meshCount"), Value::zero);
+		map.SetValue(String("materialCount"), Value::zero);
+	}
+	return map;
+}
+
+ValueDict ModelAnimationClass() {
+	static ValueDict map;
+	if (map.Count() == 0) {
+		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("name"), Value::null);
+		map.SetValue(String("boneCount"), Value::zero);
+		map.SetValue(String("keyframeCount"), Value::zero);
+		map.SetValue(String("_arrayHandle"), Value::zero);
+		map.SetValue(String("_arrayCount"), Value::zero);
+		map.SetValue(String("_arrayIndex"), Value::zero);
+	}
+	return map;
+}
+
 // Convert a Raylib Texture to a MiniScript map
 // Allocates the Texture on the heap and stores pointer in _handle
 Value TextureToValue(Texture texture) {
@@ -218,13 +264,13 @@ Value WaveToValue(Wave wave) {
 // Extract a Raylib Wave from a MiniScript map
 Wave ValueToWave(Value value) {
 	if (value.type != ValueType::Map) {
-		return Wave{NULL, 0, 0, 0, 0};
+		return Wave{0, 0, 0, 0, NULL};
 	}
 	ValueDict map = value.GetDict();
 	Value handleVal = map.Lookup(String("_handle"), Value::zero);
 	Wave* wavePtr = (Wave*)ValueToPointer(handleVal);
 	if (wavePtr == nullptr) {
-		return Wave{NULL, 0, 0, 0, 0};
+		return Wave{0, 0, 0, 0, NULL};
 	}
 	return *wavePtr;
 }
@@ -449,5 +495,228 @@ Value Vector2ToValue(Vector2 vec) {
 	ValueDict map;
 	map.SetValue(String("x"), Value(vec.x));
 	map.SetValue(String("y"), Value(vec.y));
+	return Value(map);
+}
+
+Value MeshToValue(Mesh mesh) {
+	Mesh* meshPtr = new Mesh(mesh);
+	ValueDict map;
+	map.SetValue(Value::magicIsA, MeshClass());
+	map.SetValue(String("_handle"), Value((double)(intptr_t)meshPtr));
+	map.SetValue(String("vertexCount"), Value(mesh.vertexCount));
+	map.SetValue(String("triangleCount"), Value(mesh.triangleCount));
+	return Value(map);
+}
+
+Mesh ValueToMesh(Value value) {
+	if (value.type != ValueType::Map) return Mesh{};
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	Mesh* meshPtr = (Mesh*)ValueToPointer(handleVal);
+	if (meshPtr == nullptr) return Mesh{};
+	return *meshPtr;
+}
+
+Value MaterialToValue(Material material) {
+	Material* materialPtr = new Material(material);
+	ValueDict map;
+	map.SetValue(Value::magicIsA, MaterialClass());
+	map.SetValue(String("_handle"), Value((double)(intptr_t)materialPtr));
+	map.SetValue(String("shaderId"), Value((int)material.shader.id));
+	map.SetValue(String("_arrayHandle"), Value::zero);
+	map.SetValue(String("_arrayCount"), Value::zero);
+	map.SetValue(String("_arrayIndex"), Value::zero);
+	return Value(map);
+}
+
+Material ValueToMaterial(Value value) {
+	if (value.type != ValueType::Map) return Material{};
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	Material* materialPtr = (Material*)ValueToPointer(handleVal);
+	if (materialPtr == nullptr) return Material{};
+	return *materialPtr;
+}
+
+Value ModelToValue(Model model) {
+	Model* modelPtr = new Model(model);
+	ValueDict map;
+	map.SetValue(Value::magicIsA, ModelClass());
+	map.SetValue(String("_handle"), Value((double)(intptr_t)modelPtr));
+	map.SetValue(String("meshCount"), Value(model.meshCount));
+	map.SetValue(String("materialCount"), Value(model.materialCount));
+	return Value(map);
+}
+
+Model ValueToModel(Value value) {
+	if (value.type != ValueType::Map) return Model{};
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	Model* modelPtr = (Model*)ValueToPointer(handleVal);
+	if (modelPtr == nullptr) return Model{};
+	return *modelPtr;
+}
+
+Value ModelAnimationToValue(ModelAnimation anim) {
+	ModelAnimation* animPtr = new ModelAnimation(anim);
+	ValueDict map;
+	map.SetValue(Value::magicIsA, ModelAnimationClass());
+	map.SetValue(String("_handle"), Value((double)(intptr_t)animPtr));
+	map.SetValue(String("name"), Value(String(anim.name)));
+	map.SetValue(String("boneCount"), Value(anim.boneCount));
+	map.SetValue(String("keyframeCount"), Value(anim.keyframeCount));
+	map.SetValue(String("_arrayHandle"), Value::zero);
+	map.SetValue(String("_arrayCount"), Value::zero);
+	map.SetValue(String("_arrayIndex"), Value::zero);
+	return Value(map);
+}
+
+ModelAnimation ValueToModelAnimation(Value value) {
+	if (value.type != ValueType::Map) return ModelAnimation{};
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	ModelAnimation* animPtr = (ModelAnimation*)ValueToPointer(handleVal);
+	if (animPtr == nullptr) return ModelAnimation{};
+	return *animPtr;
+}
+
+Vector3 ValueToVector3(Value value) {
+	if (value.type == ValueType::List) {
+		ValueList list = value.GetList();
+		float x = (list.Count() > 0) ? list[0].FloatValue() : 0;
+		float y = (list.Count() > 1) ? list[1].FloatValue() : 0;
+		float z = (list.Count() > 2) ? list[2].FloatValue() : 0;
+		return Vector3{x, y, z};
+	} else if (value.type == ValueType::Map) {
+		ValueDict map = value.GetDict();
+		float x = map.Lookup(String("x"), Value::zero).FloatValue();
+		float y = map.Lookup(String("y"), Value::zero).FloatValue();
+		float z = map.Lookup(String("z"), Value::zero).FloatValue();
+		return Vector3{x, y, z};
+	}
+	return Vector3{0, 0, 0};
+}
+
+Value Vector3ToValue(Vector3 vec) {
+	ValueDict map;
+	map.SetValue(String("x"), Value(vec.x));
+	map.SetValue(String("y"), Value(vec.y));
+	map.SetValue(String("z"), Value(vec.z));
+	return Value(map);
+}
+
+Matrix ValueToMatrix(Value value) {
+	if (value.type == ValueType::List) {
+		ValueList list = value.GetList();
+		Matrix m = Matrix{1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1};
+		if (list.Count() > 0) m.m0 = list[0].FloatValue();
+		if (list.Count() > 1) m.m1 = list[1].FloatValue();
+		if (list.Count() > 2) m.m2 = list[2].FloatValue();
+		if (list.Count() > 3) m.m3 = list[3].FloatValue();
+		if (list.Count() > 4) m.m4 = list[4].FloatValue();
+		if (list.Count() > 5) m.m5 = list[5].FloatValue();
+		if (list.Count() > 6) m.m6 = list[6].FloatValue();
+		if (list.Count() > 7) m.m7 = list[7].FloatValue();
+		if (list.Count() > 8) m.m8 = list[8].FloatValue();
+		if (list.Count() > 9) m.m9 = list[9].FloatValue();
+		if (list.Count() > 10) m.m10 = list[10].FloatValue();
+		if (list.Count() > 11) m.m11 = list[11].FloatValue();
+		if (list.Count() > 12) m.m12 = list[12].FloatValue();
+		if (list.Count() > 13) m.m13 = list[13].FloatValue();
+		if (list.Count() > 14) m.m14 = list[14].FloatValue();
+		if (list.Count() > 15) m.m15 = list[15].FloatValue();
+		return m;
+	}
+
+	if (value.type == ValueType::Map) {
+		ValueDict map = value.GetDict();
+		Matrix m;
+		m.m0 = map.Lookup(String("m0"), Value::zero).FloatValue();
+		m.m1 = map.Lookup(String("m1"), Value::zero).FloatValue();
+		m.m2 = map.Lookup(String("m2"), Value::zero).FloatValue();
+		m.m3 = map.Lookup(String("m3"), Value::zero).FloatValue();
+		m.m4 = map.Lookup(String("m4"), Value::zero).FloatValue();
+		m.m5 = map.Lookup(String("m5"), Value::zero).FloatValue();
+		m.m6 = map.Lookup(String("m6"), Value::zero).FloatValue();
+		m.m7 = map.Lookup(String("m7"), Value::zero).FloatValue();
+		m.m8 = map.Lookup(String("m8"), Value::zero).FloatValue();
+		m.m9 = map.Lookup(String("m9"), Value::zero).FloatValue();
+		m.m10 = map.Lookup(String("m10"), Value::zero).FloatValue();
+		m.m11 = map.Lookup(String("m11"), Value::zero).FloatValue();
+		m.m12 = map.Lookup(String("m12"), Value::zero).FloatValue();
+		m.m13 = map.Lookup(String("m13"), Value::zero).FloatValue();
+		m.m14 = map.Lookup(String("m14"), Value::zero).FloatValue();
+		m.m15 = map.Lookup(String("m15"), Value::zero).FloatValue();
+		return m;
+	}
+
+	return Matrix{1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1};
+}
+
+Value MatrixToValue(Matrix mat) {
+	ValueDict result;
+	result.SetValue(String("m0"), Value(mat.m0));
+	result.SetValue(String("m1"), Value(mat.m1));
+	result.SetValue(String("m2"), Value(mat.m2));
+	result.SetValue(String("m3"), Value(mat.m3));
+	result.SetValue(String("m4"), Value(mat.m4));
+	result.SetValue(String("m5"), Value(mat.m5));
+	result.SetValue(String("m6"), Value(mat.m6));
+	result.SetValue(String("m7"), Value(mat.m7));
+	result.SetValue(String("m8"), Value(mat.m8));
+	result.SetValue(String("m9"), Value(mat.m9));
+	result.SetValue(String("m10"), Value(mat.m10));
+	result.SetValue(String("m11"), Value(mat.m11));
+	result.SetValue(String("m12"), Value(mat.m12));
+	result.SetValue(String("m13"), Value(mat.m13));
+	result.SetValue(String("m14"), Value(mat.m14));
+	result.SetValue(String("m15"), Value(mat.m15));
+	return Value(result);
+}
+
+BoundingBox ValueToBoundingBox(Value value) {
+	if (value.type != ValueType::Map) return BoundingBox{};
+	ValueDict map = value.GetDict();
+	BoundingBox box;
+	box.min = ValueToVector3(map.Lookup(String("min"), Value::null));
+	box.max = ValueToVector3(map.Lookup(String("max"), Value::null));
+	return box;
+}
+
+Value BoundingBoxToValue(BoundingBox box) {
+	ValueDict map;
+	map.SetValue(String("min"), Vector3ToValue(box.min));
+	map.SetValue(String("max"), Vector3ToValue(box.max));
+	return Value(map);
+}
+
+Ray ValueToRay(Value value) {
+	if (value.type != ValueType::Map) return Ray{};
+	ValueDict map = value.GetDict();
+	Ray ray;
+	ray.position = ValueToVector3(map.Lookup(String("position"), map.Lookup(String("origin"), Value::null)));
+	ray.direction = ValueToVector3(map.Lookup(String("direction"), Value::null));
+	return ray;
+}
+
+Value RayToValue(Ray ray) {
+	ValueDict map;
+	map.SetValue(String("position"), Vector3ToValue(ray.position));
+	map.SetValue(String("direction"), Vector3ToValue(ray.direction));
+	return Value(map);
+}
+
+Value RayCollisionToValue(RayCollision collision) {
+	ValueDict map;
+	map.SetValue(String("hit"), Value(collision.hit));
+	map.SetValue(String("distance"), Value(collision.distance));
+	map.SetValue(String("point"), Vector3ToValue(collision.point));
+	map.SetValue(String("normal"), Vector3ToValue(collision.normal));
 	return Value(map);
 }

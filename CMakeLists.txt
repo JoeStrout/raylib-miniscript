@@ -32,6 +32,7 @@ set(APP_SOURCES
     src/RawData.cpp
     src/RAudio.cpp
     src/RCore.cpp
+    src/RModels.cpp
     src/RShapes.cpp
     src/RText.cpp
     src/RTextures.cpp
