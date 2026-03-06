@@ -13,6 +13,10 @@ ValueDict MusicClass();
 ValueDict SoundClass();
 ValueDict AudioStreamClass();
 ValueDict RenderTextureClass();
+ValueDict MeshClass();
+ValueDict MaterialClass();
+ValueDict ModelClass();
+ValueDict ModelAnimationClass();
 
 // Convert a Raylib Texture to a MiniScript map
 // Allocates the Texture on the heap and stores pointer in _handle
@@ -73,6 +77,30 @@ Value RenderTextureToValue(RenderTexture2D renderTexture);
 // Returns the RenderTexture2D by dereferencing the _handle pointer
 RenderTexture2D ValueToRenderTexture(Value value);
 
+// Convert a Raylib Mesh to a MiniScript map
+Value MeshToValue(Mesh mesh);
+
+// Extract a Raylib Mesh from a MiniScript map
+Mesh ValueToMesh(Value value);
+
+// Convert a Raylib Material to a MiniScript map
+Value MaterialToValue(Material material);
+
+// Extract a Raylib Material from a MiniScript map
+Material ValueToMaterial(Value value);
+
+// Convert a Raylib Model to a MiniScript map
+Value ModelToValue(Model model);
+
+// Extract a Raylib Model from a MiniScript map
+Model ValueToModel(Value value);
+
+// Convert a Raylib ModelAnimation to a MiniScript map
+Value ModelAnimationToValue(ModelAnimation anim);
+
+// Extract a Raylib ModelAnimation from a MiniScript map
+ModelAnimation ValueToModelAnimation(Value value);
+
 // Convert a MiniScript map to a Raylib Color
 // Expects a map with "r", "g", "b", and optionally "a" keys (0-255);
 // or, a 3- or 4-element list in the order [r, g, b, a].
@@ -94,6 +122,37 @@ Vector2 ValueToVector2(Value value);
 
 // Convert a Raylib Vector2 to a MiniScript map
 Value Vector2ToValue(Vector2 vec);
+
+// Convert a MiniScript value to a Raylib Vector3
+// Accepts either a map with "x", "y", "z" keys OR a list with 3 elements
+Vector3 ValueToVector3(Value value);
+
+// Convert a Raylib Vector3 to a MiniScript map
+Value Vector3ToValue(Vector3 vec);
+
+// Convert a MiniScript value to a Raylib Matrix
+// Accepts either a map with "m0".."m15" keys OR a list with 16 elements
+Matrix ValueToMatrix(Value value);
+
+// Convert a Raylib Matrix to a MiniScript map
+Value MatrixToValue(Matrix mat);
+
+// Convert a MiniScript value to a Raylib BoundingBox
+// Accepts map form with "min" and "max" Vector3 values
+BoundingBox ValueToBoundingBox(Value value);
+
+// Convert a Raylib BoundingBox to a MiniScript map
+Value BoundingBoxToValue(BoundingBox box);
+
+// Convert a MiniScript value to a Raylib Ray
+// Accepts map form with "position" and "direction" Vector3 values
+Ray ValueToRay(Value value);
+
+// Convert a Raylib Ray to a MiniScript map
+Value RayToValue(Ray ray);
+
+// Convert a Raylib RayCollision to a MiniScript map
+Value RayCollisionToValue(RayCollision collision);
 
 // Convert a raw pointer to a MiniScript value
 inline Value PointerToValue(void* ptr) {
