@@ -169,7 +169,15 @@ assert approx(raylib.MatrixTrace(mi), 4), "MatrixTrace"
 mt = raylib.MatrixTranslate(1, 2, 3)
 ms = raylib.MatrixScale(2, 3, 4)
 mm = raylib.MatrixMultiply(mt, ms)
-assert mm.hasIndex("m0") and mm.hasIndex("m15"), "MatrixMultiply shape"
+assert mm.hasIndex("rows") and mm.hasIndex("columns") and mm.hasIndex("elem"), "MatrixMultiply shape"
+assert mm.rows == 4 and mm.columns == 4 and mm.elem.len == 4 and mm.elem[0].len == 4, "MatrixMultiply dimensions"
+
+manualIdentity = {
+	"rows": 4,
+	"columns": 4,
+	"elem": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+}
+assert approx(raylib.MatrixDeterminant(manualIdentity), 1), "MatrixDeterminant nested matrix"
 
 mf = raylib.MatrixToFloatV(mi)
 assert mf.len == 16 and approx(mf[0], 1) and approx(mf[5], 1) and approx(mf[10], 1) and approx(mf[15], 1), "MatrixToFloatV"
@@ -216,7 +224,7 @@ aa = raylib.QuaternionToAxisAngle(qa)
 assert aa.hasIndex("axis") and aa.hasIndex("angle"), "QuaternionToAxisAngle shape"
 
 qm = raylib.QuaternionToMatrix(qi)
-assert approx(qm.m0, 1) and approx(qm.m5, 1) and approx(qm.m10, 1), "QuaternionToMatrix"
+assert approx(qm.elem[0][0], 1) and approx(qm.elem[1][1], 1) and approx(qm.elem[2][2], 1), "QuaternionToMatrix"
 qfm = raylib.QuaternionFromMatrix(raylib.MatrixIdentity)
 assert approx(qfm.w, 1), "QuaternionFromMatrix"
 

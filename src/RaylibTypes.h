@@ -161,10 +161,11 @@ Value QuaternionToValue(Quaternion q);
 
 
 // Convert a MiniScript value to a Raylib Matrix
-// Accepts either a map with "m0".."m15" keys OR a list with 16 elements
+// Accepts a matrixUtil-compatible map with {rows,columns,elem},
+// a legacy map with "m0".."m15" keys, or list forms.
 Matrix ValueToMatrix(Value value);
 
-// Convert a Raylib Matrix to a MiniScript map
+// Convert a Raylib Matrix to a MiniScript matrixUtil-compatible map
 Value MatrixToValue(Matrix mat);
 
 // Convert a MiniScript value to a Raylib BoundingBox

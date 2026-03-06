@@ -15,12 +15,16 @@ rgb = function(r=1, g=1, b=1)
 end function
 
 makeMatrix = function(scale=1)
-	m = {}
-	m.m0 = scale; m.m1 = 0; m.m2 = 0; m.m3 = 0
-	m.m4 = 0; m.m5 = scale; m.m6 = 0; m.m7 = 0
-	m.m8 = 0; m.m9 = 0; m.m10 = scale; m.m11 = 0
-	m.m12 = 0; m.m13 = 0; m.m14 = 0; m.m15 = 1
-	return m
+	return {
+		"rows": 4,
+		"columns": 4,
+		"elem": [
+			[scale, 0, 0, 0],
+			[0, scale, 0, 0],
+			[0, 0, scale, 0],
+			[0, 0, 0, 1],
+		],
+	}
 end function
 
 run = function

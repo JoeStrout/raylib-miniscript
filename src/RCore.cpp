@@ -1202,25 +1202,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
 		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
 
-		Matrix mat = GetCameraMatrix2D(camera);
-		ValueDict result;
-		result.SetValue(String("m0"), Value(mat.m0));
-		result.SetValue(String("m1"), Value(mat.m1));
-		result.SetValue(String("m2"), Value(mat.m2));
-		result.SetValue(String("m3"), Value(mat.m3));
-		result.SetValue(String("m4"), Value(mat.m4));
-		result.SetValue(String("m5"), Value(mat.m5));
-		result.SetValue(String("m6"), Value(mat.m6));
-		result.SetValue(String("m7"), Value(mat.m7));
-		result.SetValue(String("m8"), Value(mat.m8));
-		result.SetValue(String("m9"), Value(mat.m9));
-		result.SetValue(String("m10"), Value(mat.m10));
-		result.SetValue(String("m11"), Value(mat.m11));
-		result.SetValue(String("m12"), Value(mat.m12));
-		result.SetValue(String("m13"), Value(mat.m13));
-		result.SetValue(String("m14"), Value(mat.m14));
-		result.SetValue(String("m15"), Value(mat.m15));
-		return IntrinsicResult(result);
+		return IntrinsicResult(MatrixToValue(GetCameraMatrix2D(camera)));
 	};
 	raylibModule.SetValue("GetCameraMatrix2D", i->GetFunc());
 

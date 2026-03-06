@@ -97,7 +97,7 @@ run = function
 			print "[rmodels] rayBox.hit=" + boolText(hitRayBox.hit) + " dist=" + hitRayBox.distance
 			print "[rmodels] rayMesh.hit=" + boolText(hitRayMesh.hit) + " dist=" + hitRayMesh.distance
 			print "[rmodels] aimRay.hit=" + boolText(hitAimRayBox.hit) + " aimRayEx.hit=" + boolText(hitAimRayExBox.hit)
-			print "[rmodels] camera.m0=" + cameraMatrix.m0 + " screenX=" + modelScreen.x
+			print "[rmodels] camera.elem[0][0]=" + cameraMatrix.elem[0][0] + " screenX=" + modelScreen.x
 		end if
 
 		rl.BeginDrawing

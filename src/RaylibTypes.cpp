@@ -752,12 +752,13 @@ Value QuaternionToValue(Quaternion q) {
 }
 
 Matrix ValueToMatrix(Value value) {
-	if (value.type == ValueType::List) {
-		ValueList list = value.GetList();
-		Matrix m = Matrix{1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1};
+	Matrix identity = Matrix{1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1};
+
+	auto assignFromFlatList = [&](const ValueList &list) {
+		Matrix m = identity;
 		if (list.Count() > 0) m.m0 = list[0].FloatValue();
 		if (list.Count() > 1) m.m1 = list[1].FloatValue();
 		if (list.Count() > 2) m.m2 = list[2].FloatValue();
@@ -775,54 +776,135 @@ Matrix ValueToMatrix(Value value) {
 		if (list.Count() > 14) m.m14 = list[14].FloatValue();
 		if (list.Count() > 15) m.m15 = list[15].FloatValue();
 		return m;
+	};
+
+	auto assignFromNestedList = [&](const ValueList &rows) {
+		Matrix m = identity;
+		if (rows.Count() > 0 && rows[0].type == ValueType::List) {
+			ValueList row = rows[0].GetList();
+			if (row.Count() > 0) m.m0 = row[0].FloatValue();
+			if (row.Count() > 1) m.m4 = row[1].FloatValue();
+			if (row.Count() > 2) m.m8 = row[2].FloatValue();
+			if (row.Count() > 3) m.m12 = row[3].FloatValue();
+		}
+		if (rows.Count() > 1 && rows[1].type == ValueType::List) {
+			ValueList row = rows[1].GetList();
+			if (row.Count() > 0) m.m1 = row[0].FloatValue();
+			if (row.Count() > 1) m.m5 = row[1].FloatValue();
+			if (row.Count() > 2) m.m9 = row[2].FloatValue();
+			if (row.Count() > 3) m.m13 = row[3].FloatValue();
+		}
+		if (rows.Count() > 2 && rows[2].type == ValueType::List) {
+			ValueList row = rows[2].GetList();
+			if (row.Count() > 0) m.m2 = row[0].FloatValue();
+			if (row.Count() > 1) m.m6 = row[1].FloatValue();
+			if (row.Count() > 2) m.m10 = row[2].FloatValue();
+			if (row.Count() > 3) m.m14 = row[3].FloatValue();
+		}
+		if (rows.Count() > 3 && rows[3].type == ValueType::List) {
+			ValueList row = rows[3].GetList();
+			if (row.Count() > 0) m.m3 = row[0].FloatValue();
+			if (row.Count() > 1) m.m7 = row[1].FloatValue();
+			if (row.Count() > 2) m.m11 = row[2].FloatValue();
+			if (row.Count() > 3) m.m15 = row[3].FloatValue();
+		}
+		return m;
+	};
+
+	if (value.type == ValueType::List) {
+		ValueList list = value.GetList();
+		if (list.Count() > 0 && list[0].type == ValueType::List) {
+			return assignFromNestedList(list);
+		}
+		return assignFromFlatList(list);
 	}
 
 	if (value.type == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		Matrix m;
-		m.m0 = map.Lookup(String("m0"), Value::zero).FloatValue();
-		m.m1 = map.Lookup(String("m1"), Value::zero).FloatValue();
-		m.m2 = map.Lookup(String("m2"), Value::zero).FloatValue();
-		m.m3 = map.Lookup(String("m3"), Value::zero).FloatValue();
-		m.m4 = map.Lookup(String("m4"), Value::zero).FloatValue();
-		m.m5 = map.Lookup(String("m5"), Value::zero).FloatValue();
-		m.m6 = map.Lookup(String("m6"), Value::zero).FloatValue();
-		m.m7 = map.Lookup(String("m7"), Value::zero).FloatValue();
-		m.m8 = map.Lookup(String("m8"), Value::zero).FloatValue();
-		m.m9 = map.Lookup(String("m9"), Value::zero).FloatValue();
-		m.m10 = map.Lookup(String("m10"), Value::zero).FloatValue();
-		m.m11 = map.Lookup(String("m11"), Value::zero).FloatValue();
-		m.m12 = map.Lookup(String("m12"), Value::zero).FloatValue();
-		m.m13 = map.Lookup(String("m13"), Value::zero).FloatValue();
-		m.m14 = map.Lookup(String("m14"), Value::zero).FloatValue();
-		m.m15 = map.Lookup(String("m15"), Value::zero).FloatValue();
-		return m;
+		bool hasLegacyFields =
+			map.Lookup(String("m0"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m1"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m2"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m3"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m4"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m5"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m6"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m7"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m8"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m9"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m10"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m11"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m12"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m13"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m14"), Value::null).type != ValueType::Null ||
+			map.Lookup(String("m15"), Value::null).type != ValueType::Null;
+
+		if (hasLegacyFields) {
+			Matrix m;
+			m.m0 = map.Lookup(String("m0"), Value::zero).FloatValue();
+			m.m1 = map.Lookup(String("m1"), Value::zero).FloatValue();
+			m.m2 = map.Lookup(String("m2"), Value::zero).FloatValue();
+			m.m3 = map.Lookup(String("m3"), Value::zero).FloatValue();
+			m.m4 = map.Lookup(String("m4"), Value::zero).FloatValue();
+			m.m5 = map.Lookup(String("m5"), Value::zero).FloatValue();
+			m.m6 = map.Lookup(String("m6"), Value::zero).FloatValue();
+			m.m7 = map.Lookup(String("m7"), Value::zero).FloatValue();
+			m.m8 = map.Lookup(String("m8"), Value::zero).FloatValue();
+			m.m9 = map.Lookup(String("m9"), Value::zero).FloatValue();
+			m.m10 = map.Lookup(String("m10"), Value::zero).FloatValue();
+			m.m11 = map.Lookup(String("m11"), Value::zero).FloatValue();
+			m.m12 = map.Lookup(String("m12"), Value::zero).FloatValue();
+			m.m13 = map.Lookup(String("m13"), Value::zero).FloatValue();
+			m.m14 = map.Lookup(String("m14"), Value::zero).FloatValue();
+			m.m15 = map.Lookup(String("m15"), Value::zero).FloatValue();
+			return m;
+		}
+
+		Value elemValue = map.Lookup(String("elem"), Value::null);
+		if (elemValue.type == ValueType::List) {
+			return assignFromNestedList(elemValue.GetList());
+		}
 	}
 
-	return Matrix{1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1};
+	return identity;
 }
 
 Value MatrixToValue(Matrix mat) {
 	ValueDict result;
-	result.SetValue(String("m0"), Value(mat.m0));
-	result.SetValue(String("m1"), Value(mat.m1));
-	result.SetValue(String("m2"), Value(mat.m2));
-	result.SetValue(String("m3"), Value(mat.m3));
-	result.SetValue(String("m4"), Value(mat.m4));
-	result.SetValue(String("m5"), Value(mat.m5));
-	result.SetValue(String("m6"), Value(mat.m6));
-	result.SetValue(String("m7"), Value(mat.m7));
-	result.SetValue(String("m8"), Value(mat.m8));
-	result.SetValue(String("m9"), Value(mat.m9));
-	result.SetValue(String("m10"), Value(mat.m10));
-	result.SetValue(String("m11"), Value(mat.m11));
-	result.SetValue(String("m12"), Value(mat.m12));
-	result.SetValue(String("m13"), Value(mat.m13));
-	result.SetValue(String("m14"), Value(mat.m14));
-	result.SetValue(String("m15"), Value(mat.m15));
+
+	ValueList row0;
+	row0.Add(Value(mat.m0));
+	row0.Add(Value(mat.m4));
+	row0.Add(Value(mat.m8));
+	row0.Add(Value(mat.m12));
+
+	ValueList row1;
+	row1.Add(Value(mat.m1));
+	row1.Add(Value(mat.m5));
+	row1.Add(Value(mat.m9));
+	row1.Add(Value(mat.m13));
+
+	ValueList row2;
+	row2.Add(Value(mat.m2));
+	row2.Add(Value(mat.m6));
+	row2.Add(Value(mat.m10));
+	row2.Add(Value(mat.m14));
+
+	ValueList row3;
+	row3.Add(Value(mat.m3));
+	row3.Add(Value(mat.m7));
+	row3.Add(Value(mat.m11));
+	row3.Add(Value(mat.m15));
+
+	ValueList elem;
+	elem.Add(Value(row0));
+	elem.Add(Value(row1));
+	elem.Add(Value(row2));
+	elem.Add(Value(row3));
+
+	result.SetValue(String("rows"), Value(4));
+	result.SetValue(String("columns"), Value(4));
+	result.SetValue(String("elem"), Value(elem));
 	return Value(result);
 }
 
