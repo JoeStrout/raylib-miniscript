@@ -22,6 +22,7 @@ using namespace MiniScript;
 void AddRAudioMethods(ValueDict raylibModule);
 void AddRCoreMethods(ValueDict raylibModule);
 void AddRModelsMethods(ValueDict raylibModule);
+void AddRMathMethods(ValueDict raylibModule);
 void AddRShapesMethods(ValueDict raylibModule);
 void AddRTextMethods(ValueDict raylibModule);
 void AddRTexturesMethods(ValueDict raylibModule);
@@ -85,6 +86,7 @@ void AddRaylibIntrinsics() {
 			AddRAudioMethods(raylibModule);
 			AddRCoreMethods(raylibModule);
 			AddRModelsMethods(raylibModule);
+			AddRMathMethods(raylibModule);
 			AddRShapesMethods(raylibModule);
 			AddRTextMethods(raylibModule);
 			AddRTexturesMethods(raylibModule);

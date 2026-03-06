@@ -2,6 +2,7 @@
 #include "RaylibTypes.h"
 #include "RawData.h"
 #include "raylib.h"
+#include "raymath.h"
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptTypes.h"
 #include "macros.h"
@@ -59,13 +60,6 @@ static Value ModelAnimationArrayItemToValue(ModelAnimation* animations, int coun
 	map.SetValue(String("_arrayCount"), Value(count));
 	map.SetValue(String("_arrayIndex"), Value(index));
 	return Value(map);
-}
-
-static Matrix IdentityMatrix() {
-	return Matrix{1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1};
 }
 
 static void SyncMaterialShaderMetadata(Value materialValue, Shader shader) {
@@ -918,7 +912,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("mesh");
 	i->AddParam("material");
-	i->AddParam("transform", MatrixToValue(IdentityMatrix()));
+	i->AddParam("transform", MatrixToValue(MatrixIdentity()));
 	i->code = INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context->GetVar(String("mesh")));
 		Material material = ValueToMaterial(context->GetVar(String("material")));
@@ -1535,7 +1529,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->AddParam("ray");
 	i->AddParam("mesh");
-	i->AddParam("transform", MatrixToValue(IdentityMatrix()));
+	i->AddParam("transform", MatrixToValue(MatrixIdentity()));
 	i->code = INTRINSIC_LAMBDA {
 		Ray ray = ValueToRay(context->GetVar(String("ray")));
 		Mesh mesh = ValueToMesh(context->GetVar(String("mesh")));

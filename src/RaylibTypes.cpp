@@ -714,6 +714,43 @@ Value Camera3DToValue(Camera3D camera) {
 	return Value(map);
 }
 
+Vector4 ValueToVector4(Value value) {
+	if (value.type == ValueType::List) {
+		ValueList list = value.GetList();
+		float x = (list.Count() > 0) ? list[0].FloatValue() : 0;
+		float y = (list.Count() > 1) ? list[1].FloatValue() : 0;
+		float z = (list.Count() > 2) ? list[2].FloatValue() : 0;
+		float w = (list.Count() > 3) ? list[3].FloatValue() : 0;
+		return Vector4{x, y, z, w};
+	} else if (value.type == ValueType::Map) {
+		ValueDict map = value.GetDict();
+		float x = map.Lookup(String("x"), Value::zero).FloatValue();
+		float y = map.Lookup(String("y"), Value::zero).FloatValue();
+		float z = map.Lookup(String("z"), Value::zero).FloatValue();
+		float w = map.Lookup(String("w"), Value::zero).FloatValue();
+		return Vector4{x, y, z, w};
+	}
+	return Vector4{0, 0, 0, 0};
+}
+
+Value Vector4ToValue(Vector4 vec) {
+	ValueDict map;
+	map.SetValue(String("x"), Value(vec.x));
+	map.SetValue(String("y"), Value(vec.y));
+	map.SetValue(String("z"), Value(vec.z));
+	map.SetValue(String("w"), Value(vec.w));
+	return Value(map);
+}
+
+Quaternion ValueToQuaternion(Value value) {
+	Vector4 v = ValueToVector4(value);
+	return Quaternion{v.x, v.y, v.z, v.w};
+}
+
+Value QuaternionToValue(Quaternion q) {
+	return Vector4ToValue(Vector4{q.x, q.y, q.z, q.w});
+}
+
 Matrix ValueToMatrix(Value value) {
 	if (value.type == ValueType::List) {
 		ValueList list = value.GetList();

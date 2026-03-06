@@ -145,6 +145,21 @@ Camera3D ValueToCamera3D(Value value);
 // Convert a Raylib Camera3D to a MiniScript map
 Value Camera3DToValue(Camera3D camera);
 
+// Convert a MiniScript value to a Raylib Vector4
+// Accepts either a map with "x", "y", "z", "w" keys OR a list with 4 elements
+Vector4 ValueToVector4(Value value);
+
+// Convert a Raylib Vector4 to a MiniScript map
+Value Vector4ToValue(Vector4 vec);
+
+// Convert a MiniScript value to a Raylib Quaternion
+// Accepts either a map with "x", "y", "z", "w" keys OR a list with 4 elements
+Quaternion ValueToQuaternion(Value value);
+
+// Convert a Raylib Quaternion to a MiniScript map
+Value QuaternionToValue(Quaternion q);
+
+
 // Convert a MiniScript value to a Raylib Matrix
 // Accepts either a map with "m0".."m15" keys OR a list with 16 elements
 Matrix ValueToMatrix(Value value);
