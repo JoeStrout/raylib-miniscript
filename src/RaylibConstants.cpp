@@ -263,6 +263,10 @@ void AddConstants(ValueDict raylibModule) {
 	raylibModule.SetValue("SHADER_LOC_MATRIX_PROJECTION", Value(SHADER_LOC_MATRIX_PROJECTION));
 	raylibModule.SetValue("SHADER_LOC_MATRIX_MODEL", Value(SHADER_LOC_MATRIX_MODEL));
 	raylibModule.SetValue("SHADER_LOC_MATRIX_NORMAL", Value(SHADER_LOC_MATRIX_NORMAL));
+	raylibModule.SetValue("SHADER_LOC_VECTOR_VIEW", Value(SHADER_LOC_VECTOR_VIEW));
+	raylibModule.SetValue("SHADER_LOC_COLOR_DIFFUSE", Value(SHADER_LOC_COLOR_DIFFUSE));
+	raylibModule.SetValue("SHADER_LOC_COLOR_SPECULAR", Value(SHADER_LOC_COLOR_SPECULAR));
+	raylibModule.SetValue("SHADER_LOC_COLOR_AMBIENT", Value(SHADER_LOC_COLOR_AMBIENT));
 	raylibModule.SetValue("SHADER_LOC_MATRIX_BONETRANSFORMS", Value(SHADER_LOC_MATRIX_BONETRANSFORMS));
 	raylibModule.SetValue("SHADER_LOC_MATRIX_BONE", Value(SHADER_LOC_MATRIX_BONETRANSFORMS));
 	raylibModule.SetValue("SHADER_LOC_MAP_ALBEDO", Value(SHADER_LOC_MAP_ALBEDO));
@@ -278,6 +282,32 @@ void AddConstants(ValueDict raylibModule) {
 	raylibModule.SetValue("SHADER_LOC_MAP_BRDF", Value(SHADER_LOC_MAP_BRDF));
 	raylibModule.SetValue("SHADER_LOC_MAP_DIFFUSE", Value(SHADER_LOC_MAP_DIFFUSE));
 	raylibModule.SetValue("SHADER_LOC_MAP_SPECULAR", Value(SHADER_LOC_MAP_SPECULAR));
+
+	// Add shader uniform and attribute type constants
+	raylibModule.SetValue("SHADER_UNIFORM_FLOAT", Value(SHADER_UNIFORM_FLOAT));
+	raylibModule.SetValue("SHADER_UNIFORM_VEC2", Value(SHADER_UNIFORM_VEC2));
+	raylibModule.SetValue("SHADER_UNIFORM_VEC3", Value(SHADER_UNIFORM_VEC3));
+	raylibModule.SetValue("SHADER_UNIFORM_VEC4", Value(SHADER_UNIFORM_VEC4));
+	raylibModule.SetValue("SHADER_UNIFORM_INT", Value(SHADER_UNIFORM_INT));
+	raylibModule.SetValue("SHADER_UNIFORM_IVEC2", Value(SHADER_UNIFORM_IVEC2));
+	raylibModule.SetValue("SHADER_UNIFORM_IVEC3", Value(SHADER_UNIFORM_IVEC3));
+	raylibModule.SetValue("SHADER_UNIFORM_IVEC4", Value(SHADER_UNIFORM_IVEC4));
+	raylibModule.SetValue("SHADER_UNIFORM_UINT", Value(SHADER_UNIFORM_UINT));
+	raylibModule.SetValue("SHADER_UNIFORM_UIVEC2", Value(SHADER_UNIFORM_UIVEC2));
+	raylibModule.SetValue("SHADER_UNIFORM_UIVEC3", Value(SHADER_UNIFORM_UIVEC3));
+	raylibModule.SetValue("SHADER_UNIFORM_UIVEC4", Value(SHADER_UNIFORM_UIVEC4));
+	raylibModule.SetValue("SHADER_UNIFORM_SAMPLER2D", Value(SHADER_UNIFORM_SAMPLER2D));
+	raylibModule.SetValue("SHADER_ATTRIB_FLOAT", Value(SHADER_ATTRIB_FLOAT));
+	raylibModule.SetValue("SHADER_ATTRIB_VEC2", Value(SHADER_ATTRIB_VEC2));
+	raylibModule.SetValue("SHADER_ATTRIB_VEC3", Value(SHADER_ATTRIB_VEC3));
+	raylibModule.SetValue("SHADER_ATTRIB_VEC4", Value(SHADER_ATTRIB_VEC4));
+
+	// Add cubemap layout constants
+	raylibModule.SetValue("CUBEMAP_LAYOUT_AUTO_DETECT", Value(CUBEMAP_LAYOUT_AUTO_DETECT));
+	raylibModule.SetValue("CUBEMAP_LAYOUT_LINE_VERTICAL", Value(CUBEMAP_LAYOUT_LINE_VERTICAL));
+	raylibModule.SetValue("CUBEMAP_LAYOUT_LINE_HORIZONTAL", Value(CUBEMAP_LAYOUT_LINE_HORIZONTAL));
+	raylibModule.SetValue("CUBEMAP_LAYOUT_CROSS_THREE_BY_FOUR", Value(CUBEMAP_LAYOUT_CROSS_THREE_BY_FOUR));
+	raylibModule.SetValue("CUBEMAP_LAYOUT_CROSS_FOUR_BY_THREE", Value(CUBEMAP_LAYOUT_CROSS_FOUR_BY_THREE));
 
 	// Add trace log level constants
 	raylibModule.SetValue("LOG_ALL", Value(LOG_ALL));

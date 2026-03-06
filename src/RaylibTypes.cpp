@@ -89,6 +89,15 @@ ValueDict RenderTextureClass() {
 	return map;
 }
 
+ValueDict ShaderClass() {
+	static ValueDict map;
+	if (map.Count() == 0) {
+		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("id"), Value::zero);
+	}
+	return map;
+}
+
 ValueDict MeshClass() {
 	static ValueDict map;
 	if (map.Count() == 0) {
@@ -387,6 +396,26 @@ RenderTexture2D ValueToRenderTexture(Value value) {
 		return RenderTexture2D{};
 	}
 	return *rtPtr;
+}
+
+// Convert a Raylib Shader to a MiniScript map
+Value ShaderToValue(Shader shader) {
+	Shader* shaderPtr = new Shader(shader);
+	ValueDict map;
+	map.SetValue(Value::magicIsA, ShaderClass());
+	map.SetValue(String("_handle"), Value((double)(intptr_t)shaderPtr));
+	map.SetValue(String("id"), Value((int)shader.id));
+	return Value(map);
+}
+
+// Extract a Raylib Shader from a MiniScript map
+Shader ValueToShader(Value value) {
+	if (value.type != ValueType::Map) return Shader{0, NULL};
+	ValueDict map = value.GetDict();
+	Value handleVal = map.Lookup(String("_handle"), Value::zero);
+	Shader* shaderPtr = (Shader*)ValueToPointer(handleVal);
+	if (shaderPtr == nullptr) return Shader{0, NULL};
+	return *shaderPtr;
 }
 
 // Convert a MiniScript map to a Raylib Color

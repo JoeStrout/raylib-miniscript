@@ -13,6 +13,7 @@ ValueDict MusicClass();
 ValueDict SoundClass();
 ValueDict AudioStreamClass();
 ValueDict RenderTextureClass();
+ValueDict ShaderClass();
 ValueDict MeshClass();
 ValueDict MaterialClass();
 ValueDict ModelClass();
@@ -77,6 +78,12 @@ Value RenderTextureToValue(RenderTexture2D renderTexture);
 // Extract a Raylib RenderTexture2D from a MiniScript map
 // Returns the RenderTexture2D by dereferencing the _handle pointer
 RenderTexture2D ValueToRenderTexture(Value value);
+
+// Convert a Raylib Shader to a MiniScript map
+Value ShaderToValue(Shader shader);
+
+// Extract a Raylib Shader from a MiniScript map
+Shader ValueToShader(Value value);
 
 // Convert a Raylib Mesh to a MiniScript map
 Value MeshToValue(Mesh mesh);

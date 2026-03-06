@@ -58,6 +58,9 @@ void AddRaylibIntrinsics() {
 	f = Intrinsic::Create("AudioStream");
 	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(AudioStreamClass()); };
 
+	f = Intrinsic::Create("Shader");
+	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ShaderClass()); };
+
 	f = Intrinsic::Create("Mesh");
 	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MeshClass()); };
 
