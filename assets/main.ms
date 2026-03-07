@@ -197,6 +197,28 @@ printCentered = function(s, y, fontSize=20, color)
 
 end function
 
+// Load fire background shader
+fireShader = null
+fireQuadTex = null
+fragCode = rl.LoadFileText("assets/fireShader.fs")
+if fragCode != "" then
+	fireShader = rl.LoadShaderFromMemory("", fragCode)
+	if fireShader != null and rl.IsShaderValid(fireShader) then
+		globals.fireLocTime = rl.GetShaderLocation(fireShader, "uTime")
+		screenW = rl.GetScreenWidth
+		screenH = rl.GetScreenHeight
+		fireImg = rl.GenImageColor(screenW, screenH, rl.WHITE)
+		fireQuadTex = rl.LoadTextureFromImage(fireImg)
+		rl.UnloadImage fireImg
+		print "Fire shader loaded, locTime=" + fireLocTime
+	else
+		print "Fire shader failed to compile"
+		fireShader = null
+	end if
+else
+	print "Could not load fireShader.fs"
+end if
+
 // Main loop
 while true
 	rl.BeginDrawing
@@ -206,8 +228,19 @@ while true
 	updateMouse
 	for btn in buttons
 		btn.update
-	end for	
-	
+	end for
+
+	// render fire background
+	if fireShader then
+		t = rl.GetTime
+		if fireLocTime >= 0 then
+			rl.SetShaderValue fireShader, fireLocTime, t, rl.SHADER_UNIFORM_FLOAT
+		end if
+		rl.BeginShaderMode fireShader
+		rl.DrawTexture fireQuadTex, 0, 0, rl.WHITE
+		rl.EndShaderMode
+	end if
+
 	// render stuff
 	printCentered "MSRLWeb Demo", 10, 30, [100,100,255,255]
 	printCentered "version " + version.host, 40, 10, [50,50,200,255]
