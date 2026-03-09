@@ -1,17 +1,17 @@
-// shaderDemo.ms
-// Displays an animated shader effect on a big square.
+// metaballDemo.ms
+// Displays animated metaball blobs using a fragment shader.
 
 rl = raylib
 
 run = function
-	rl.SetWindowTitle "Plasma Shader Demo"
+	rl.SetWindowTitle "Metaball Shader Demo"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth
 	screenH = rl.GetScreenHeight
 
-	fragCode = rl.LoadFileText("assets/shaders/plasmaShader.fs")
+	fragCode = rl.LoadFileText("assets/shaders/metaballs.fs")
 	if fragCode == "" then
-		print "Failed to load assets/shaders/plasmaShader.fs"
+		print "Failed to load assets/shaders/metaballs.fs"
 		return
 	end if
 
@@ -23,7 +23,8 @@ run = function
 
 	locTime = rl.GetShaderLocation(shader, "uTime")
 	locRes = rl.GetShaderLocation(shader, "uResolution")
-	locPalette = rl.GetShaderLocation(shader, "uPalette")
+	locColA = rl.GetShaderLocation(shader, "uColorA")
+	locColB = rl.GetShaderLocation(shader, "uColorB")
 
 	// Create a white square texture for the shader quad
 	quadSize = screenH - 80
@@ -38,15 +39,14 @@ run = function
 
 	paletteIdx = 0
 	palettes = []
-	palettes.push [0.0, 0.0, 0.0]      // classic rainbow
-	palettes.push [1.0, 2.0, 3.0]      // ocean
-	palettes.push [0.5, 1.5, 4.0]      // fire
-	palettes.push [2.0, 0.5, 3.5]      // neon
-	palNames = ["Rainbow", "Ocean", "Fire", "Neon"]
+	// Each entry: [colorA_r, colorA_g, colorA_b, colorB_r, colorB_g, colorB_b]
+	palettes.push [[0.1, 0.6, 1.0], [0.0, 0.2, 0.5]]    // Blue
+	palettes.push [[1.0, 0.3, 0.1], [1.0, 0.8, 0.0]]    // Lava
+	palettes.push [[0.2, 1.0, 0.3], [0.0, 0.4, 0.1]]    // Slime
+	palettes.push [[0.9, 0.2, 0.9], [0.3, 0.0, 0.6]]    // Neon
+	palNames = ["Blue", "Lava", "Slime", "Neon"]
 
-	print "locTime=" + locTime + " locRes=" + locRes + " locPalette=" + locPalette
-	print "quadTex id=" + quadTex.id + " size=" + quadTex.width + "x" + quadTex.height
-	print "Plasma shader demo. SPACE to cycle palettes. ESC to exit."
+	print "Metaball shader demo. SPACE to cycle palettes. ESC to exit."
 
 	while true
 		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
@@ -60,12 +60,15 @@ run = function
 		if locTime >= 0 then
 			rl.SetShaderValue shader, locTime, t, rl.SHADER_UNIFORM_FLOAT
 		end if
-		if locPalette >= 0 then
-			rl.SetShaderValueV shader, locPalette, palettes[paletteIdx], rl.SHADER_UNIFORM_VEC3, 1
+		if locColA >= 0 then
+			rl.SetShaderValueV shader, locColA, palettes[paletteIdx][0], rl.SHADER_UNIFORM_VEC3, 1
+		end if
+		if locColB >= 0 then
+			rl.SetShaderValueV shader, locColB, palettes[paletteIdx][1], rl.SHADER_UNIFORM_VEC3, 1
 		end if
 
 		rl.BeginDrawing
-		rl.ClearBackground rl.DARKBLUE
+		rl.ClearBackground rl.BLACK
 
 		// Draw a centered square through the shader
 		quadX = floor((screenW - quadSize) / 2)
@@ -74,7 +77,7 @@ run = function
 		rl.DrawTexture quadTex, quadX, quadY, rl.WHITE
 		rl.EndShaderMode
 
-		rl.DrawText "Plasma Shader Demo", 20, 16, 24, rl.WHITE
+		rl.DrawText "Metaball Shader Demo", 20, 16, 24, rl.WHITE
 		rl.DrawText "SPACE: cycle palette  |  ESC: exit", 20, 46, 18, rl.RAYWHITE
 		rl.DrawText "Palette: " + palNames[paletteIdx], 20, 72, 18, rl.YELLOW
 		rl.DrawFPS
@@ -85,7 +88,7 @@ run = function
 
 	rl.UnloadTexture quadTex
 	rl.UnloadShader shader
-	print "Plasma demo finished."
+	print "Metaball demo finished."
 end function
 
 if locals == globals then run

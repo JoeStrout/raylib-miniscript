@@ -199,7 +199,7 @@ end function
 // Load fire background shader
 fireShader = null
 fireQuadTex = null
-fragCode = rl.LoadFileText("assets/fireShader.fs")
+fragCode = rl.LoadFileText("assets/shaders/fireShader.fs")
 if fragCode != "" then
 	fireShader = rl.LoadShaderFromMemory("", fragCode)
 	if fireShader != null and rl.IsShaderValid(fireShader) then
