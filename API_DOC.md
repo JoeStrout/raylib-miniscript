@@ -393,6 +393,9 @@
 |LoadImageFromMemory |**fileType**, **fileData** |Load image from memory buffer, fileType refers to extension: i.e. ".png" WARNING: File extension must be provided in lower-case |
 |LoadImageFromScreen | |Load image from screen buffer and (screenshot) |
 |LoadImageFromTexture |**texture** |Load image from GPU texture data NOTE: Compressed texture formats not supported |
+|ExportImage |**image**, **fileName** |Export image data to file NOTE: File format depends on fileName extension |
+|ExportImageToMemory |**image**, **fileType** | |
+|ExportImageAsCode |**image**, **fileName** |Export image as code file (.h) defining an array of bytes |
 |LoadImagePalette |**image**, **colorCount** |Load colors palette from image as a Color array (RGBA - 32bit) NOTE: Memory allocated should be freed using UnloadImagePalette() |
 |LoadImageRaw |**fileName**, **width**, **height**, **format**, **headerSize** |Load an image from RAW file data |
 |UnloadImageColors |**colors** |Unload color data loaded with LoadImageColors() |
