@@ -424,6 +424,37 @@ Shader ValueToShader(Value value) {
 Color ValueToColor(Value value) {
 	Color result;
 
+	// Handle HTML-style color string: "#RRGGBB" or "#RRGGBBAA"
+	if (value.type == ValueType::String) {
+		String s = value.GetString();
+		if (s.Length() >= 7 && s[0] == '#') {
+			unsigned int hex = 0;
+			for (int i = 1; i < s.Length() && i < 9; i++) {
+				char c = s[i];
+				int digit;
+				if (c >= '0' && c <= '9') digit = c - '0';
+				else if (c >= 'a' && c <= 'f') digit = 10 + c - 'a';
+				else if (c >= 'A' && c <= 'F') digit = 10 + c - 'A';
+				else break;
+				hex = (hex << 4) | digit;
+			}
+			if (s.Length() >= 9) {
+				// #RRGGBBAA
+				result.r = (hex >> 24) & 0xFF;
+				result.g = (hex >> 16) & 0xFF;
+				result.b = (hex >> 8) & 0xFF;
+				result.a = hex & 0xFF;
+			} else {
+				// #RRGGBB
+				result.r = (hex >> 16) & 0xFF;
+				result.g = (hex >> 8) & 0xFF;
+				result.b = hex & 0xFF;
+				result.a = 255;
+			}
+			return result;
+		}
+	}
+
 	// Handle list format: [r, g, b, a] or [r, g, b]
 	if (value.type == ValueType::List) {
 		ValueList list = value.GetList();
