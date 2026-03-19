@@ -35,6 +35,8 @@ static String scriptSource;
 static String loadError;
 static String runtimeError;
 static ValueList stackTrace;
+static bool exitASAP = false;
+static int exitResult = 0;
 
 //--------------------------------------------------------------------------------
 // Output callbacks for MiniScript
@@ -311,6 +313,18 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 #endif
 
 //--------------------------------------------------------------------------------
+// exit intrinsic
+//--------------------------------------------------------------------------------
+
+static IntrinsicResult intrinsic_exit(Context *context, IntrinsicResult partialResult) {
+	exitASAP = true;
+	Value resultCode = context->GetVar("resultCode");
+	if (!resultCode.IsNull()) exitResult = (int)resultCode.IntValue();
+	context->vm->Stop();
+	return IntrinsicResult::Null;
+}
+
+//--------------------------------------------------------------------------------
 // Initialize MiniScript
 //--------------------------------------------------------------------------------
 
@@ -337,6 +351,11 @@ void InitMiniScript() {
 	Intrinsic *importFunc = Intrinsic::Create("import");
 	importFunc->AddParam("libname", "");
 	importFunc->code = &intrinsic_import;
+
+	// Add exit intrinsic
+	Intrinsic *exitFunc = Intrinsic::Create("exit");
+	exitFunc->AddParam("resultCode");
+	exitFunc->code = &intrinsic_exit;
 
 	printf("MiniScript interpreter initialized with Raylib intrinsics\n");
 }
@@ -463,7 +482,7 @@ int main(int argc, char *argv[]) {
 #ifdef PLATFORM_WEB
 	emscripten_set_main_loop(MainLoop, 0, 1);
 #else
-	while (!WindowShouldClose()) {
+	while (!WindowShouldClose() && !exitASAP) {
 		MainLoop();
 	}
 #endif
@@ -473,5 +492,5 @@ int main(int argc, char *argv[]) {
 	CloseAudioDevice();
 	CloseWindow();
 
-	return 0;
+	return exitResult;
 }
