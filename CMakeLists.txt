@@ -39,6 +39,7 @@ set(APP_SOURCES
     src/RTextures.cpp
     src/RaylibConstants.cpp
     src/FileModule.cpp
+    src/MoreIntrinsics.cpp
 )
 
 # Create executable

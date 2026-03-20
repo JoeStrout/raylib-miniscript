@@ -5,9 +5,9 @@
 #include "SimpleString.h"
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptIntrinsics.h"
-#include "MiniscriptParser.h"
 #include "RaylibIntrinsics.h"
 #include "FileModule.h"
+#include "MoreIntrinsics.h"
 #include "loadfile.h"
 #include <stdio.h>
 
@@ -35,8 +35,6 @@ static String scriptSource;
 static String loadError;
 static String runtimeError;
 static ValueList stackTrace;
-static bool exitASAP = false;
-static int exitResult = 0;
 
 //--------------------------------------------------------------------------------
 // Output callbacks for MiniScript
@@ -118,213 +116,6 @@ void loadScriptFromFile(const char *path) {
 #endif
 
 //--------------------------------------------------------------------------------
-// Import intrinsic
-//--------------------------------------------------------------------------------
-
-#include <map>
-
-#ifdef PLATFORM_WEB
-
-// Track import fetches
-struct ImportFetchData {
-	emscripten_fetch_t* fetch;
-	bool completed;
-	int status;
-	String libname;
-	int searchPathIndex;
-	ImportFetchData() : fetch(nullptr), completed(false), status(0), searchPathIndex(0) {}
-};
-
-static std::map<long, ImportFetchData> activeImportFetches;
-static long nextImportFetchId = 1;
-
-static void import_fetch_completed(emscripten_fetch_t *fetch) {
-	for (auto& pair : activeImportFetches) {
-		if (pair.second.fetch == fetch) {
-			pair.second.completed = true;
-			pair.second.status = fetch->status;
-			printf("import_fetch_completed: Fetch ID %ld completed with status %d\n", pair.first, fetch->status);
-			break;
-		}
-	}
-}
-
-static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partialResult) {
-	// State 3: Import function has finished, store result in parent context
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::String) {
-		Value importedValues = context->GetTemp(0);
-		String libname = partialResult.Result().ToString();
-		Context *callerContext = context->parent;
-		if (callerContext) {
-			callerContext->SetVar(libname, importedValues);
-		}
-		return IntrinsicResult::Null;
-	}
-
-	// State 2: File has been fetched, parse and create import
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::Number) {
-		long fetchId = (long)partialResult.Result().DoubleValue();
-		auto it = activeImportFetches.find(fetchId);
-		if (it == activeImportFetches.end()) {
-			RuntimeException("import: internal error (fetch not found)").raise();
-		}
-
-		ImportFetchData& data = it->second;
-
-		if (!data.completed) {
-			return partialResult;
-		}
-
-		emscripten_fetch_t* fetch = data.fetch;
-		String libname = data.libname;
-
-		if (data.status == 200) {
-			char* moduleData = (char*)malloc(fetch->numBytes + 1);
-			if (!moduleData) {
-				emscripten_fetch_close(fetch);
-				activeImportFetches.erase(it);
-				RuntimeException("import: memory allocation failed").raise();
-			}
-			memcpy(moduleData, fetch->data, fetch->numBytes);
-			moduleData[fetch->numBytes] = '\0';
-			String moduleSource(moduleData);
-			free(moduleData);
-
-			emscripten_fetch_close(fetch);
-			activeImportFetches.erase(it);
-
-			Parser parser;
-			parser.errorContext = libname + ".ms";
-			parser.Parse(moduleSource);
-			FunctionStorage *import = parser.CreateImport();
-			context->vm->ManuallyPushCall(import, Value::Temp(0));
-
-			return IntrinsicResult(libname, false);
-		} else {
-			emscripten_fetch_close(fetch);
-			int nextPathIndex = data.searchPathIndex + 1;
-			activeImportFetches.erase(it);
-
-			const char* searchPaths[] = { "assets/", "assets/lib/" };
-			if (nextPathIndex < 2) {
-				String path = String(searchPaths[nextPathIndex]) + libname + ".ms";
-
-				long newFetchId = nextImportFetchId++;
-				ImportFetchData& newData = activeImportFetches[newFetchId];
-				newData.libname = libname;
-				newData.searchPathIndex = nextPathIndex;
-
-				emscripten_fetch_attr_t attr;
-				emscripten_fetch_attr_init(&attr);
-				strcpy(attr.requestMethod, "GET");
-				attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-				attr.onsuccess = import_fetch_completed;
-				attr.onerror = import_fetch_completed;
-
-				newData.fetch = emscripten_fetch(&attr, path.c_str());
-
-				return IntrinsicResult(Value((double)newFetchId), false);
-			} else {
-				RuntimeException("import: library not found: " + libname).raise();
-			}
-		}
-	}
-
-	// State 1: Start the import - fetch the file
-	String libname = context->GetVar("libname").ToString();
-	if (libname.empty()) {
-		RuntimeException("import: libname required").raise();
-	}
-	if (libname.IndexOfB('/') >= 0) {
-		RuntimeException("import: argument must be library name, not path").raise();
-	}
-
-	String path = String("assets/") + libname + ".ms";
-
-	long fetchId = nextImportFetchId++;
-	ImportFetchData& data = activeImportFetches[fetchId];
-	data.libname = libname;
-	data.searchPathIndex = 0;
-
-	emscripten_fetch_attr_t attr;
-	emscripten_fetch_attr_init(&attr);
-	strcpy(attr.requestMethod, "GET");
-	attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-	attr.onsuccess = import_fetch_completed;
-	attr.onerror = import_fetch_completed;
-
-	data.fetch = emscripten_fetch(&attr, path.c_str());
-
-	return IntrinsicResult(Value((double)fetchId), false);
-}
-
-#else // PLATFORM_DESKTOP
-
-static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partialResult) {
-	// State 2: Import function has finished, store result in parent context
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::String) {
-		Value importedValues = context->GetTemp(0);
-		String libname = partialResult.Result().ToString();
-		Context *callerContext = context->parent;
-		if (callerContext) {
-			callerContext->SetVar(libname, importedValues);
-		}
-		return IntrinsicResult::Null;
-	}
-
-	// State 1: Load and parse the file synchronously
-	String libname = context->GetVar("libname").ToString();
-	if (libname.empty()) {
-		RuntimeException("import: libname required").raise();
-	}
-	if (libname.IndexOfB('/') >= 0) {
-		RuntimeException("import: argument must be library name, not path").raise();
-	}
-
-	// Search paths for desktop
-	const char* searchPaths[] = { "assets/", "assets/lib/" };
-	String moduleSource;
-	bool found = false;
-
-	for (int i = 0; i < 2; i++) {
-		String path = String(searchPaths[i]) + libname + ".ms";
-		char* text = LoadFileText(path.c_str());
-		if (text != nullptr) {
-			moduleSource = String(text);
-			UnloadFileText(text);
-			found = true;
-			break;
-		}
-	}
-
-	if (!found) {
-		RuntimeException("import: library not found: " + libname).raise();
-	}
-
-	Parser parser;
-	parser.errorContext = libname + ".ms";
-	parser.Parse(moduleSource);
-	FunctionStorage *import = parser.CreateImport();
-	context->vm->ManuallyPushCall(import, Value::Temp(0));
-
-	return IntrinsicResult(libname, false);
-}
-
-#endif
-
-//--------------------------------------------------------------------------------
-// exit intrinsic
-//--------------------------------------------------------------------------------
-
-static IntrinsicResult intrinsic_exit(Context *context, IntrinsicResult partialResult) {
-	exitASAP = true;
-	Value resultCode = context->GetVar("resultCode");
-	if (!resultCode.IsNull()) exitResult = (int)resultCode.IntValue();
-	context->vm->Stop();
-	return IntrinsicResult::Null;
-}
-
-//--------------------------------------------------------------------------------
 // Initialize MiniScript
 //--------------------------------------------------------------------------------
 
@@ -347,15 +138,8 @@ void InitMiniScript() {
 	AddFileModuleIntrinsics();
 #endif
 
-	// Add import intrinsic
-	Intrinsic *importFunc = Intrinsic::Create("import");
-	importFunc->AddParam("libname", "");
-	importFunc->code = &intrinsic_import;
-
-	// Add exit intrinsic
-	Intrinsic *exitFunc = Intrinsic::Create("exit");
-	exitFunc->AddParam("resultCode");
-	exitFunc->code = &intrinsic_exit;
+	// Add import and exit intrinsics
+	AddMoreIntrinsics();
 
 	printf("MiniScript interpreter initialized with Raylib intrinsics\n");
 }
@@ -482,7 +266,7 @@ int main(int argc, char *argv[]) {
 #ifdef PLATFORM_WEB
 	emscripten_set_main_loop(MainLoop, 0, 1);
 #else
-	while (!WindowShouldClose() && !exitASAP) {
+	while (!WindowShouldClose() && !ExitRequested()) {
 		MainLoop();
 	}
 #endif
@@ -492,5 +276,5 @@ int main(int argc, char *argv[]) {
 	CloseAudioDevice();
 	CloseWindow();
 
-	return exitResult;
+	return ExitResultCode();
 }
