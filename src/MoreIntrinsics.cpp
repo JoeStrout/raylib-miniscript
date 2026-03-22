@@ -399,13 +399,25 @@ void RunScriptSource(Interpreter* interpreter, String source) {
 	// Save the current global variables
 	ValueDict savedGlobals = interpreter->vm->GetGlobalContext()->variables;
 
+	// Save the cached type maps (which may have user-added methods)
+	Value savedMapType = interpreter->vm->mapType;
+	Value savedListType = interpreter->vm->listType;
+	Value savedStringType = interpreter->vm->stringType;
+	Value savedNumberType = interpreter->vm->numberType;
+	Value savedFunctionType = interpreter->vm->functionType;
+
 	// Reset and recompile with the new source
 	interpreter->Reset(source);
 	interpreter->Compile();
 
-	// Restore the saved globals into the new VM
+	// Restore the saved globals and type maps into the new VM
 	if (interpreter->vm) {
 		interpreter->vm->GetGlobalContext()->variables = savedGlobals;
+		interpreter->vm->mapType = savedMapType;
+		interpreter->vm->listType = savedListType;
+		interpreter->vm->stringType = savedStringType;
+		interpreter->vm->numberType = savedNumberType;
+		interpreter->vm->functionType = savedFunctionType;
 	}
 }
 
@@ -484,6 +496,7 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 	if (path.empty()) {
 		RuntimeException("run: path required").raise();
 	}
+	if (!path.EndsWith(".ms")) path += ".ms"
 
 	long fetchId = nextRunFetchId++;
 	RunFetchData& data = activeRunFetches[fetchId];
