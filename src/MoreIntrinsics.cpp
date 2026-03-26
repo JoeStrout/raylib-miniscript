@@ -6,6 +6,7 @@
 //
 
 #include "MoreIntrinsics.h"
+#include "RaylibTypes.h"
 #include "raylib.h"
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptIntrinsics.h"
@@ -561,6 +562,31 @@ void AddMoreIntrinsics() {
 	setEnvVar("MS_EXE_DIR", ".");
 	setEnvVar("MS_SCRIPT_DIR", "assets");
 #endif
+
+	Intrinsic *rcFunc = Intrinsic::Create("resourceCounts");
+	rcFunc->code = [](Context *context, IntrinsicResult partialResult) -> IntrinsicResult {
+		ValueDict map;
+		int total = 0;
+		auto add = [&](const char* name, int count) {
+			map.SetValue(String(name), Value(count));
+			total += count;
+		};
+		add("Image", rcImage);
+		add("Texture", rcTexture);
+		add("Font", rcFont);
+		add("Wave", rcWave);
+		add("Music", rcMusic);
+		add("Sound", rcSound);
+		add("AudioStream", rcAudioStream);
+		add("RenderTexture", rcRenderTexture);
+		add("Shader", rcShader);
+		add("Mesh", rcMesh);
+		add("Material", rcMaterial);
+		add("Model", rcModel);
+		add("ModelAnimation", rcModelAnimation);
+		map.SetValue(String("total"), Value(total));
+		return IntrinsicResult(Value(map));
+	};
 
 	// Set the default import search path (variables are expanded at import time)
 	setEnvVar("MS_IMPORT_PATH",

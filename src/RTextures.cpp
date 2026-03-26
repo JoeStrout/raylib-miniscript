@@ -27,6 +27,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Image img = LoadImage(path.c_str());
 		if (!IsImageValid(img)) return IntrinsicResult::Null;
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("LoadImage", i->GetFunc());
@@ -46,6 +47,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Color start = ValueToColor(context->GetVar(String("start")));
 		Color end = ValueToColor(context->GetVar(String("end")));
 		Image img = GenImageGradientLinear(width, height, direction, start, end);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageGradientLinear", i->GetFunc());
@@ -62,6 +64,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Image* imgPtr = (Image*)ValueToPointer(handleVal);
 		delete imgPtr;
+		rcImage--;
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("UnloadImage", i->GetFunc());
@@ -74,6 +77,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Texture tex = LoadTexture(path.c_str());
 		if (!IsTextureValid(tex)) return IntrinsicResult::Null;
+		rcTexture++;
 		return IntrinsicResult(TextureToValue(tex));
 	};
 	raylibModule.SetValue("LoadTexture", i->GetFunc());
@@ -83,6 +87,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context->GetVar(String("image")));
 		Texture tex = LoadTextureFromImage(img);
+		rcTexture++;
 		return IntrinsicResult(TextureToValue(tex));
 	};
 	raylibModule.SetValue("LoadTextureFromImage", i->GetFunc());
@@ -97,6 +102,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Texture* texPtr = (Texture*)ValueToPointer(handleVal);
 		delete texPtr;
+		rcTexture--;
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("UnloadTexture", i->GetFunc());
@@ -193,6 +199,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int height = context->GetVar(String("height")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
 		Image img = GenImageColor(width, height, color);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageColor", i->GetFunc());
@@ -210,6 +217,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Color inner = ValueToColor(context->GetVar(String("inner")));
 		Color outer = ValueToColor(context->GetVar(String("outer")));
 		Image img = GenImageGradientRadial(width, height, density, inner, outer);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageGradientRadial", i->GetFunc());
@@ -227,6 +235,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Color inner = ValueToColor(context->GetVar(String("inner")));
 		Color outer = ValueToColor(context->GetVar(String("outer")));
 		Image img = GenImageGradientSquare(width, height, density, inner, outer);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageGradientSquare", i->GetFunc());
@@ -246,6 +255,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Color col1 = ValueToColor(context->GetVar(String("col1")));
 		Color col2 = ValueToColor(context->GetVar(String("col2")));
 		Image img = GenImageChecked(width, height, checksX, checksY, col1, col2);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageChecked", i->GetFunc());
@@ -259,6 +269,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int height = context->GetVar(String("height")).IntValue();
 		float factor = context->GetVar(String("factor")).FloatValue();
 		Image img = GenImageWhiteNoise(width, height, factor);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageWhiteNoise", i->GetFunc());
@@ -272,6 +283,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int height = context->GetVar(String("height")).IntValue();
 		int tileSize = context->GetVar(String("tileSize")).IntValue();
 		Image img = GenImageCellular(width, height, tileSize);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(img));
 	};
 	raylibModule.SetValue("GenImageCellular", i->GetFunc());
@@ -283,6 +295,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context->GetVar(String("image")));
 		Image copy = ImageCopy(img);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(copy));
 	};
 	raylibModule.SetValue("ImageCopy", i->GetFunc());
@@ -679,6 +692,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int width = context->GetVar(String("width")).IntValue();
 		int height = context->GetVar(String("height")).IntValue();
 		RenderTexture2D renderTexture = LoadRenderTexture(width, height);
+		rcRenderTexture++;
 		return IntrinsicResult(RenderTextureToValue(renderTexture));
 	};
 	raylibModule.SetValue("LoadRenderTexture", i->GetFunc());
@@ -693,6 +707,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		RenderTexture2D* rtPtr = (RenderTexture2D*)ValueToPointer(handleVal);
 		delete rtPtr;
+		rcRenderTexture--;
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("UnloadRenderTexture", i->GetFunc());
@@ -939,6 +954,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		float offsetY = context->GetVar(String("offsetY")).FloatValue();
 		float scale = context->GetVar(String("scale")).FloatValue();
 		Image result = GenImagePerlinNoise(width, height, offsetX, offsetY, scale);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("GenImagePerlinNoise", i->GetFunc());
@@ -952,6 +968,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int fontSize = context->GetVar(String("fontSize")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
 		Image result = ImageText(text.c_str(), fontSize, color);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("GenImageText", i->GetFunc());
@@ -994,6 +1011,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		int frames = 0;
 		Image result = LoadImageAnim(path.c_str(), &frames);
+		rcImage++;
 		// Return map with image and frames
 		ValueDict resultDict;
 		resultDict.SetValue(String("image"), ImageToValue(result));
@@ -1012,6 +1030,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		if (!data) return IntrinsicResult::Null;
 		int frames = 0;
 		Image result = LoadImageAnimFromMemory(fileType.c_str(), data->bytes, data->length, &frames);
+		rcImage++;
 		// Return map with image and frames
 		ValueDict resultDict;
 		resultDict.SetValue(String("image"), ImageToValue(result));
@@ -1045,6 +1064,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		if (!data) return IntrinsicResult::Null;
 		Image result = LoadImageFromMemory(fileType.c_str(), data->bytes, data->length);
 		if (!IsImageValid(result)) return IntrinsicResult::Null;
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("LoadImageFromMemory", i->GetFunc());
@@ -1052,6 +1072,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->code = INTRINSIC_LAMBDA {
 		Image result = LoadImageFromScreen();
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("LoadImageFromScreen", i->GetFunc());
@@ -1061,6 +1082,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Texture2D texture = ValueToTexture(context->GetVar(String("texture")));
 		Image result = LoadImageFromTexture(texture);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("LoadImageFromTexture", i->GetFunc());
@@ -1130,6 +1152,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int headerSize = context->GetVar(String("headerSize")).IntValue();
 		Image result = LoadImageRaw(path.c_str(), width, height, format, headerSize);
 		if (!IsImageValid(result)) return IntrinsicResult::Null;
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("LoadImageRaw", i->GetFunc());
@@ -1296,6 +1319,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Image image = ValueToImage(context->GetVar(String("image")));
 		int channel = context->GetVar(String("channel")).IntValue();
 		Image result = ImageFromChannel(image, channel);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("ImageFromChannel", i->GetFunc());
@@ -1307,6 +1331,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Image image = ValueToImage(context->GetVar(String("image")));
 		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
 		Image result = ImageFromImage(image, rec);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("ImageFromImage", i->GetFunc());
@@ -1590,6 +1615,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		int fontSize = context->GetVar(String("fontSize")).IntValue();
 		Color color = ValueToColor(context->GetVar(String("color")));
 		Image result = ImageText(text.c_str(), fontSize, color);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("ImageText", i->GetFunc());
@@ -1607,6 +1633,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		float spacing = context->GetVar(String("spacing")).FloatValue();
 		Color tint = ValueToColor(context->GetVar(String("tint")));
 		Image result = ImageTextEx(font, text.c_str(), fontSize, spacing, tint);
+		rcImage++;
 		return IntrinsicResult(ImageToValue(result));
 	};
 	raylibModule.SetValue("ImageTextEx", i->GetFunc());
@@ -1676,6 +1703,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		Image image = ValueToImage(context->GetVar(String("image")));
 		int layout = context->GetVar(String("layout")).IntValue();
 		Texture2D result = LoadTextureCubemap(image, layout);
+		rcTexture++;
 		return IntrinsicResult(TextureToValue(result));
 	};
 	raylibModule.SetValue("LoadTextureCubemap", i->GetFunc());

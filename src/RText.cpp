@@ -85,6 +85,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Font font = LoadFont(path.c_str());
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		rcFont++;
 		return IntrinsicResult(FontToValue(font));
 	};
 	raylibModule.SetValue("LoadFont", i->GetFunc());
@@ -108,6 +109,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		if (codepoints) delete[] codepoints;
 
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		rcFont++;
 		return IntrinsicResult(FontToValue(font));
 	};
 	raylibModule.SetValue("LoadFontEx", i->GetFunc());
@@ -128,6 +130,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 			firstChar = firstCharVal.IntValue();
 		}
 		Font font = LoadFontFromImage(image, key, firstChar);
+		rcFont++;
 		return IntrinsicResult(FontToValue(font));
 	};
 	raylibModule.SetValue("LoadFontFromImage", i->GetFunc());
@@ -150,6 +153,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Font* fontPtr = (Font*)ValueToPointer(handleVal);
 		delete fontPtr;
+		rcFont--;
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("UnloadFont", i->GetFunc());
@@ -452,6 +456,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		if (codepoints) delete[] codepoints;
 
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		rcFont++;
 		return IntrinsicResult(FontToValue(font));
 	};
 	raylibModule.SetValue("LoadFontFromMemory", i->GetFunc());
@@ -635,6 +640,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		delete[] *recsPtr;
 		delete recsPtr;
 
+		rcImage++;
 		return IntrinsicResult(ImageToValue(atlas));
 	};
 	raylibModule.SetValue("GenImageFontAtlas", i->GetFunc());

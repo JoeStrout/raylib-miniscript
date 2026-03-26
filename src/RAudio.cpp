@@ -64,6 +64,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Wave wave = LoadWave(path.c_str());
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
+		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	};
 	raylibModule.SetValue("LoadWave", i->GetFunc());
@@ -80,6 +81,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		if (dataSize <= 0 || dataSize > data->length) dataSize = data->length;
 		Wave wave = LoadWaveFromMemory(fileType.c_str(), data->bytes, dataSize);
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
+		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	};
 	raylibModule.SetValue("LoadWaveFromMemory", i->GetFunc());
@@ -160,6 +162,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		wave.channels = channels;
 		wave.data = data;
 
+		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	};
 	raylibModule.SetValue("CreateWave", i->GetFunc());
@@ -183,6 +186,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		Wave* wavePtr = (Wave*)ValueToPointer(handleVal);
 		if (wavePtr != nullptr) {
 			delete wavePtr;
+			rcWave--;
 		}
 		return IntrinsicResult::Null;
 	};
@@ -237,6 +241,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Wave wave = ValueToWave(context->GetVar(String("wave")));
 		Wave copy = WaveCopy(wave);
+		rcWave++;
 		return IntrinsicResult(WaveToValue(copy));
 	};
 	raylibModule.SetValue("WaveCopy", i->GetFunc());
@@ -277,6 +282,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Music music = LoadMusicStream(path.c_str());
 		if (!IsMusicValid(music)) return IntrinsicResult::Null;
+		rcMusic++;
 		return IntrinsicResult(MusicToValue(music));
 	};
 	raylibModule.SetValue("LoadMusicStream", i->GetFunc());
@@ -312,6 +318,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		Music* musicPtr = (Music*)ValueToPointer(handleVal);
 		if (musicPtr != nullptr) {
 			delete musicPtr;
+			rcMusic--;
 		}
 		return IntrinsicResult::Null;
 	};
@@ -440,6 +447,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Sound sound = LoadSound(path.c_str());
 		if (!IsSoundValid(sound)) return IntrinsicResult::Null;
+		rcSound++;
 		return IntrinsicResult(SoundToValue(sound));
 	};
 	raylibModule.SetValue("LoadSound", i->GetFunc());
@@ -449,6 +457,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Wave wave = ValueToWave(context->GetVar(String("wave")));
 		Sound sound = LoadSoundFromWave(wave);
+		rcSound++;
 		return IntrinsicResult(SoundToValue(sound));
 	};
 	raylibModule.SetValue("LoadSoundFromWave", i->GetFunc());
@@ -458,6 +467,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		Sound source = ValueToSound(context->GetVar(String("source")));
 		Sound alias = LoadSoundAlias(source);
+		rcSound++;
 		return IntrinsicResult(SoundToValue(alias));
 	};
 	raylibModule.SetValue("LoadSoundAlias", i->GetFunc());
@@ -481,6 +491,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
 		if (soundPtr != nullptr) {
 			delete soundPtr;
+			rcSound--;
 		}
 		return IntrinsicResult::Null;
 	};
@@ -497,6 +508,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
 		if (soundPtr != nullptr) {
 			delete soundPtr;
+			rcSound--;
 		}
 		return IntrinsicResult::Null;
 	};
@@ -611,6 +623,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	i->AddParam("channels", Value(1));
 	i->code = INTRINSIC_LAMBDA {
 		AudioStream stream = LoadAudioStream(context->GetVar(String("sampleRate")).IntValue(), context->GetVar(String("sampleSize")).IntValue(), context->GetVar(String("channels")).IntValue());
+		rcAudioStream++;
 		return IntrinsicResult(AudioStreamToValue(stream));
 	};
 	raylibModule.SetValue("LoadAudioStream", i->GetFunc());
@@ -634,6 +647,7 @@ void AddRAudioMethods(ValueDict raylibModule) {
 		AudioStream* streamPtr = (AudioStream*)ValueToPointer(handleVal);
 		if (streamPtr != nullptr) {
 			delete streamPtr;
+			rcAudioStream--;
 		}
 		return IntrinsicResult::Null;
 	};

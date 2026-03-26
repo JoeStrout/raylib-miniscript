@@ -195,5 +195,19 @@ inline void* ValueToPointer(Value v) {
 	return (void*)(intptr_t)v.DoubleValue();
 }
 
+// Resource allocation counters (for leak detection by MiniScript users)
+extern int rcImage;
+extern int rcTexture;
+extern int rcFont;
+extern int rcWave;
+extern int rcMusic;
+extern int rcSound;
+extern int rcAudioStream;
+extern int rcRenderTexture;
+extern int rcShader;
+extern int rcMesh;
+extern int rcMaterial;
+extern int rcModel;
+extern int rcModelAnimation;
 
 

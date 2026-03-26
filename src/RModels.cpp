@@ -50,6 +50,7 @@ static ModelAnimation* GetModelAnimationArray(Value value, int* outCount) {
 }
 
 static Value ModelAnimationArrayItemToValue(ModelAnimation* animations, int count, int index) {
+	rcModelAnimation++;
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelAnimationClass());
 	map.SetValue(String("_handle"), PointerToValue(&animations[index]));
@@ -685,6 +686,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		String path = context->GetVar(String("fileName")).ToString();
 		Model model = LoadModel(path.c_str());
 		if (!IsModelValid(model)) return IntrinsicResult::Null;
+		rcModel++;
 		return IntrinsicResult(ModelToValue(model));
 	};
 	raylibModule.SetValue("LoadModel", i->GetFunc());
@@ -695,6 +697,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		Mesh mesh = ValueToMesh(context->GetVar(String("mesh")));
 		Model model = LoadModelFromMesh(mesh);
 		if (!IsModelValid(model)) return IntrinsicResult::Null;
+		rcModel++;
 		return IntrinsicResult(ModelToValue(model));
 	};
 	raylibModule.SetValue("LoadModelFromMesh", i->GetFunc());
@@ -715,7 +718,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		UnloadModel(model);
 
 		Model* modelPtr = GetModelPtr(modelValue);
-		if (modelPtr != nullptr) delete modelPtr;
+		if (modelPtr != nullptr) { delete modelPtr; rcModel--; }
 
 		return IntrinsicResult::Null;
 	};
@@ -903,7 +906,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		UnloadMesh(mesh);
 
 		Mesh* meshPtr = GetMeshPtr(meshValue);
-		if (meshPtr != nullptr) delete meshPtr;
+		if (meshPtr != nullptr) { delete meshPtr; rcMesh--; }
 
 		return IntrinsicResult::Null;
 	};
@@ -995,6 +998,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int sides = context->GetVar(String("sides")).IntValue();
 		float radius = context->GetVar(String("radius")).FloatValue();
 		Mesh mesh = GenMeshPoly(sides, radius);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshPoly", i->GetFunc());
@@ -1010,6 +1014,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int resX = context->GetVar(String("resX")).IntValue();
 		int resZ = context->GetVar(String("resZ")).IntValue();
 		Mesh mesh = GenMeshPlane(width, length, resX, resZ);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshPlane", i->GetFunc());
@@ -1023,6 +1028,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		float height = context->GetVar(String("height")).FloatValue();
 		float length = context->GetVar(String("length")).FloatValue();
 		Mesh mesh = GenMeshCube(width, height, length);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshCube", i->GetFunc());
@@ -1036,6 +1042,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int rings = context->GetVar(String("rings")).IntValue();
 		int slices = context->GetVar(String("slices")).IntValue();
 		Mesh mesh = GenMeshSphere(radius, rings, slices);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshSphere", i->GetFunc());
@@ -1049,6 +1056,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int rings = context->GetVar(String("rings")).IntValue();
 		int slices = context->GetVar(String("slices")).IntValue();
 		Mesh mesh = GenMeshHemiSphere(radius, rings, slices);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshHemiSphere", i->GetFunc());
@@ -1062,6 +1070,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		float height = context->GetVar(String("height")).FloatValue();
 		int slices = context->GetVar(String("slices")).IntValue();
 		Mesh mesh = GenMeshCylinder(radius, height, slices);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshCylinder", i->GetFunc());
@@ -1075,6 +1084,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		float height = context->GetVar(String("height")).FloatValue();
 		int slices = context->GetVar(String("slices")).IntValue();
 		Mesh mesh = GenMeshCone(radius, height, slices);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshCone", i->GetFunc());
@@ -1090,6 +1100,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int radSeg = context->GetVar(String("radSeg")).IntValue();
 		int sides = context->GetVar(String("sides")).IntValue();
 		Mesh mesh = GenMeshTorus(radius, size, radSeg, sides);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshTorus", i->GetFunc());
@@ -1105,6 +1116,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		int radSeg = context->GetVar(String("radSeg")).IntValue();
 		int sides = context->GetVar(String("sides")).IntValue();
 		Mesh mesh = GenMeshKnot(radius, size, radSeg, sides);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshKnot", i->GetFunc());
@@ -1116,6 +1128,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		Image image = ValueToImage(context->GetVar(String("heightmap")));
 		Vector3 size = ValueToVector3(context->GetVar(String("size")));
 		Mesh mesh = GenMeshHeightmap(image, size);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshHeightmap", i->GetFunc());
@@ -1127,6 +1140,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		Image image = ValueToImage(context->GetVar(String("cubicmap")));
 		Vector3 cubeSize = ValueToVector3(context->GetVar(String("cubeSize")));
 		Mesh mesh = GenMeshCubicmap(image, cubeSize);
+		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	};
 	raylibModule.SetValue("GenMeshCubicmap", i->GetFunc());
@@ -1143,6 +1157,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 
 		ValueList result;
 		for (int n = 0; n < count; n++) {
+			rcMaterial++;
 			result.Add(MaterialToValue(materials[n]));
 		}
 
@@ -1154,6 +1169,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->code = INTRINSIC_LAMBDA {
 		Material material = LoadMaterialDefault();
+		rcMaterial++;
 		return IntrinsicResult(MaterialToValue(material));
 	};
 	raylibModule.SetValue("LoadMaterialDefault", i->GetFunc());
@@ -1174,7 +1190,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		UnloadMaterial(material);
 
 		Material* materialPtr = GetMaterialPtr(materialValue);
-		if (materialPtr != nullptr) delete materialPtr;
+		if (materialPtr != nullptr) { delete materialPtr; rcMaterial--; }
 
 		return IntrinsicResult::Null;
 	};
@@ -1452,6 +1468,7 @@ void AddRModelsMethods(ValueDict raylibModule) {
 		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;
 
 		UnloadModelAnimations(animations, animCount);
+		rcModelAnimation -= animCount;
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("UnloadModelAnimations", i->GetFunc());

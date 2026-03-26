@@ -871,6 +871,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		const char* fsPtr = fsFileName.LengthB() > 0 ? fsFileName.c_str() : nullptr;
 		Shader shader = LoadShader(vsPtr, fsPtr);
 		if (!IsShaderValid(shader)) return IntrinsicResult::Null;
+		rcShader++;
 		return IntrinsicResult(ShaderToValue(shader));
 	};
 	raylibModule.SetValue("LoadShader", i->GetFunc());
@@ -885,6 +886,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
 		Shader shader = LoadShaderFromMemory(vsPtr, fsPtr);
 		if (!IsShaderValid(shader)) return IntrinsicResult::Null;
+		rcShader++;
 		return IntrinsicResult(ShaderToValue(shader));
 	};
 	raylibModule.SetValue("LoadShaderFromMemory", i->GetFunc());
@@ -1063,6 +1065,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		Shader* shaderPtr = GetShaderPtr(shaderValue);
 		if (shaderPtr != nullptr) {
 			delete shaderPtr;
+			rcShader--;
 			ValueDict map = shaderValue.GetDict();
 			map.SetValue(String("_handle"), Value::zero);
 		}
@@ -2558,6 +2561,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i = Intrinsic::Create("");
 	i->code = INTRINSIC_LAMBDA {
 		Image image = GetClipboardImage();
+		rcImage++;
 		return IntrinsicResult(ImageToValue(image));
 	};
 	raylibModule.SetValue("GetClipboardImage", i->GetFunc());

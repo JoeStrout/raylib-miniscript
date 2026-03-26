@@ -1,5 +1,20 @@
 #include "RaylibTypes.h"
 
+// Resource allocation counters
+int rcImage = 0;
+int rcTexture = 0;
+int rcFont = 0;
+int rcWave = 0;
+int rcMusic = 0;
+int rcSound = 0;
+int rcAudioStream = 0;
+int rcRenderTexture = 0;
+int rcShader = 0;
+int rcMesh = 0;
+int rcMaterial = 0;
+int rcModel = 0;
+int rcModelAnimation = 0;
+
 ValueDict ImageClass() {
 	static ValueDict map;
 	if (map.Count() == 0) {

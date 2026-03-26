@@ -37,7 +37,7 @@ Button.containsMouse = function
 end function
 
 Button.updateTexture = function
-	if self.texture then rl.UnloadTexture(self.texture)
+	if self.texture then rl.UnloadTexture self.texture
 	
 	borderColor = rl.SKYBLUE
 	fillColor = rl.BLUE
@@ -64,6 +64,11 @@ Button.updateTexture = function
 
 	self.texture = rl.LoadTextureFromImage(img)
 	rl.UnloadImage img	
+end function
+
+Button.unload = function
+	if self.texture then rl.UnloadTexture self.texture
+	self.texture = null
 end function
 
 Button.handleMouseDown = function
@@ -218,8 +223,8 @@ else
 	print "Could not load fireShader.fs"
 end if
 
-// Main loop
-while true
+// Render function (called on every frame by the main loop, below)
+render = function
 	rl.BeginDrawing
 	rl.ClearBackground rl.BLACK
 
@@ -249,5 +254,28 @@ while true
 	rl.DrawFPS
 
 	rl.EndDrawing
+end function
+
+// Main loop
+rl.SetExitKey 0  // disable automatic window closing -- we'll handle it below
+while true
 	yield
+	render
+	// Exit when Esc or Q is pressed
+	if rl.IsKeyPressed(rl.KEY_ESCAPE) or rl.GetCharPressed == "q".code then break
 end while
+
+// Clean up (technically not necessary when about to exit, but good practice
+// in general).
+rl.UnloadTexture fireQuadTex
+rl.UnloadShader fireShader
+rl.UnloadFont titleFont
+for btn in buttons; btn.unload; end for
+
+print "Leaked resources:"
+for kv in resourceCounts
+	if kv.key == "total" then continue
+	print "  " + kv.key + ": " + kv.value
+end for
+print "  TOTAL: " + resourceCounts.total
+exit
