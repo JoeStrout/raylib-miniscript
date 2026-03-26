@@ -537,6 +537,10 @@ static ValueDict& FileHandleClass() {
 	return result;
 }
 
+static IntrinsicResult intrinsic_FileHandle(Context *context, IntrinsicResult partialResult) {
+	return IntrinsicResult(FileHandleClass());
+}
+
 static IntrinsicResult intrinsic_File(Context *context, IntrinsicResult partialResult) {
 	static ValueDict fileModule;
 
@@ -570,6 +574,9 @@ void AddFileModuleIntrinsics() {
 
 	f = Intrinsic::Create("file");
 	f->code = &intrinsic_File;
+
+	f = Intrinsic::Create("FileHandle");
+	f->code = &intrinsic_FileHandle;
 
 	i_getcwd = Intrinsic::Create("");
 	i_getcwd->code = &intrinsic_getcwd;
