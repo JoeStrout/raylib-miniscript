@@ -1479,7 +1479,7 @@ void AddRTexturesMethods(ValueDict raylibModule) {
 		if (!dst) return IntrinsicResult::Null;
 		Rectangle rec = ValueToRectangle(context->GetVar(String("rec")));
 		Color color = ValueToColor(context->GetVar(String("color")));
-		ImageDrawRectangleV(dst, (Vector2){rec.x, rec.y}, (Vector2){rec.width, rec.height}, color);
+		ImageDrawRectangleV(dst, CLITERAL(Vector2){rec.x, rec.y}, CLITERAL(Vector2){rec.width, rec.height}, color);
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("ImageDrawRectangleV", i->GetFunc());
