@@ -804,40 +804,6 @@ void AddRModelsMethods(ValueDict raylibModule) {
 	raylibModule.SetValue("DrawModelWiresEx", i->GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("model");
-	i->AddParam("position", Vector3ToValue(Vector3{0, 0, 0}));
-	i->AddParam("scale", Value(1.0));
-	i->AddParam("tint", ColorToValue(WHITE));
-	i->code = INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context->GetVar(String("model")));
-		Vector3 position = ValueToVector3(context->GetVar(String("position")));
-		float scale = context->GetVar(String("scale")).FloatValue();
-		Color tint = ValueToColor(context->GetVar(String("tint")));
-		DrawModelPoints(model, position, scale, tint);
-		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawModelPoints", i->GetFunc());
-
-	i = Intrinsic::Create("");
-	i->AddParam("model");
-	i->AddParam("position", Vector3ToValue(Vector3{0, 0, 0}));
-	i->AddParam("rotationAxis", Vector3ToValue(Vector3{0, 1, 0}));
-	i->AddParam("rotationAngle", Value::zero);
-	i->AddParam("scale", Vector3ToValue(Vector3{1, 1, 1}));
-	i->AddParam("tint", ColorToValue(WHITE));
-	i->code = INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context->GetVar(String("model")));
-		Vector3 position = ValueToVector3(context->GetVar(String("position")));
-		Vector3 rotationAxis = ValueToVector3(context->GetVar(String("rotationAxis")));
-		float rotationAngle = context->GetVar(String("rotationAngle")).FloatValue();
-		Vector3 scale = ValueToVector3(context->GetVar(String("scale")));
-		Color tint = ValueToColor(context->GetVar(String("tint")));
-		DrawModelPointsEx(model, position, rotationAxis, rotationAngle, scale, tint);
-		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawModelPointsEx", i->GetFunc());
-
-	i = Intrinsic::Create("");
 	i->AddParam("box");
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
