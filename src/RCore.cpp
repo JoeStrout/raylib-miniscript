@@ -1476,7 +1476,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowHidden");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowHidden());
 	};
@@ -1486,7 +1486,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMinimized");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowMinimized());
 	};
@@ -1496,7 +1496,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMaximized");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowMaximized());
 	};
@@ -1506,7 +1506,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowResized");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowResized());
 	};
@@ -1517,7 +1517,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowState");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
 		return IntrinsicResult(IsWindowState(flags));
@@ -2725,7 +2725,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileData");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String fileName = context->GetVar(String("fileName")).ToString();
 		Value dataValue = context->GetVar(String("data"));
@@ -2734,7 +2734,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
 		int byteCount = 0;
-		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(false);
+		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
 
 		return IntrinsicResult(SaveFileData(fileName.c_str(), (void*)bytes, byteCount));
 	};
@@ -2747,7 +2747,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportDataAsCode");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		Value dataValue = context->GetVar(String("data"));
 		int dataSize = context->GetVar(String("dataSize")).IntValue();
@@ -2756,7 +2756,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
 		int byteCount = 0;
-		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(false);
+		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
 
 		return IntrinsicResult(ExportDataAsCode(bytes, byteCount, fileName.c_str()));
 	};
@@ -2776,7 +2776,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileText");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String fileName = context->GetVar(String("fileName")).ToString();
 		String text = context->GetVar(String("text")).ToString();
@@ -2993,7 +2993,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileExists");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String fileName = context->GetVar(String("fileName")).ToString();
 		return IntrinsicResult(FileExists(fileName.c_str()));
@@ -3005,7 +3005,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("DirectoryExists");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String dirPath = context->GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));
@@ -3113,7 +3113,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ChangeDirectory");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String dirPath = context->GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
@@ -3125,7 +3125,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsPathFile");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String path = context->GetVar(String("path")).ToString();
 		return IntrinsicResult(IsPathFile(path.c_str()));
@@ -3190,7 +3190,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsFileDropped");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		return IntrinsicResult(IsFileDropped());
 	};
@@ -3433,7 +3433,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportAutomationEventList");
-		return IntrinsicResult(false);
+		return IntrinsicResult(Value::Truth(false));
 	#endif
 		Value listValue = context->GetVar(String("list"));
 		String fileName = context->GetVar(String("fileName")).ToString();
@@ -3441,11 +3441,11 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr != nullptr) return IntrinsicResult(ExportAutomationEventList(*listPtr, fileName.c_str()));
 
-		if (listValue.type != ValueType::Map) return IntrinsicResult(false);
+		if (listValue.type != ValueType::Map) return IntrinsicResult(Value::Truth(false));
 
 		ValueDict map = listValue.GetDict();
 		Value eventsValue = map.Lookup(String("events"), Value::null);
-		if (eventsValue.type != ValueType::List) return IntrinsicResult(false);
+		if (eventsValue.type != ValueType::List) return IntrinsicResult(Value::Truth(false));
 
 		ValueList eventsList = eventsValue.GetList();
 		std::vector<AutomationEvent> events;
