@@ -172,7 +172,6 @@ run = function
 	gameWon = state.gameWon
 	remainingBlocks = state.remainingBlocks
 	accumulatedTime = state.accumulatedTime
-	rl.InitAudioDevice
 	while true
 		if not gameStarted then
 			ball.prev.x = ball.x
@@ -334,7 +333,6 @@ run = function
 		rl.EndDrawing
 		yield
 	end while
-	rl.CloseAudioDevice
 end function
 
 if globals==locals then run
