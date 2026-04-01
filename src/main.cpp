@@ -243,10 +243,6 @@ void CleanupMiniScript() {
 //--------------------------------------------------------------------------------
 
 int main(int argc, char *argv[]) {
-	const int screenWidth = 960;
-	const int screenHeight = 640;
-
-	InitWindow(screenWidth, screenHeight, "raylib-miniscript");
 	SetTargetFPS(60);
 	InitAudioDevice();
 
@@ -289,15 +285,16 @@ int main(int argc, char *argv[]) {
 #ifdef PLATFORM_WEB
 	emscripten_set_main_loop(MainLoop, 0, 1);
 #else
-	while (!WindowShouldClose() && !ExitRequested()) {
+	while (true) {
 		MainLoop();
+		if (ExitRequested() || (IsWindowReady() && WindowShouldClose())) break;
 	}
 #endif
 
 	// Cleanup
 	CleanupMiniScript();
-	CloseAudioDevice();
-	CloseWindow();
+	if (IsAudioDeviceReady()) CloseAudioDevice();
+	if (IsWindowReady()) CloseWindow();
 
 	return ExitResultCode();
 }

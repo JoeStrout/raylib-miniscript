@@ -6,6 +6,7 @@ print "Running main.ms"
 
 rl = raylib  // (just to shorten the subsequent code)
 rl.SetTraceLogLevel(rl.LOG_WARNING)
+if not rl.IsWindowReady then rl.InitWindow 
 
 titleFont = raylib.LoadFontEx("assets/Merkin.ttf", 48)
 print titleFont

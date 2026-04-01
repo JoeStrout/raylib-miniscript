@@ -2,6 +2,7 @@
 // Smoke checks for raylib 6 text mutation intrinsics and their Alloc variants.
 
 rl = raylib
+if not rl.IsWindowReady then rl.InitWindow 
 
 fail = function(msg)
 	print "FAIL: " + msg

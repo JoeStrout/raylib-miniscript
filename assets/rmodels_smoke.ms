@@ -9,6 +9,7 @@
 // 5) Collision APIs (sphere/box/ray)
 
 rl = raylib
+if not rl.IsWindowReady then rl.InitWindow 
 
 v3 = function(x=0, y=0, z=0)
 	return {"x": x, "y": y, "z": z}

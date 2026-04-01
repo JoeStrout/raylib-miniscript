@@ -1,6 +1,8 @@
 // "Retro game sound effects", by Vircon32 (Carra). 
 // Published at OpenGameArt under license CC-BY 4.0.
 
+if not raylib.IsWindowReady then raylib.InitWindow 
+
 rl = raylib
 rl.BeginDrawing
 rl.ClearBackground rl.BLACK

@@ -3,6 +3,8 @@ import "mathUtil"
 import "Sprite"
 import "sounds"
 
+if not raylib.IsWindowReady then raylib.InitWindow 
+
 spriteSheetTex = raylib.LoadTexture("assets/Asteroids-2X.png")
 
 fontImage = raylib.LoadImage("assets/digits.png")

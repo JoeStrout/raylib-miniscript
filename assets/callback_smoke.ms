@@ -6,6 +6,8 @@
 // - SetSaveFileTextCallback
 // - SetTraceLogCallback
 
+if not raylib.IsWindowReady then raylib.InitWindow 
+
 rl = raylib
 
 fail = function(msg)

@@ -1,6 +1,8 @@
 // raymath_smoke.ms
 // Quick smoke checks for initial raymath intrinsic tranche
 
+if not raylib.IsWindowReady then raylib.InitWindow 
+
 approx = function(a, b, tol = 0.0001)
 	return abs(a - b) <= tol
 end function

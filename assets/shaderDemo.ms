@@ -2,6 +2,7 @@
 // Displays an animated shader effect on a big square.
 
 rl = raylib
+if not rl.IsWindowReady then rl.InitWindow 
 
 run = function
 	rl.SetWindowTitle "Plasma Shader Demo"

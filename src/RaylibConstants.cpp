@@ -15,6 +15,23 @@
 using namespace MiniScript;
 
 void AddConstants(ValueDict raylibModule) {
+	// Add window flags
+	raylibModule.SetValue("FLAG_VSYNC_HINT", Value(FLAG_VSYNC_HINT         ));  // Set to try enabling V-Sync on GPU
+	raylibModule.SetValue("FLAG_FULLSCREEN_MODE", Value(FLAG_FULLSCREEN_MODE    ));  // Set to run program in fullscreen
+	raylibModule.SetValue("FLAG_WINDOW_RESIZABLE", Value(FLAG_WINDOW_RESIZABLE   ));  // Set to allow resizable window
+	raylibModule.SetValue("FLAG_WINDOW_UNDECORATED", Value(FLAG_WINDOW_UNDECORATED ));  // Set to disable window decoration (frame and buttons)
+	raylibModule.SetValue("FLAG_WINDOW_HIDDEN", Value(FLAG_WINDOW_HIDDEN      ));  // Set to hide window
+	raylibModule.SetValue("FLAG_WINDOW_MINIMIZED", Value(FLAG_WINDOW_MINIMIZED   ));  // Set to minimize window (iconify)
+	raylibModule.SetValue("FLAG_WINDOW_MAXIMIZED", Value(FLAG_WINDOW_MAXIMIZED   ));  // Set to maximize window (expanded to monitor)
+	raylibModule.SetValue("FLAG_WINDOW_UNFOCUSED", Value(FLAG_WINDOW_UNFOCUSED   ));  // Set to window non focused
+	raylibModule.SetValue("FLAG_WINDOW_TOPMOST", Value(FLAG_WINDOW_TOPMOST     ));  // Set to window always on top
+	raylibModule.SetValue("FLAG_WINDOW_ALWAYS_RUN", Value(FLAG_WINDOW_ALWAYS_RUN  ));  // Set to allow windows running while minimized
+	raylibModule.SetValue("FLAG_WINDOW_TRANSPARENT", Value(FLAG_WINDOW_TRANSPARENT ));  // Set to allow transparent framebuffer
+	raylibModule.SetValue("FLAG_WINDOW_HIGHDPI", Value(FLAG_WINDOW_HIGHDPI     ));  // Set to support HighDPI
+	raylibModule.SetValue("FLAG_WINDOW_MOUSE_PASSTHROUGH", Value(FLAG_WINDOW_MOUSE_PASSTHROUGH ));  // Set to support mouse passthrough, only supported when FLAG_WINDOW_UNDECORATED
+	raylibModule.SetValue("FLAG_BORDERLESS_WINDOWED_MODE", Value(FLAG_BORDERLESS_WINDOWED_MODE ));  // Set to run program in borderless windowed mode
+	raylibModule.SetValue("FLAG_MSAA_4X_HINT", Value(FLAG_MSAA_4X_HINT       ));  // Set to try enabling MSAA 4X
+
 	// Add color constants (all colors from raylib.h)
 	raylibModule.SetValue("LIGHTGRAY", ColorToValue(LIGHTGRAY));
 	raylibModule.SetValue("GRAY", ColorToValue(GRAY));
@@ -321,7 +338,7 @@ void AddConstants(ValueDict raylibModule) {
 	raylibModule.SetValue("LOG_FATAL", Value(LOG_FATAL));
 	raylibModule.SetValue("LOG_NONE", Value(LOG_NONE));
 
-	// rlgl matrix mode constants
+	// Add rlgl matrix mode constants
 	raylibModule.SetValue("RL_MODELVIEW", Value(RL_MODELVIEW));
 	raylibModule.SetValue("RL_PROJECTION", Value(RL_PROJECTION));
 

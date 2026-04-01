@@ -1,6 +1,7 @@
 // main.ms
 // Simple test script for MSRLWeb
 
+if not raylib.IsWindowReady then raylib.InitWindow 
 raylib.SetWindowTitle "MSRLWeb Demo"
 
 wumpusImg = raylib.LoadImage("assets/Wumpus.png")

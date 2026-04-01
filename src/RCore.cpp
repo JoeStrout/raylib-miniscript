@@ -1458,6 +1458,26 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("GetRenderHeight", i->GetFunc());
 
+	i = Intrinsic::Create("");
+	i->AddParam("width", Value(960));
+	i->AddParam("height", Value(640));
+	i->AddParam("title", Value("raylib-miniscript"));
+	i->code = INTRINSIC_LAMBDA {
+		int width = context->GetVar(String("width")).IntValue();
+		int height = context->GetVar(String("height")).IntValue();
+		String title = context->GetVar(String("title")).GetString();
+		InitWindow(width, height, title.c_str());
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("InitWindow", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		CloseWindow();
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("CloseWindow", i->GetFunc());
+
 	// Window state functions
 
 	i = Intrinsic::Create("");

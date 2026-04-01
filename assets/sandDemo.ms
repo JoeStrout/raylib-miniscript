@@ -4,6 +4,7 @@
 // Controls: SPACE to cycle obstacles, R to reset, ESC to exit.
 
 rl = raylib
+if not rl.IsWindowReady then rl.InitWindow 
 
 // Draw obstacle layout into both sim RTs.
 // Uses alpha=128 to mark obstacle pixels.

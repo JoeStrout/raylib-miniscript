@@ -1,6 +1,8 @@
 // metaballDemo.ms
 // Displays animated metaball blobs using a fragment shader.
 
+if not raylib.IsWindowReady then raylib.InitWindow 
+
 rl = raylib
 
 run = function
