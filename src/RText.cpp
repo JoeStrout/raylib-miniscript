@@ -153,6 +153,54 @@ void AddRTextMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("UnloadFont", i->GetFunc());
 
+	// Construct a Font from individual components (glyphs, recs, texture)
+	// This is needed for manual font construction, e.g. SDF fonts
+	i = Intrinsic::Create("");
+	i->AddParam("baseSize");
+	i->AddParam("glyphs");
+	i->AddParam("recs");
+	i->AddParam("texture");
+	i->AddParam("glyphPadding", Value::zero);
+	i->code = INTRINSIC_LAMBDA {
+		int baseSize = context->GetVar(String("baseSize")).IntValue();
+		ValueList glyphsList = context->GetVar(String("glyphs")).GetList();
+		ValueList recsList = context->GetVar(String("recs")).GetList();
+		Texture2D texture = ValueToTexture(context->GetVar(String("texture")));
+		int glyphPadding = context->GetVar(String("glyphPadding")).IntValue();
+
+		int glyphCount = glyphsList.Count();
+		if (glyphCount == 0 || glyphCount != recsList.Count()) return IntrinsicResult::Null;
+
+		// Build the Font struct
+		Font font = { 0 };
+		font.baseSize = baseSize;
+		font.glyphCount = glyphCount;
+		font.glyphPadding = glyphPadding;
+		font.texture = texture;
+
+		// Allocate and populate recs array
+		font.recs = (Rectangle*)RL_MALLOC(glyphCount * sizeof(Rectangle));
+		for (int i = 0; i < glyphCount; i++) {
+			font.recs[i] = ValueToRectangle(recsList[i]);
+		}
+
+		// Allocate and populate glyphs array
+		font.glyphs = (GlyphInfo*)RL_MALLOC(glyphCount * sizeof(GlyphInfo));
+		for (int i = 0; i < glyphCount; i++) {
+			ValueDict glyphDict = glyphsList[i].GetDict();
+			font.glyphs[i].value = glyphDict.Lookup(String("value"), Value::zero).IntValue();
+			font.glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
+			font.glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
+			font.glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
+			font.glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::null));
+		}
+
+		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		rcFont++;
+		return IntrinsicResult(FontToValue(font));
+	};
+	raylibModule.SetValue("MakeFont", i->GetFunc());
+
 	// Text drawing
 
 	i = Intrinsic::Create("");
@@ -631,8 +679,14 @@ void AddRTextMethods(ValueDict raylibModule) {
 
 		Image atlas = GenImageFontAtlas(glyphs, recsPtr, glyphCount, fontSize, padding, packMethod);
 
+		// Write the updated recs back into the MiniScript list
+		Rectangle* updatedRecs = *recsPtr;
+		for (int i = 0; i < glyphCount; i++) {
+			recsList[i] = RectangleToValue(updatedRecs[i]);
+		}
+
 		delete[] glyphs;
-		delete[] *recsPtr;
+		delete[] updatedRecs;
 		delete recsPtr;
 
 		rcImage++;
