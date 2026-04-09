@@ -8,6 +8,7 @@
 #include "RaylibIntrinsics.h"
 #include "FileModule.h"
 #include "MoreIntrinsics.h"
+#include "HttpModule.h"
 #include "loadfile.h"
 #include <stdio.h>
 
@@ -143,6 +144,9 @@ void InitMiniScript() {
 
 	// Add import and exit intrinsics
 	AddMoreIntrinsics();
+
+	// Add HTTP module
+	AddHttpIntrinsics();
 
 	printf("MiniScript interpreter initialized with Raylib intrinsics\n");
 }

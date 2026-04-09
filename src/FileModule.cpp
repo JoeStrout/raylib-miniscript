@@ -11,6 +11,7 @@
 #include "FileModule.h"
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptTypes.h"
+#include "RawData.h"
 #include "SimpleString.h"
 #include "macros.h"
 
@@ -65,6 +66,8 @@ static Intrinsic *i_mkdir = nullptr;
 static Intrinsic *i_copy = nullptr;
 static Intrinsic *i_readLines = nullptr;
 static Intrinsic *i_writeLines = nullptr;
+static Intrinsic *i_loadRaw = nullptr;
+static Intrinsic *i_saveRaw = nullptr;
 static Intrinsic *i_rename = nullptr;
 static Intrinsic *i_remove = nullptr;
 static Intrinsic *i_fopen = nullptr;
@@ -460,6 +463,37 @@ static IntrinsicResult intrinsic_freadLine(Context *context, IntrinsicResult par
 	return IntrinsicResult(result);
 }
 
+static IntrinsicResult intrinsic_loadRaw(Context *context, IntrinsicResult partialResult) {
+	String path = context->GetVar("path").ToString();
+	FILE *handle = fopen(path.c_str(), "rb");
+	if (handle == NULL) return IntrinsicResult::Null;
+
+	fseek(handle, 0, SEEK_END);
+	long size = ftell(handle);
+	fseek(handle, 0, SEEK_SET);
+
+	MiniScript::BinaryData* data = new MiniScript::BinaryData((int)size);
+	fread(data->bytes, 1, (size_t)size, handle);
+	fclose(handle);
+
+	return IntrinsicResult(MiniScript::RawDataToValue(data));
+}
+
+static IntrinsicResult intrinsic_saveRaw(Context *context, IntrinsicResult partialResult) {
+	String path = context->GetVar("path").ToString();
+	MiniScript::BinaryData* data = MiniScript::ValueToRawData(context->GetVar("data"));
+	if (data == nullptr) return IntrinsicResult(String("saveRaw: data is not a RawData object"));
+
+	FILE *handle = fopen(path.c_str(), "wb");
+	if (handle == NULL) return IntrinsicResult(String("saveRaw: could not open file for writing: ") + path);
+
+	size_t written = fwrite(data->bytes, 1, (size_t)data->length, handle);
+	fclose(handle);
+
+	if ((int)written != data->length) return IntrinsicResult(String("saveRaw: write error"));
+	return IntrinsicResult::Null;
+}
+
 static IntrinsicResult intrinsic_readLines(Context *context, IntrinsicResult partialResult) {
 	String path = context->GetVar("path").ToString();
 	FILE *handle = fopen(path.c_str(), "r");
@@ -560,6 +594,8 @@ static IntrinsicResult intrinsic_File(Context *context, IntrinsicResult partialR
 		fileModule.SetValue("open", i_fopen->GetFunc());
 		fileModule.SetValue("readLines", i_readLines->GetFunc());
 		fileModule.SetValue("writeLines", i_writeLines->GetFunc());
+		fileModule.SetValue("loadRaw", i_loadRaw->GetFunc());
+		fileModule.SetValue("saveRaw", i_saveRaw->GetFunc());
 		// Unlike command-line MiniScript, we will allow assignment
 		// to the `file` module, so Soda etc. can add additional
 		// file APIs.
@@ -668,6 +704,15 @@ void AddFileModuleIntrinsics() {
 	i_writeLines->AddParam("path");
 	i_writeLines->AddParam("lines");
 	i_writeLines->code = &intrinsic_writeLines;
+
+	i_loadRaw = Intrinsic::Create("");
+	i_loadRaw->AddParam("path");
+	i_loadRaw->code = &intrinsic_loadRaw;
+
+	i_saveRaw = Intrinsic::Create("");
+	i_saveRaw->AddParam("path");
+	i_saveRaw->AddParam("data");
+	i_saveRaw->code = &intrinsic_saveRaw;
 }
 
 #endif // !PLATFORM_WEB

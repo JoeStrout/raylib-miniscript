@@ -40,6 +40,7 @@ set(APP_SOURCES
     src/RaylibConstants.cpp
     src/FileModule.cpp
     src/MoreIntrinsics.cpp
+    src/HttpModule.cpp
 )
 
 # Create executable
@@ -154,8 +155,13 @@ else()
             "-framework Cocoa"
             "-framework OpenGL"
         )
+        # libcurl is a macOS system library — no download, zero binary bloat.
+        find_package(CURL REQUIRED)
+        target_link_libraries(raylib-miniscript CURL::libcurl)
     elseif(UNIX)
+        find_package(CURL REQUIRED)
         target_link_libraries(raylib-miniscript
+            CURL::libcurl
             GL
             m
             pthread
@@ -168,6 +174,7 @@ else()
             opengl32
             gdi32
             winmm
+            winhttp  # WinHTTP is built into Windows; SChannel provides TLS
         )
     endif()
 
