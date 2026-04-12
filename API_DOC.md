@@ -79,7 +79,7 @@
 |Vector3ClampValue |**v**=[0, 0, 0], **min**=0, **max**=1 |Clamp the magnitude of the vector between two values |
 |Vector3Equals |**p**=[0, 0, 0], **q**=[0, 0, 0] |Check whether two given vectors are almost equal |
 |Vector3Refract |**v**=[0, 0, 0], **n**=[0, 1, 0], **r**=1 |Compute the direction of a refracted ray v: normalized direction of the incoming ray n: normalized normal vector of the interface of two optical media r: ratio of the refractive index of the medium from where the ray comes to the refractive index of the medium on the other side of the surface |
-|Vector4Zero | | |
+|Vector4Zero | |Vector4 math |
 |Vector4One | | |
 |Vector4Add |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] | |
 |Vector4AddValue |**v**=[0, 0, 0, 0], **add**=0 | |
@@ -441,6 +441,7 @@
 |LoadFontFromImage |**image**, **key**=Color{255, 0, 255, 255}, **firstChar**=32 |Load an Image font file (XNA style) |
 |IsFontValid |**font** |Check if a font is valid (font data loaded) WARNING: GPU texture not checked |
 |UnloadFont |**font** |Unload Font from GPU memory (VRAM) |
+|MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 | |
 |DrawFPS |**posX**=0, **posY**=0 |Draw current FPS NOTE: Uses default font |
 |DrawText |**text**, **posX**=0, **posY**=0, **fontSize**=20, **color**=BLACK |Draw text (using default font) NOTE: fontSize work like in any drawing program but if fontSize is lower than font-base-size, then font-base-size is used NOTE: chars spacing is proportional to fontSize |
 |DrawTextEx |**font**, **text**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw text using Font NOTE: chars spacing is NOT proportional to fontSize |
@@ -472,13 +473,13 @@
 |GenImageFontAtlas |**glyphs**, **glyphRecs**, **fontSize**, **padding**, **packMethod** |Generate image font atlas using chars info NOTE: Packing method: 0-Default, 1-Skyline |
 |TextFormat |**text**, **args**=ValueList( | |
 |TextFindIndex |**text**, **search** |Find first text occurrence within a string REQUIRES: strstr() |
-|GetTextBetween |**text**, **begin**, **end** |Get text between two strings NOTE: Uses internal static buffer semantics |
-|TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() NOTE: Uses internal static buffer semantics |
-|TextReplaceAlloc |**text**, **search**, **replacement** |Replace text string with allocated result WARNING: Internal allocation is handled by binding |
-|TextReplaceBetween |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) remove "begin"[ ]"end" text NOTE: Uses internal static buffer semantics |
-|TextReplaceBetweenAlloc |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings with allocated result WARNING: Internal allocation is handled by binding |
-|TextInsert |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward NOTE: Uses internal static buffer semantics |
-|TextInsertAlloc |**text**, **insert**, **position** |Insert text in a specific position with allocated result WARNING: Internal allocation is handled by binding |
+|GetTextBetween |**text**, **begin**, **end** |Get text between two strings |
+|TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() NOTE: Limited text replace functionality, using static string |
+|TextReplaceAlloc |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() WARNING: Allocated memory must be manually freed |
+|TextReplaceBetween |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) removes "begin"[ ]"end" text |
+|TextReplaceBetweenAlloc |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) remove "begin"[ ]"end" text WARNING: Returned string must be freed by user |
+|TextInsert |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward WARNING: Allocated memory must be manually freed |
+|TextInsertAlloc |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward WARNING: Allocated memory must be manually freed |
 |TextSplit |**text**, **delimiter** | |
 |TextJoin |**textList**, **delimiter**="" |Join text strings with delimiter REQUIRES: memset(), memcpy() |
 |TextAppend |**text**, **append** |Append text at specific position and move cursor WARNING: It's up to the user to make sure appended text does not overflow the buffer! |
@@ -507,7 +508,7 @@
 |GetCameraMatrix |**camera** |Get transform matrix for camera |
 |UpdateCamera |**camera**, **mode**=CAMERA_CUSTOM |Update camera position for selected mode Camera mode: CAMERA_FREE, CAMERA_FIRST_PERSON, CAMERA_THIRD_PERSON, CAMERA_ORBITAL or CUSTOM |
 |UpdateCameraPro |**camera**, **movement**=[0, 0, 0], **rotation**=[0, 0, 0], **zoom**=0 |Update camera movement, movement/rotation values should be provided by user |
-|LoadShader |**vsFileName**=String(), **fsFileName**=String() |Load shader from files and bind default locations NOTE: If shader string is NULL, using default vertex/fragment shaders |
+|LoadShader |**vsFileName**=String(), **fsFileName**=String() |Load shader from files and bind default locations NOTE: If shader filename is NULL, using default vertex/fragment shaders |
 |LoadShaderFromMemory |**vsCode**=String(), **fsCode**=String() |Load shader from code strings and bind default locations |
 |IsShaderValid |**shader** |Check if a shader is valid (loaded on GPU) |
 |BeginShaderMode |**shader** |Begin custom shader mode |
@@ -564,6 +565,8 @@
 |GetScreenHeight | |Get current screen height |
 |GetRenderWidth | |Get current render width which is equal to screen width*dpi scale |
 |GetRenderHeight | |Get current screen height which is equal to screen height*dpi scale |
+|InitWindow |**width**=960, **height**=640, **title**="raylib-miniscript" |Initialize window and OpenGL context |
+|CloseWindow | |Close window and unload OpenGL context |
 |WindowShouldClose | |Check if application should close NOTE: By default, if KEY_ESCAPE pressed or window close icon clicked |
 |IsWindowFullscreen | |Check if window is currently fullscreen |
 |IsWindowHidden | |Check if window is currently hidden |
@@ -736,7 +739,7 @@
 |GetRandomValue |**min**, **max** |Get a random value between min and max included |
 |LoadRandomSequence |**count**, **min**, **max** |Load random values sequence, no values repeated, min and max included |
 |UnloadRandomSequence |**sequence**=null |Unload random values sequence |
-|SetTraceLogLevel |**logLevel** | |
+|SetTraceLogLevel |**logLevel** |Logging and tracing |
 |SetTraceLogCallback |**callback**=null |Set custom trace log |
 |TraceLog |**logLevel**, **text** |Show trace log messages (LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG) |
 
@@ -780,7 +783,7 @@
 |LoadSoundAlias |**source** |Clone sound from existing sound data, clone does not own wave data NOTE: Wave data must be unallocated manually and will be shared across all clones |
 |IsSoundValid |**sound** |Checks if a sound is valid (data loaded and buffers initialized) |
 |UnloadSound |**sound** |Unload sound |
-|UnloadSoundAlias |**alias** | |
+|UnloadSoundAlias |**alias** |Also delete the heap-allocated Sound |
 |PlaySound |**sound** |Play a sound |
 |StopSound |**sound** |Stop reproducing a sound |
 |PauseSound |**sound** |Pause a sound |
@@ -804,3 +807,79 @@
 |SetAudioStreamPitch |**stream**, **pitch**=1.0 |Set pitch for audio stream (1.0 is base level) |
 |SetAudioStreamPan |**stream**, **pan**=0.5 |Set pan for audio stream |
 |SetAudioStreamBufferSizeDefault |**size**=4096 |Default size for new audio streams |
+
+## Global Intrinsics
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|import |**libname**="" |Import a MiniScript library by name, searching MS_IMPORT_PATH |
+|exit |**resultCode** |Exit the program with the given result code |
+|env | |Get a map of all environment variables |
+|run |**path**="" |Load and run a MiniScript file in the current interpreter context |
+|resourceCounts | |Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.) |
+
+## file module
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|curdir | |Get current working directory |
+|setdir |**path** |Change current working directory |
+|children |**path** |Get list of file and directory names in the given directory |
+|name |**path** |Get the filename (last path component) of a path string |
+|exists |**path** |Get whether a file or directory exists at the given path |
+|info |**path** |Get a map of info (path, isDirectory, size, date) about the given path |
+|makedir |**path** |Create a directory at the given path |
+|parent |**path** |Get the parent directory of the given path |
+|child |**parentPath**, **childName** |Combine a parent path and child name into a single path |
+|move |**oldPath**, **newPath** |Move (rename) a file or directory |
+|copy |**oldPath**, **newPath** |Copy a file |
+|delete |**path** |Delete a file or empty directory |
+|open |**path**, **mode**="r+" |Open a file; returns a FileHandle, or null on failure |
+|readLines |**path** |Read all lines from a text file, returning a list of strings |
+|writeLines |**path**, **lines** |Write a list of strings (or a single string) to a text file |
+|loadRaw |**path** |Load a binary file, returning a RawData object |
+|saveRaw |**path**, **data** |Save a RawData object to a binary file |
+
+## FileHandle
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|close | |Close the file handle |
+|isOpen | |Get whether the file handle is still open |
+|write |**data** |Write a string to the file |
+|writeLine |**data** |Write a string followed by a newline to the file |
+|read |**byteCount**=-1 |Read up to byteCount bytes from the file (or all remaining if -1) |
+|readLine | |Read the next line from the file |
+|position | |Get the current read/write position in the file |
+|atEnd | |Get whether the file position is at the end of the file |
+
+## http module
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|post |**url**="", **data**, **headers** |Send an HTTP POST request; returns the response body as a string |
+
+## RawData
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|len | |get the size of this RawData object in bytes |
+|resize |**bytes**=32 |resize this RawData object to the given number of bytes |
+|byte |**offset**=0 |get unsigned byte (0-255) at the given byte offset |
+|setByte |**offset**=0, **value**=0 |set unsigned byte at the given byte offset |
+|sbyte |**offset**=0 |get signed byte (-128 to 127) at the given byte offset |
+|setSbyte |**offset**=0, **value**=0 |set signed byte at the given byte offset |
+|ushort |**offset**=0 |get unsigned 16-bit integer (0-65535) at the given byte offset |
+|setUshort |**offset**=0, **value**=0 |set unsigned 16-bit integer at the given byte offset |
+|short |**offset**=0 |get signed 16-bit integer (-32768 to 32767) at the given byte offset |
+|setShort |**offset**=0, **value**=0 |set signed 16-bit integer at the given byte offset |
+|uint |**offset**=0 |get unsigned 32-bit integer at the given byte offset |
+|setUint |**offset**=0, **value**=0 |set unsigned 32-bit integer at the given byte offset |
+|int |**offset**=0 |get signed 32-bit integer at the given byte offset |
+|setInt |**offset**=0, **value**=0 |set signed 32-bit integer at the given byte offset |
+|float |**offset**=0 |get 32-bit float at the given byte offset |
+|setFloat |**offset**=0, **value**=0 |set 32-bit float at the given byte offset |
+|double |**offset**=0 |get 64-bit double at the given byte offset |
+|setDouble |**offset**=0, **value**=0 |set 64-bit double at the given byte offset |
+|utf8 |**offset**=0, **bytes**=-1 |get UTF-8 string from the given byte offset (bytes=-1 reads to end) |
+|setUtf8 |**offset**=0, **value**="" |write a UTF-8 string at the given byte offset; returns bytes written |

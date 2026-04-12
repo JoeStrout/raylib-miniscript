@@ -66,54 +66,162 @@ processRaylibFile = function(path)
 	print "   " + found + " APIs"
 end function
 
-// Process the given .cpp file (MiniScript intrinsics binding Raylib functions),
-// adding a table to the output for all the APIs that we found.
-processBindingFile = function(path)
-	print "Processing: " + path
+// Process the given .cpp file, adding a table to the output for all APIs found.
+// moduleVar: the C++ variable name used in SetValue calls (e.g. "raylibModule", "fileModule")
+// heading: the section heading to use in the output (e.g. "RCore", "file module")
+// If heading is "", it is derived from the filename.
+processBindingFile = function(path, moduleVar="raylibModule", heading="")
+	print "Processing: " + path + " (" + moduleVar + ")"
 	apiCount = 0
-	
+	if heading == "" then heading = file.name(path) - ".cpp"
+
 	params = []
+	pendingNote = ""  // inline comment accumulated just before a Create line
 	for line in file.readLines(path)
 		line = line.trim
-		
-		if line.startsWith("i = Intrinsic::Create(") then
+
+		// Accumulate inline doc comments
+		if line.startsWith("// ") then
+			pendingNote = line[3:]
+			continue
+		end if
+
+		// Blank lines reset the pending note; comments set it; all other lines
+		// leave it intact so it survives across Create/AddParam/code=/lambda lines.
+		if line == "" then
+			pendingNote = ""
+			continue
+		end if
+
+		if line.contains("= Intrinsic::Create(") then
 			params = []
 			continue
 		end if
-		
-		m = line.match("i->AddParam(""{param}"", {defval});")
+
+		m = line.match("{var}->AddParam(""{param}"", {defval});")
 		if m then
-			params.push "**" + m.param + "**=" + valToText(m.defval)
+			if m.param != "self" then
+				params.push "**" + m.param + "**=" + valToText(m.defval)
+			end if
 			continue
 		end if
 
-		m = line.match("i->AddParam(""{param}"");")
+		m = line.match("{var}->AddParam(""{param}"");")
 		if m then
-			params.push "**" + m.param + "**"
+			if m.param != "self" then
+				params.push "**" + m.param + "**"
+			end if
 			continue
 		end if
 
-		m = line.match("raylibModule.SetValue(""{api}"", i->GetFunc());")
+		// Match: moduleVar.SetValue("api", x->GetFunc()) or moduleVar.SetValue(String("api"), x->GetFunc())
+		m = line.match(moduleVar + ".SetValue(""{api}"", {var}->GetFunc());")
+		if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}->GetFunc());")
 		if m then
 			if apiCount == 0 then
 				outLines.push ""
-				outLines.push "## " + (file.name(path) - ".cpp")
+				outLines.push "## " + heading
 				outLines.push ""
 				outLines.push "|Name | Parameters | Purpose |"
 				outLines.push "|-----|------------|---------|"
 			end if
 			apiCount += 1
-		
+
 			if functionNotes.hasIndex(m.api) then
 				note = functionNotes[m.api]
+			else if pendingNote != "" then
+				note = pendingNote
 			else
 				print "   NO NOTE FOUND FOR: " + m.api
 				note = ""
 			end if
 			outLines.push "|" + m.api + " |" + params.join(", ") + " |" + note + " |"
 			params = []
+			pendingNote = ""
 		end if
 	end for
+	print "   " + apiCount + " APIs"
+	return apiCount
+end function
+
+// Process a file with global named intrinsics (e.g. MoreIntrinsics.cpp).
+// Detects Intrinsic::Create("name") with non-empty name, using the preceding
+// comment line as documentation.
+processGlobalIntrinsicsFile = function(path, heading="Global Intrinsics")
+	print "Processing: " + path + " (global intrinsics)"
+	apiCount = 0
+
+	params = []
+	pendingNote = ""
+	currentName = ""
+	for line in file.readLines(path)
+		line = line.trim
+
+		if line.startsWith("// ") then
+			pendingNote = line[3:]
+			continue
+		end if
+
+		if line == "" then
+			pendingNote = ""
+			continue
+		end if
+
+		m = line.match("i->AddParam(""{param}"", {defval});")
+		if not m then m = line.match("{var}->AddParam(""{param}"", {defval});")
+		if m then
+			if m.param != "self" then
+				params.push "**" + m.param + "**=" + valToText(m.defval)
+			end if
+			continue
+		end if
+
+		m = line.match("i->AddParam(""{param}"");")
+		if not m then m = line.match("{var}->AddParam(""{param}"");")
+		if m then
+			if m.param != "self" then
+				params.push "**" + m.param + "**"
+			end if
+			continue
+		end if
+
+		// Named create: Intrinsic *xxxFunc = Intrinsic::Create("name");
+		// or: Intrinsic::Create("name")  with any leading variable assignment
+		m = line.match("Intrinsic::Create(""{name}"");")
+		if m and m.name != "" then
+			// Emit previous entry if any
+			if currentName != "" then
+				if apiCount == 0 then
+					outLines.push ""
+					outLines.push "## " + heading
+					outLines.push ""
+					outLines.push "|Name | Parameters | Purpose |"
+					outLines.push "|-----|------------|---------|"
+				end if
+				apiCount += 1
+				outLines.push "|" + currentName + " |" + params.join(", ") + " |" + currentNote + " |"
+			end if
+			currentName = m.name
+			currentNote = pendingNote
+			params = []
+			pendingNote = ""
+			continue
+		end if
+	end for
+
+	// Emit final entry
+	if currentName != "" then
+		if apiCount == 0 then
+			outLines.push ""
+			outLines.push "## " + heading
+			outLines.push ""
+			outLines.push "|Name | Parameters | Purpose |"
+			outLines.push "|-----|------------|---------|"
+		end if
+		apiCount += 1
+		outLines.push "|" + currentName + " |" + params.join(", ") + " |" + currentNote + " |"
+	end if
+
 	print "   " + apiCount + " APIs"
 	return apiCount
 end function
@@ -156,6 +264,14 @@ for child in file.children(bindingSrc)
 //	if child != "RMath.cpp" then continue
 	totalAPIs += processBindingFile(file.child(bindingSrc, child))
 end for
+
+// Process non-raylib intrinsic files
+totalAPIs += processGlobalIntrinsicsFile(file.child(bindingSrc, "MoreIntrinsics.cpp"), "Global Intrinsics")
+totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileModule", "file module")
+totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileHandleClass", "FileHandle")
+totalAPIs += processBindingFile(file.child(bindingSrc, "HttpModule.cpp"), "httpMap", "http module")
+totalAPIs += processBindingFile(file.child(bindingSrc, "RawData.cpp"), "rawDataClass", "RawData")
+
 print totalAPIs + " APIs processed in total"
 
 // Finally, write the output.

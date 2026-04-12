@@ -53,32 +53,8 @@ public:
 	FILE *f;
 };
 
-// Hidden (unnamed) intrinsics, only accessible via the file module
-static Intrinsic *i_getcwd = nullptr;
-static Intrinsic *i_chdir = nullptr;
-static Intrinsic *i_readdir = nullptr;
-static Intrinsic *i_basename = nullptr;
-static Intrinsic *i_dirname = nullptr;
-static Intrinsic *i_child = nullptr;
-static Intrinsic *i_exists = nullptr;
-static Intrinsic *i_info = nullptr;
-static Intrinsic *i_mkdir = nullptr;
-static Intrinsic *i_copy = nullptr;
-static Intrinsic *i_readLines = nullptr;
-static Intrinsic *i_writeLines = nullptr;
-static Intrinsic *i_loadRaw = nullptr;
-static Intrinsic *i_saveRaw = nullptr;
-static Intrinsic *i_rename = nullptr;
-static Intrinsic *i_remove = nullptr;
-static Intrinsic *i_fopen = nullptr;
-static Intrinsic *i_fclose = nullptr;
-static Intrinsic *i_isOpen = nullptr;
-static Intrinsic *i_fwrite = nullptr;
-static Intrinsic *i_fwriteLine = nullptr;
-static Intrinsic *i_fread = nullptr;
-static Intrinsic *i_freadLine = nullptr;
-static Intrinsic *i_fposition = nullptr;
-static Intrinsic *i_feof = nullptr;
+static ValueDict fileModule;
+static ValueDict fileHandleClass;
 
 // Copy a file.  Return 0 on success, or some value < 0 on error.
 static int CopyFileHelper(const char* source, const char* destination) {
@@ -325,9 +301,6 @@ static IntrinsicResult intrinsic_remove(Context *context, IntrinsicResult partia
 	return IntrinsicResult(Value::Truth(err == 0));
 }
 
-static IntrinsicResult intrinsic_fopen(Context *context, IntrinsicResult partialResult);
-static ValueDict& FileHandleClass();
-
 static IntrinsicResult intrinsic_fopen(Context *context, IntrinsicResult partialResult) {
 	String path = context->GetVar("path").ToString();
 	Value modeVal = context->GetVar("mode");
@@ -342,7 +315,7 @@ static IntrinsicResult intrinsic_fopen(Context *context, IntrinsicResult partial
 	if (handle == NULL) return IntrinsicResult::Null;
 
 	ValueDict instance;
-	instance.SetValue(Value::magicIsA, FileHandleClass());
+	instance.SetValue(Value::magicIsA, fileHandleClass);
 
 	Value fileWrapper = Value::NewHandle(new FileHandleStorage(handle));
 	instance.SetValue(_handle, fileWrapper);
@@ -552,167 +525,186 @@ static IntrinsicResult intrinsic_writeLines(Context *context, IntrinsicResult pa
 	return IntrinsicResult((int)written);
 }
 
-static bool disallowAssignment(ValueDict& dict, Value key, Value value) {
-	return true;
-}
-
-static ValueDict& FileHandleClass() {
-	static ValueDict result;
-	if (result.Count() == 0) {
-		result.SetValue("close", i_fclose->GetFunc());
-		result.SetValue("isOpen", i_isOpen->GetFunc());
-		result.SetValue("write", i_fwrite->GetFunc());
-		result.SetValue("writeLine", i_fwriteLine->GetFunc());
-		result.SetValue("read", i_fread->GetFunc());
-		result.SetValue("readLine", i_freadLine->GetFunc());
-		result.SetValue("position", i_fposition->GetFunc());
-		result.SetValue("atEnd", i_feof->GetFunc());
-	}
-	return result;
-}
-
 static IntrinsicResult intrinsic_FileHandle(Context *context, IntrinsicResult partialResult) {
-	return IntrinsicResult(FileHandleClass());
+	return IntrinsicResult(fileHandleClass);
 }
 
 static IntrinsicResult intrinsic_File(Context *context, IntrinsicResult partialResult) {
-	static ValueDict fileModule;
-
-	if (fileModule.Count() == 0) {
-		fileModule.SetValue("curdir", i_getcwd->GetFunc());
-		fileModule.SetValue("setdir", i_chdir->GetFunc());
-		fileModule.SetValue("children", i_readdir->GetFunc());
-		fileModule.SetValue("name", i_basename->GetFunc());
-		fileModule.SetValue("exists", i_exists->GetFunc());
-		fileModule.SetValue("info", i_info->GetFunc());
-		fileModule.SetValue("makedir", i_mkdir->GetFunc());
-		fileModule.SetValue("parent", i_dirname->GetFunc());
-		fileModule.SetValue("child", i_child->GetFunc());
-		fileModule.SetValue("move", i_rename->GetFunc());
-		fileModule.SetValue("copy", i_copy->GetFunc());
-		fileModule.SetValue("delete", i_remove->GetFunc());
-		fileModule.SetValue("open", i_fopen->GetFunc());
-		fileModule.SetValue("readLines", i_readLines->GetFunc());
-		fileModule.SetValue("writeLines", i_writeLines->GetFunc());
-		fileModule.SetValue("loadRaw", i_loadRaw->GetFunc());
-		fileModule.SetValue("saveRaw", i_saveRaw->GetFunc());
-		// Unlike command-line MiniScript, we will allow assignment
-		// to the `file` module, so Soda etc. can add additional
-		// file APIs.
-		//fileModule.SetAssignOverride(disallowAssignment);
-	}
-
 	return IntrinsicResult(fileModule);
 }
 
 void AddFileModuleIntrinsics() {
-	Intrinsic *f;
+	Intrinsic *i;
 
+	// file module
+
+	// Get current working directory
+	i = Intrinsic::Create("");
+	i->code = &intrinsic_getcwd;
+	fileModule.SetValue("curdir", i->GetFunc());
+
+	// Change current working directory
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_chdir;
+	fileModule.SetValue("setdir", i->GetFunc());
+
+	// Get list of file and directory names in the given directory
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_readdir;
+	fileModule.SetValue("children", i->GetFunc());
+
+	// Get the filename (last path component) of a path string
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_basename;
+	fileModule.SetValue("name", i->GetFunc());
+
+	// Get whether a file or directory exists at the given path
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_exists;
+	fileModule.SetValue("exists", i->GetFunc());
+
+	// Get a map of info (path, isDirectory, size, date) about the given path
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_info;
+	fileModule.SetValue("info", i->GetFunc());
+
+	// Create a directory at the given path
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_mkdir;
+	fileModule.SetValue("makedir", i->GetFunc());
+
+	// Get the parent directory of the given path
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_dirname;
+	fileModule.SetValue("parent", i->GetFunc());
+
+	// Combine a parent path and child name into a single path
+	i = Intrinsic::Create("");
+	i->AddParam("parentPath");
+	i->AddParam("childName");
+	i->code = &intrinsic_child;
+	fileModule.SetValue("child", i->GetFunc());
+
+	// Move (rename) a file or directory
+	i = Intrinsic::Create("");
+	i->AddParam("oldPath");
+	i->AddParam("newPath");
+	i->code = &intrinsic_rename;
+	fileModule.SetValue("move", i->GetFunc());
+
+	// Copy a file
+	i = Intrinsic::Create("");
+	i->AddParam("oldPath");
+	i->AddParam("newPath");
+	i->code = &intrinsic_copy;
+	fileModule.SetValue("copy", i->GetFunc());
+
+	// Delete a file or empty directory
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_remove;
+	fileModule.SetValue("delete", i->GetFunc());
+
+	// Open a file; returns a FileHandle, or null on failure
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->AddParam("mode", "r+");
+	i->code = &intrinsic_fopen;
+	fileModule.SetValue("open", i->GetFunc());
+
+	// Read all lines from a text file, returning a list of strings
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_readLines;
+	fileModule.SetValue("readLines", i->GetFunc());
+
+	// Write a list of strings (or a single string) to a text file
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->AddParam("lines");
+	i->code = &intrinsic_writeLines;
+	fileModule.SetValue("writeLines", i->GetFunc());
+
+	// Load a binary file, returning a RawData object
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->code = &intrinsic_loadRaw;
+	fileModule.SetValue("loadRaw", i->GetFunc());
+
+	// Save a RawData object to a binary file
+	i = Intrinsic::Create("");
+	i->AddParam("path");
+	i->AddParam("data");
+	i->code = &intrinsic_saveRaw;
+	fileModule.SetValue("saveRaw", i->GetFunc());
+
+	// FileHandle methods
+
+	// Close the file handle
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->code = &intrinsic_fclose;
+	fileHandleClass.SetValue("close", i->GetFunc());
+
+	// Get whether the file handle is still open
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->code = &intrinsic_isOpen;
+	fileHandleClass.SetValue("isOpen", i->GetFunc());
+
+	// Write a string to the file
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->AddParam("data");
+	i->code = &intrinsic_fwrite;
+	fileHandleClass.SetValue("write", i->GetFunc());
+
+	// Write a string followed by a newline to the file
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->AddParam("data");
+	i->code = &intrinsic_fwriteLine;
+	fileHandleClass.SetValue("writeLine", i->GetFunc());
+
+	// Read up to byteCount bytes from the file (or all remaining if -1)
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->AddParam("byteCount", -1);
+	i->code = &intrinsic_fread;
+	fileHandleClass.SetValue("read", i->GetFunc());
+
+	// Read the next line from the file
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->code = &intrinsic_freadLine;
+	fileHandleClass.SetValue("readLine", i->GetFunc());
+
+	// Get the current read/write position in the file
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->code = &intrinsic_fposition;
+	fileHandleClass.SetValue("position", i->GetFunc());
+
+	// Get whether the file position is at the end of the file
+	i = Intrinsic::Create("");
+	i->AddParam("self");
+	i->code = &intrinsic_feof;
+	fileHandleClass.SetValue("atEnd", i->GetFunc());
+
+	// Register global 'file' and 'FileHandle' intrinsics
+	Intrinsic *f;
 	f = Intrinsic::Create("file");
 	f->code = &intrinsic_File;
 
 	f = Intrinsic::Create("FileHandle");
 	f->code = &intrinsic_FileHandle;
-
-	i_getcwd = Intrinsic::Create("");
-	i_getcwd->code = &intrinsic_getcwd;
-
-	i_chdir = Intrinsic::Create("");
-	i_chdir->AddParam("path");
-	i_chdir->code = &intrinsic_chdir;
-
-	i_readdir = Intrinsic::Create("");
-	i_readdir->AddParam("path");
-	i_readdir->code = &intrinsic_readdir;
-
-	i_basename = Intrinsic::Create("");
-	i_basename->AddParam("path");
-	i_basename->code = &intrinsic_basename;
-
-	i_dirname = Intrinsic::Create("");
-	i_dirname->AddParam("path");
-	i_dirname->code = &intrinsic_dirname;
-
-	i_child = Intrinsic::Create("");
-	i_child->AddParam("parentPath");
-	i_child->AddParam("childName");
-	i_child->code = &intrinsic_child;
-
-	i_exists = Intrinsic::Create("");
-	i_exists->AddParam("path");
-	i_exists->code = &intrinsic_exists;
-
-	i_info = Intrinsic::Create("");
-	i_info->AddParam("path");
-	i_info->code = &intrinsic_info;
-
-	i_mkdir = Intrinsic::Create("");
-	i_mkdir->AddParam("path");
-	i_mkdir->code = &intrinsic_mkdir;
-
-	i_rename = Intrinsic::Create("");
-	i_rename->AddParam("oldPath");
-	i_rename->AddParam("newPath");
-	i_rename->code = &intrinsic_rename;
-
-	i_copy = Intrinsic::Create("");
-	i_copy->AddParam("oldPath");
-	i_copy->AddParam("newPath");
-	i_copy->code = &intrinsic_copy;
-
-	i_remove = Intrinsic::Create("");
-	i_remove->AddParam("path");
-	i_remove->code = &intrinsic_remove;
-
-	i_fopen = Intrinsic::Create("");
-	i_fopen->AddParam("path");
-	i_fopen->AddParam("mode", "r+");
-	i_fopen->code = &intrinsic_fopen;
-
-	i_fclose = Intrinsic::Create("");
-	i_fclose->code = &intrinsic_fclose;
-
-	i_isOpen = Intrinsic::Create("");
-	i_isOpen->code = &intrinsic_isOpen;
-
-	i_fwrite = Intrinsic::Create("");
-	i_fwrite->AddParam("data");
-	i_fwrite->code = &intrinsic_fwrite;
-
-	i_fwriteLine = Intrinsic::Create("");
-	i_fwriteLine->AddParam("data");
-	i_fwriteLine->code = &intrinsic_fwriteLine;
-
-	i_fread = Intrinsic::Create("");
-	i_fread->AddParam("byteCount", -1);
-	i_fread->code = &intrinsic_fread;
-
-	i_freadLine = Intrinsic::Create("");
-	i_freadLine->code = &intrinsic_freadLine;
-
-	i_feof = Intrinsic::Create("");
-	i_feof->code = &intrinsic_feof;
-
-	i_fposition = Intrinsic::Create("");
-	i_fposition->code = &intrinsic_fposition;
-
-	i_readLines = Intrinsic::Create("");
-	i_readLines->AddParam("path");
-	i_readLines->code = &intrinsic_readLines;
-
-	i_writeLines = Intrinsic::Create("");
-	i_writeLines->AddParam("path");
-	i_writeLines->AddParam("lines");
-	i_writeLines->code = &intrinsic_writeLines;
-
-	i_loadRaw = Intrinsic::Create("");
-	i_loadRaw->AddParam("path");
-	i_loadRaw->code = &intrinsic_loadRaw;
-
-	i_saveRaw = Intrinsic::Create("");
-	i_saveRaw->AddParam("path");
-	i_saveRaw->AddParam("data");
-	i_saveRaw->code = &intrinsic_saveRaw;
 }
 
 #endif // !PLATFORM_WEB

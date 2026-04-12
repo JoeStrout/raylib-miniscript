@@ -15,7 +15,10 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Claude stuff
 .claude
+memory
 
 # Symlinks (user must create these)
 MiniScript

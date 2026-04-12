@@ -385,22 +385,22 @@ static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult par
 // Module registration
 //----------------------------------------------------------------------
 
-static Intrinsic* i_http_post = nullptr;
+static ValueDict httpMap;
 
 static IntrinsicResult intrinsic_http(Context* context, IntrinsicResult partialResult) {
-	static ValueDict httpMap;
-	if (httpMap.Count() == 0) {
-		httpMap.SetValue(String("post"), i_http_post->GetFunc());
-	}
 	return IntrinsicResult(httpMap);
 }
 
 void AddHttpIntrinsics() {
-	i_http_post = Intrinsic::Create("");
-	i_http_post->AddParam("url", "");
-	i_http_post->AddParam("data");
-	i_http_post->AddParam("headers");
-	i_http_post->code = intrinsic_http_post;
+	Intrinsic *i;
+
+	// Send an HTTP POST request; returns the response body as a string
+	i = Intrinsic::Create("");
+	i->AddParam("url", "");
+	i->AddParam("data");
+	i->AddParam("headers");
+	i->code = intrinsic_http_post;
+	httpMap.SetValue(String("post"), i->GetFunc());
 
 	Intrinsic* httpFunc = Intrinsic::Create("http");
 	httpFunc->code = intrinsic_http;

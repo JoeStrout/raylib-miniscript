@@ -542,17 +542,21 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 //--------------------------------------------------------------------------------
 
 void AddMoreIntrinsics() {
+	// Import a MiniScript library by name, searching MS_IMPORT_PATH
 	Intrinsic *importFunc = Intrinsic::Create("import");
 	importFunc->AddParam("libname", "");
 	importFunc->code = &intrinsic_import;
 
+	// Exit the program with the given result code
 	Intrinsic *exitFunc = Intrinsic::Create("exit");
 	exitFunc->AddParam("resultCode");
 	exitFunc->code = &intrinsic_exit;
 
+	// Get a map of all environment variables
 	Intrinsic *envFunc = Intrinsic::Create("env");
 	envFunc->code = &intrinsic_env;
 
+	// Load and run a MiniScript file in the current interpreter context
 	Intrinsic *runFunc = Intrinsic::Create("run");
 	runFunc->AddParam("path", "");
 	runFunc->code = &intrinsic_run;
@@ -563,6 +567,7 @@ void AddMoreIntrinsics() {
 	setEnvVar("MS_SCRIPT_DIR", "assets");
 #endif
 
+	// Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)
 	Intrinsic *rcFunc = Intrinsic::Create("resourceCounts");
 	rcFunc->code = [](Context *context, IntrinsicResult partialResult) -> IntrinsicResult {
 		ValueDict map;
