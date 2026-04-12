@@ -19,3 +19,10 @@ ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 5. Build raylib-miniscript with `scripts/build-desktop.sh`
 6. Run with `build/miniscript-raylib`.  This will look for `assets/main.ms`, unless you specify some other script file for it to launch.
 
+## Documentation
+
+Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.
+
+There are a few additional intrinsics also added, including a `file` module and corresponding `FileHandle` class, a `RawData` class, and an `http` module.
+
+See [API_DOC.md](API_DOC.md) for the full list of Raylib and additional intrinsics.
