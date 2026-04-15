@@ -643,12 +643,18 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	i->AddParam("colorInner", ColorToValue(WHITE));
 	i->AddParam("colorOuter", ColorToValue(BLACK));
 	i->code = INTRINSIC_LAMBDA {
-		int centerX = context->GetVar(String("centerX")).IntValue();
-		int centerY = context->GetVar(String("centerY")).IntValue();
 		float radius = context->GetVar(String("radius")).FloatValue();
 		Color colorInner = ValueToColor(context->GetVar(String("colorInner")));
 		Color colorOuter = ValueToColor(context->GetVar(String("colorOuter")));
+#if RAYLIB_VERSION_GT(5, 5)
+		float centerX = context->GetVar(String("centerX")).FloatValue();
+		float centerY = context->GetVar(String("centerY")).FloatValue();
+		DrawCircleGradient(CLITERAL(Vector2){centerX, centerY}, radius, colorInner, colorOuter);
+#else
+		int centerX = context->GetVar(String("centerX")).IntValue();
+		int centerY = context->GetVar(String("centerY")).IntValue();
 		DrawCircleGradient(centerX, centerY, radius, colorInner, colorOuter);
+#endif /* RAYLIB_VERSION_GT(5, 5) */
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawCircleGradient", i->GetFunc());
