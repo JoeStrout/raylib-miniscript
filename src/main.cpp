@@ -124,7 +124,7 @@ void loadScriptFromFile(const char *path) {
 //--------------------------------------------------------------------------------
 
 void InitMiniScript() {
-	MiniScript::hostVersion = 0.2;
+	MiniScript::hostVersion = 0.3;
 	MiniScript::hostName = "raylib-miniscript";
 	MiniScript::hostInfo = "https://github.com/JoeStrout/raylib-miniscript";
 	ResetRaylibCallbackBridge();

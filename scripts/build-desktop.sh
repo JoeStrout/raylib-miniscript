@@ -34,6 +34,15 @@ if [ ! -e "raylib/src" ]; then
     fi
 fi
 
+if [ ! -f "raylib/src/libraylib.a" ] || [ "raylib/.git" -nt "raylib/src/libraylib.a" ]; then
+    echo -e "${YELLOW}Building raylib...${NC}"
+    make -C raylib/src
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to build raylib!${NC}"
+        exit 1
+    fi
+fi
+
 mkdir -p build
 cd build
 

@@ -8,16 +8,15 @@ This project is developing raylib bindings (API wrappers) for MiniScript, enabli
 ## Setup & Build
 
 1. Clone this repo to your local machine.
-2. Also clone the raylib and miniscript repos.
-3. Symlink each of those into the directory of this repo, e.g.:
+2. Run `git submodule update --init` once after cloning, to pull down the raylib module.
+3. Also clone the [miniscript repo](https://github.com/JoeStrout/miniscript).  (We'll change this to a submodule once we move to MiniScript 2.)
+4. Symlink the miniscript C++ source into the directory of this repo, e.g.:
 ```
 cd raylib-miniscript
-ln -s ../raylib raylib
 ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 ```
-4. Make sure the raylib lib is built (e.g. `cd ../raylib/src; make`).
-5. Build raylib-miniscript with `scripts/build-desktop.sh`
-6. Run with `build/miniscript-raylib`.  This will look for `assets/main.ms`, unless you specify some other script file for it to launch.
+5. Build raylib-miniscript with `scripts/build-desktop.sh` (this will also build raylib if needed).
+6. Run with `build/raylib-miniscript`.  This will look for `assets/main.ms`, unless you specify some other script file for it to launch.
 
 ## Documentation
 
@@ -25,4 +24,5 @@ Most of the added intrinsics (i.e., ones not part of the standard MiniScript lan
 
 There are a few additional intrinsics also added, including a `file` module and corresponding `FileHandle` class, a `RawData` class, and an `http` module.
 
-See [API_DOC.md](API_DOC.md) for the full list of Raylib and additional intrinsics.
+See [API_DOC.md](API_DOC.md) for the full list of Raylib and additional intrinsics.  Also see the [raylib-miniscript wiki](https://github.com/JoeStrout/raylib-miniscript/wiki) for a searchable database including both standard and added functions.
+
