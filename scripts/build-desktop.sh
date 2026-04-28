@@ -25,11 +25,13 @@ if [ ! -e "MiniScript" ]; then
     exit 1
 fi
 
-if [ ! -e "raylib" ]; then
-    echo -e "${RED}Error: raylib symlink not found!${NC}"
-    echo "Create a symlink to your raylib source:"
-    echo "  ln -s /path/to/raylib raylib"
-    exit 1
+if [ ! -e "raylib/src" ]; then
+    echo -e "${YELLOW}Initializing raylib submodule...${NC}"
+    git submodule update --init raylib
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to initialize raylib submodule!${NC}"
+        exit 1
+    fi
 fi
 
 mkdir -p build
