@@ -522,13 +522,8 @@ void AddRTextMethods(ValueDict raylibModule) {
 		int codepointCount = 0;
 		int* codepoints = GetCodepointsFromValue(codepointsVal, &codepointCount);
 
-#if RAYLIB_VERSION_GT(5, 5)
 		int glyphCount = 0;
 		GlyphInfo* glyphs = LoadFontData(data->bytes, data->length, fontSize, codepoints, codepointCount, type, &glyphCount);
-#else
-		int glyphCount = codepointCount;
-		GlyphInfo* glyphs = LoadFontData(data->bytes, data->length, fontSize, codepoints, codepointCount, type);
-#endif /* RAYLIB_VERSION_GT(5, 5) */
 
 		if (codepoints) delete[] codepoints;
 
@@ -979,7 +974,6 @@ void AddRTextMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("TextToFloat", i->GetFunc());
 
-#if RAYLIB_VERSION_GT(5, 5)
 	// Text line loading functions
 
 	i = Intrinsic::Create("");
@@ -997,5 +991,4 @@ void AddRTextMethods(ValueDict raylibModule) {
 		return IntrinsicResult(result);
 	};
 	raylibModule.SetValue("LoadTextLines", i->GetFunc());
-#endif /* RAYLIB_VERSION_GT(5, 5) */
 }

@@ -646,15 +646,9 @@ void AddRShapesMethods(ValueDict raylibModule) {
 		float radius = context->GetVar(String("radius")).FloatValue();
 		Color colorInner = ValueToColor(context->GetVar(String("colorInner")));
 		Color colorOuter = ValueToColor(context->GetVar(String("colorOuter")));
-#if RAYLIB_VERSION_GT(5, 5)
 		float centerX = context->GetVar(String("centerX")).FloatValue();
 		float centerY = context->GetVar(String("centerY")).FloatValue();
 		DrawCircleGradient(CLITERAL(Vector2){centerX, centerY}, radius, colorInner, colorOuter);
-#else
-		int centerX = context->GetVar(String("centerX")).IntValue();
-		int centerY = context->GetVar(String("centerY")).IntValue();
-		DrawCircleGradient(centerX, centerY, radius, colorInner, colorOuter);
-#endif /* RAYLIB_VERSION_GT(5, 5) */
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawCircleGradient", i->GetFunc());
@@ -710,7 +704,6 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("DrawCircleSectorLines", i->GetFunc());
 
-#if RAYLIB_VERSION_GT(5, 5)
 	// Additional ellipse drawing
 
 	i = Intrinsic::Create("");
@@ -742,7 +735,6 @@ void AddRShapesMethods(ValueDict raylibModule) {
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawEllipseLinesV", i->GetFunc());
-#endif /* RAYLIB_VERSION_GT(5, 5) */
 
 	// Additional line drawing
 
@@ -761,7 +753,6 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("DrawLineBezier", i->GetFunc());
 
-#if RAYLIB_VERSION_GT(5, 5)
 	i = Intrinsic::Create("");
 	i->AddParam("startPos");
 	i->AddParam("endPos");
@@ -778,7 +769,6 @@ void AddRShapesMethods(ValueDict raylibModule) {
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawLineDashed", i->GetFunc());
-#endif /* RAYLIB_VERSION_GT(5, 5) */
 
 	i = Intrinsic::Create("");
 	i->AddParam("points");
