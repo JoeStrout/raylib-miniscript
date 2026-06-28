@@ -2577,7 +2577,7 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("DisableEventWaiting", i->GetFunc());
 
-#if RAYLIB_VERSION_GT(5, 5) || !defined(PLATFORM_WEB)
+#if !defined(PLATFORM_WEB)
 	i = Intrinsic::Create("");
 	i->code = INTRINSIC_LAMBDA {
 		Image image = GetClipboardImage();
