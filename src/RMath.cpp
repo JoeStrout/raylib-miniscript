@@ -14,7 +14,7 @@
 
 using namespace MiniScript;
 
-void AddRMathMethods(ValueDict raylibModule) {
+void AddRMathMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Utility math

@@ -14,7 +14,7 @@
 
 using namespace MiniScript;
 
-void AddConstants(ValueDict raylibModule) {
+void AddConstants(ValueDict& raylibModule) {
 	// Add window flags
 	raylibModule.SetValue("FLAG_VSYNC_HINT", Value(FLAG_VSYNC_HINT         ));  // Set to try enabling V-Sync on GPU
 	raylibModule.SetValue("FLAG_FULLSCREEN_MODE", Value(FLAG_FULLSCREEN_MODE    ));  // Set to run program in fullscreen

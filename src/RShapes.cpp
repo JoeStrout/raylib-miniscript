@@ -13,7 +13,7 @@
 
 using namespace MiniScript;
 
-void AddRShapesMethods(ValueDict raylibModule) {
+void AddRShapesMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Pixel drawing

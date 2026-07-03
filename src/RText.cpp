@@ -69,7 +69,7 @@ static int* GetCodepointsFromValue(Value value, int* codepointCount) {
 	return nullptr;
 }
 
-void AddRTextMethods(ValueDict raylibModule) {
+void AddRTextMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Font loading

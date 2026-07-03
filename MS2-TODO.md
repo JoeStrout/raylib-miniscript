@@ -109,6 +109,29 @@ Lowest impact of the three; a small explicit `setEnv` intrinsic likely suffices.
 
 ---
 
+## 4. Replace `GetVar(name)` with `GetArg(index)` throughout the intrinsics
+
+**Where:** essentially every intrinsic in `src/R*.cpp`, `FileModule.cpp`,
+`HttpModule.cpp`, `MoreIntrinsics.cpp`, etc. — they read arguments with
+`context.GetVar(String("name"))`, the MS1 idiom.
+
+**Status:** works, but it's the **slow path**.  `GetVar` does a linear,
+string-compare search of the parameter names (and builds a `Value` string for
+the name) on every call; `GetArg(i)` is a direct positional array index.  For
+per-frame drawing/input intrinsics this overhead is pointless.
+
+(Historical note: `GetVar` was also *broken* for intrinsics in an early MS2 build
+— it resolved against the VM's current frame, which for a native call is the
+caller, not the intrinsic — so every argument read back null.  That was fixed in
+MS2 by giving `Context` the intrinsic's own parameter names; `GetVar` is correct
+now, just slower than `GetArg`.)
+
+**Proposed fix:** migrate each intrinsic to `context.GetArg(0)`, `GetArg(1)`, …
+matching the order of its `AddParam` calls.  Mechanical but bulk; do it
+per-module and test.  New intrinsics should use `GetArg` from the start.
+
+---
+
 ### Notes
 
 - All 14 host modules compile cleanly against MS2 with the above stubs in place.

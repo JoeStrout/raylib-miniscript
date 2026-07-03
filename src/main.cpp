@@ -242,6 +242,15 @@ void CleanupMiniScript() {
 //--------------------------------------------------------------------------------
 
 int main(int argc, char *argv[]) {
+	// Bring up the MiniScript runtime before ANY Value/String/GC operation
+	// (including the env-var setup below and InitMiniScript).  In MS1 strings
+	// were refcounted so this was implicit; in MS2 strings are GC-allocated, so
+	// the GC and value constants must be initialized first, mirroring the
+	// startup sequence in MiniScript's own App entry point.
+	MiniScript::GCManager::Init();       // create the GC sets
+	MiniScript::value_init_constants();  // Value::magicIsA, selfString, etc.
+	MiniScript::ErrorTypes::Init();      // error type prototypes
+
 	SetTargetFPS(60);
 	InitAudioDevice();
 

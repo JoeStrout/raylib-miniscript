@@ -29,6 +29,9 @@ list(FILTER MS2_CORE_SOURCES EXCLUDE REGEX "core/debug_.*")
 file(GLOB MS2_GEN_SOURCES CONFIGURE_DEPENDS
     ${MS2_DIR}/generated/*.g.cpp
 )
+# App.g.cpp is MS2's standalone command-line app entry point (defines main());
+# exclude it since raylib-miniscript provides its own main (src/main.cpp).
+list(FILTER MS2_GEN_SOURCES EXCLUDE REGEX "generated/App\\.g\\.cpp$")
 
 set(MINISCRIPT_SOURCES ${MS2_CORE_SOURCES} ${MS2_GEN_SOURCES})
 

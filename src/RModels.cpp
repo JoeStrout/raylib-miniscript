@@ -277,7 +277,7 @@ static void PackUIntUniformData(Value value, int components, int& count, std::ve
 	if ((int)out.size() > needed) out.resize(needed);
 }
 
-void AddRModelsMethods(ValueDict raylibModule) {
+void AddRModelsMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Basic geometric 3D drawing

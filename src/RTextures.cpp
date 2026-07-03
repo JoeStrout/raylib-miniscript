@@ -15,7 +15,7 @@
 
 using namespace MiniScript;
 
-void AddRTexturesMethods(ValueDict raylibModule) {
+void AddRTexturesMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Image loading

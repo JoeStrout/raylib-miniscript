@@ -14,7 +14,7 @@
 
 using namespace MiniScript;
 
-void AddRAudioMethods(ValueDict raylibModule) {
+void AddRAudioMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Audio device management

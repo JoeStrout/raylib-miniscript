@@ -252,8 +252,8 @@ int BinaryData::SetUTF8(int offset, const String& value) {
 // MiniScript RawData class
 //--------------------------------------------------------------------------------
 
-static String kHandle("_handle");
-static String kLittleEndian("littleEndian");
+static const Value& kHandle() { static Value v("_handle"); return v; }
+static const Value& kLittleEndian() { static Value v("littleEndian"); return v; }
 
 // Helper: get BinaryData from a RawData object
 static BinaryData* GetBinaryData(Context context) {
@@ -263,7 +263,7 @@ static BinaryData* GetBinaryData(Context context) {
     }
 
     ValueDict map = self.GetDict();
-    Value handleVal = map.Lookup(kHandle, Value::Null);
+    Value handleVal = map.Lookup(kHandle(), Value::Null);
 
     if (handleVal.Type() != ValueType::Number) {
         return nullptr;
@@ -272,7 +272,7 @@ static BinaryData* GetBinaryData(Context context) {
     BinaryData* data = (BinaryData*)ValueToPointer(handleVal);
 
     // Update littleEndian from the map
-    Value leVal = map.Lookup(kLittleEndian, Value::one);
+    Value leVal = map.Lookup(kLittleEndian(), Value::one);
     if (data != nullptr) {
         data->littleEndian = leVal.BoolValue();
     }
@@ -285,8 +285,8 @@ ValueDict& RawDataClass() {
 
     if (rawDataClass.Count() > 0) return rawDataClass;
 
-    rawDataClass.SetValue(kHandle, Value::Null);
-    rawDataClass.SetValue(kLittleEndian, Value::one);
+    rawDataClass.SetValue(kHandle(), Value::Null);
+    rawDataClass.SetValue(kLittleEndian(), Value::one);
 
     Intrinsic f;
 
@@ -320,14 +320,14 @@ ValueDict& RawDataClass() {
         if (newSize == 0) {
             // Delete old data
             if (oldData != nullptr) delete oldData;
-            map.SetValue(kHandle, Value::Null);
+            map.SetValue(kHandle(), Value::Null);
             return IntrinsicResult::Null;
         }
 
         // Create new data or resize existing
         if (oldData == nullptr) {
             BinaryData* newData = new BinaryData(newSize);
-            map.SetValue(kHandle, Value((double)(intptr_t)newData));
+            map.SetValue(kHandle(), Value((double)(intptr_t)newData));
         } else {
             if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
             oldData->Resize(newSize);
@@ -664,8 +664,8 @@ Value RawDataToValue(BinaryData* data) {
     if (data == nullptr) return Value::Null;
 
     ValueDict map = RawDataClass();
-    map.SetValue(kHandle, Value((double)(intptr_t)data));
-    map.SetValue(kLittleEndian, Value(data->littleEndian ? 1.0 : 0.0));
+    map.SetValue(kHandle(), Value((double)(intptr_t)data));
+    map.SetValue(kLittleEndian(), Value(data->littleEndian ? 1.0 : 0.0));
     return DynamicMap(map);
 }
 
@@ -673,7 +673,7 @@ BinaryData* ValueToRawData(Value value) {
     if (value.Type() != ValueType::Map) return nullptr;
 
     ValueDict map = value.GetDict();
-    Value handleVal = map.Lookup(kHandle, Value::Null);
+    Value handleVal = map.Lookup(kHandle(), Value::Null);
 
     if (handleVal.Type() != ValueType::Number) return nullptr;
 
@@ -681,7 +681,7 @@ BinaryData* ValueToRawData(Value value) {
 
     // Update littleEndian setting
     if (data != nullptr) {
-        Value leVal = map.Lookup(kLittleEndian, Value::one);
+        Value leVal = map.Lookup(kLittleEndian(), Value::one);
         data->littleEndian = leVal.BoolValue();
     }
 

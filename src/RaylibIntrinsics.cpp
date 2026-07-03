@@ -18,16 +18,16 @@
 using namespace MiniScript;
 
 // Helper methods, one per Raylib module (each defined in its own .cpp file)
-void AddRAudioMethods(ValueDict raylibModule);
-void AddRCoreMethods(ValueDict raylibModule);
-void AddRModelsMethods(ValueDict raylibModule);
-void AddRMathMethods(ValueDict raylibModule);
-void AddRShapesMethods(ValueDict raylibModule);
-void AddRTextMethods(ValueDict raylibModule);
-void AddRTexturesMethods(ValueDict raylibModule);
+void AddRAudioMethods(ValueDict& raylibModule);
+void AddRCoreMethods(ValueDict& raylibModule);
+void AddRModelsMethods(ValueDict& raylibModule);
+void AddRMathMethods(ValueDict& raylibModule);
+void AddRShapesMethods(ValueDict& raylibModule);
+void AddRTextMethods(ValueDict& raylibModule);
+void AddRTexturesMethods(ValueDict& raylibModule);
 
 // And one more for all the constants
-void AddConstants(ValueDict raylibModule);
+void AddConstants(ValueDict& raylibModule);
 
 // Add intrinsics to the interpreter
 void AddRaylibIntrinsics() {

@@ -682,7 +682,7 @@ static void MiniScriptTraceLogBridge(int logLevel, const char* text, va_list arg
 	if (!ok) fprintf(stderr, "[raylib:%d] %s\n", logLevel, stackBuffer);
 }
 
-void AddRCoreMethods(ValueDict raylibModule) {
+void AddRCoreMethods(ValueDict& raylibModule) {
 	Intrinsic i;
 
 	// Drawing-related functions

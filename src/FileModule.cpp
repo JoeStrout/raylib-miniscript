@@ -41,7 +41,11 @@
 
 using namespace MiniScript;
 
-static Value _handle("_handle");
+// A GC-backed string Value cannot be constructed at static-init time (before
+// GCManager exists), so build the "_handle" key lazily on first use.  The
+// string is interned (< 128 bytes) and therefore immortal, so it is safe to
+// hold as a long-lived map key.
+static const Value& _handleKey() { static Value k("_handle"); return k; }
 
 // Wraps a FILE* for storage behind an opaque MiniScript Handle Value.
 class FileHandleStorage {
@@ -316,7 +320,7 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 	instance.SetValue(Value::magicIsA, StaticMap(fileHandleClass));
 
 	Value fileWrapper = Value::NewHandle(new FileHandleStorage(handle), [](void* p) { delete (FileHandleStorage*)p; });
-	instance.SetValue(_handle, fileWrapper);
+	instance.SetValue(_handleKey(), fileWrapper);
 
 	Value result = DynamicMap(instance);
 	instance.SetValue(result, fileWrapper);
@@ -326,7 +330,7 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 
 static IntrinsicResult intrinsic_fclose(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -338,7 +342,7 @@ static IntrinsicResult intrinsic_fclose(Context context, IntrinsicResult partial
 
 static IntrinsicResult intrinsic_isOpen(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	return IntrinsicResult(Value::Truth(storage->f != NULL));
@@ -347,7 +351,7 @@ static IntrinsicResult intrinsic_isOpen(Context context, IntrinsicResult partial
 static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
 	String data = context.GetVar("data").ToString();
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -359,7 +363,7 @@ static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partial
 static IntrinsicResult intrinsic_fwriteLine(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
 	String data = context.GetVar("data").ToString();
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -384,7 +388,7 @@ static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialR
 	Value self = context.GetVar("self");
 	long bytesToRead = context.GetVar("byteCount").IntValue();
 	if (bytesToRead == 0) return IntrinsicResult(Value::emptyString);
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -395,7 +399,7 @@ static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialR
 
 static IntrinsicResult intrinsic_fposition(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -405,7 +409,7 @@ static IntrinsicResult intrinsic_fposition(Context context, IntrinsicResult part
 
 static IntrinsicResult intrinsic_feof(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
@@ -415,7 +419,7 @@ static IntrinsicResult intrinsic_feof(Context context, IntrinsicResult partialRe
 
 static IntrinsicResult intrinsic_freadLine(Context context, IntrinsicResult partialResult) {
 	Value self = context.GetVar("self");
-	Value fileWrapper = self.Lookup(_handle);
+	Value fileWrapper = self.Lookup(_handleKey());
 	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
 	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
