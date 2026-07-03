@@ -10,8 +10,7 @@
 #include "RawData.h"
 #include "raylib.h"
 #include "rlgl.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 #include "macros.h"
 #include <cstdarg>
 #include <cstdio>
@@ -55,7 +54,7 @@ EM_ASYNC_JS(void, _SetWindowIcon_Web, (unsigned char *data, long size), {
 using namespace MiniScript;
 
 static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
-	if (cameraValue.type != ValueType::Map) return;
+	if (cameraValue.Type() != ValueType::Map) return;
 	ValueDict map = cameraValue.GetDict();
 
 	map.SetValue(String("position"), Vector3ToValue(camera.position));
@@ -76,7 +75,7 @@ static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
 }
 
 static Shader* GetShaderPtr(Value shaderValue) {
-	if (shaderValue.type != ValueType::Map) return nullptr;
+	if (shaderValue.Type() != ValueType::Map) return nullptr;
 	ValueDict map = shaderValue.GetDict();
 	Value handleVal = map.Lookup(String("_handle"), Value::zero);
 	return (Shader*)ValueToPointer(handleVal);
@@ -89,7 +88,7 @@ static void PrintWebNotSupported(const char* functionName) {
 #endif
 
 static void SyncShaderValue(Value shaderValue, Shader shader) {
-	if (shaderValue.type != ValueType::Map) return;
+	if (shaderValue.Type() != ValueType::Map) return;
 	ValueDict map = shaderValue.GetDict();
 	map.SetValue(String("id"), Value((int)shader.id));
 }
@@ -102,13 +101,13 @@ static bool GetBytesFromValue(Value value, int requestedSize, std::vector<unsign
 	*outSize = 0;
 	scratch.clear();
 
-	if (value.type == ValueType::Map) {
+	if (value.Type() == ValueType::Map) {
 		BinaryData* rawData = ValueToRawData(value);
 		if (rawData == nullptr || rawData->bytes == nullptr || rawData->length <= 0) return false;
 
 		*outBytes = rawData->bytes;
 		*outSize = rawData->length;
-	} else if (value.type == ValueType::String) {
+	} else if (value.Type() == ValueType::String) {
 		String text = value.ToString();
 		int len = text.LengthB();
 		if (len <= 0) return false;
@@ -117,7 +116,7 @@ static bool GetBytesFromValue(Value value, int requestedSize, std::vector<unsign
 		memcpy(scratch.data(), text.c_str(), (size_t)len);
 		*outBytes = scratch.data();
 		*outSize = len;
-	} else if (value.type == ValueType::List) {
+	} else if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
 		int count = list.Count();
 		if (count <= 0) return false;
@@ -141,7 +140,7 @@ static bool GetBytesFromValue(Value value, int requestedSize, std::vector<unsign
 }
 
 static Value BytesToRawDataValue(const unsigned char* bytes, int length) {
-	if (bytes == nullptr || length <= 0) return Value::null;
+	if (bytes == nullptr || length <= 0) return Value::Null;
 
 	BinaryData* raw = new BinaryData(length);
 	memcpy(raw->bytes, bytes, (size_t)length);
@@ -150,7 +149,7 @@ static Value BytesToRawDataValue(const unsigned char* bytes, int length) {
 
 static VrDeviceInfo ValueToVrDeviceInfo(Value value) {
 	VrDeviceInfo result = {0};
-	if (value.type != ValueType::Map) return result;
+	if (value.Type() != ValueType::Map) return result;
 
 	ValueDict map = value.GetDict();
 	result.hResolution = map.Lookup(String("hResolution"), Value::zero).IntValue();
@@ -161,14 +160,14 @@ static VrDeviceInfo ValueToVrDeviceInfo(Value value) {
 	result.lensSeparationDistance = map.Lookup(String("lensSeparationDistance"), Value::zero).FloatValue();
 	result.interpupillaryDistance = map.Lookup(String("interpupillaryDistance"), Value::zero).FloatValue();
 
-	Value lensValue = map.Lookup(String("lensDistortionValues"), Value::null);
-	if (lensValue.type == ValueType::List) {
+	Value lensValue = map.Lookup(String("lensDistortionValues"), Value::Null);
+	if (lensValue.Type() == ValueType::List) {
 		ValueList lens = lensValue.GetList();
 		for (int i = 0; i < 4 && i < lens.Count(); i++) result.lensDistortionValues[i] = lens[i].FloatValue();
 	}
 
-	Value chromaValue = map.Lookup(String("chromaAbCorrection"), Value::null);
-	if (chromaValue.type == ValueType::List) {
+	Value chromaValue = map.Lookup(String("chromaAbCorrection"), Value::Null);
+	if (chromaValue.Type() == ValueType::List) {
 		ValueList chroma = chromaValue.GetList();
 		for (int i = 0; i < 4 && i < chroma.Count(); i++) result.chromaAbCorrection[i] = chroma[i].FloatValue();
 	}
@@ -178,37 +177,37 @@ static VrDeviceInfo ValueToVrDeviceInfo(Value value) {
 
 static VrStereoConfig ValueToVrStereoConfig(Value value) {
 	VrStereoConfig result{};
-	if (value.type != ValueType::Map) return result;
+	if (value.Type() != ValueType::Map) return result;
 
 	ValueDict map = value.GetDict();
 
-	Value projectionValue = map.Lookup(String("projection"), Value::null);
-	if (projectionValue.type == ValueType::List) {
+	Value projectionValue = map.Lookup(String("projection"), Value::Null);
+	if (projectionValue.Type() == ValueType::List) {
 		ValueList projection = projectionValue.GetList();
 		if (projection.Count() > 0) result.projection[0] = ValueToMatrix(projection[0]);
 		if (projection.Count() > 1) result.projection[1] = ValueToMatrix(projection[1]);
 	}
 
-	Value viewOffsetValue = map.Lookup(String("viewOffset"), Value::null);
-	if (viewOffsetValue.type == ValueType::List) {
+	Value viewOffsetValue = map.Lookup(String("viewOffset"), Value::Null);
+	if (viewOffsetValue.Type() == ValueType::List) {
 		ValueList viewOffset = viewOffsetValue.GetList();
 		if (viewOffset.Count() > 0) result.viewOffset[0] = ValueToMatrix(viewOffset[0]);
 		if (viewOffset.Count() > 1) result.viewOffset[1] = ValueToMatrix(viewOffset[1]);
 	}
 
 	auto ReadFloatPair = [](Value value, float out[2]) {
-		if (value.type != ValueType::List) return;
+		if (value.Type() != ValueType::List) return;
 		ValueList list = value.GetList();
 		if (list.Count() > 0) out[0] = list[0].FloatValue();
 		if (list.Count() > 1) out[1] = list[1].FloatValue();
 	};
 
-	ReadFloatPair(map.Lookup(String("leftLensCenter"), Value::null), result.leftLensCenter);
-	ReadFloatPair(map.Lookup(String("rightLensCenter"), Value::null), result.rightLensCenter);
-	ReadFloatPair(map.Lookup(String("leftScreenCenter"), Value::null), result.leftScreenCenter);
-	ReadFloatPair(map.Lookup(String("rightScreenCenter"), Value::null), result.rightScreenCenter);
-	ReadFloatPair(map.Lookup(String("scale"), Value::null), result.scale);
-	ReadFloatPair(map.Lookup(String("scaleIn"), Value::null), result.scaleIn);
+	ReadFloatPair(map.Lookup(String("leftLensCenter"), Value::Null), result.leftLensCenter);
+	ReadFloatPair(map.Lookup(String("rightLensCenter"), Value::Null), result.rightLensCenter);
+	ReadFloatPair(map.Lookup(String("leftScreenCenter"), Value::Null), result.leftScreenCenter);
+	ReadFloatPair(map.Lookup(String("rightScreenCenter"), Value::Null), result.rightScreenCenter);
+	ReadFloatPair(map.Lookup(String("scale"), Value::Null), result.scale);
+	ReadFloatPair(map.Lookup(String("scaleIn"), Value::Null), result.scaleIn);
 
 	return result;
 }
@@ -219,56 +218,56 @@ static Value VrStereoConfigToValue(const VrStereoConfig& config) {
 	ValueList projection;
 	projection.Add(MatrixToValue(config.projection[0]));
 	projection.Add(MatrixToValue(config.projection[1]));
-	map.SetValue(String("projection"), Value(projection));
+	map.SetValue(String("projection"), DynamicList(projection));
 
 	ValueList viewOffset;
 	viewOffset.Add(MatrixToValue(config.viewOffset[0]));
 	viewOffset.Add(MatrixToValue(config.viewOffset[1]));
-	map.SetValue(String("viewOffset"), Value(viewOffset));
+	map.SetValue(String("viewOffset"), DynamicList(viewOffset));
 
 	ValueList leftLensCenter;
 	leftLensCenter.Add(Value(config.leftLensCenter[0]));
 	leftLensCenter.Add(Value(config.leftLensCenter[1]));
-	map.SetValue(String("leftLensCenter"), Value(leftLensCenter));
+	map.SetValue(String("leftLensCenter"), DynamicList(leftLensCenter));
 
 	ValueList rightLensCenter;
 	rightLensCenter.Add(Value(config.rightLensCenter[0]));
 	rightLensCenter.Add(Value(config.rightLensCenter[1]));
-	map.SetValue(String("rightLensCenter"), Value(rightLensCenter));
+	map.SetValue(String("rightLensCenter"), DynamicList(rightLensCenter));
 
 	ValueList leftScreenCenter;
 	leftScreenCenter.Add(Value(config.leftScreenCenter[0]));
 	leftScreenCenter.Add(Value(config.leftScreenCenter[1]));
-	map.SetValue(String("leftScreenCenter"), Value(leftScreenCenter));
+	map.SetValue(String("leftScreenCenter"), DynamicList(leftScreenCenter));
 
 	ValueList rightScreenCenter;
 	rightScreenCenter.Add(Value(config.rightScreenCenter[0]));
 	rightScreenCenter.Add(Value(config.rightScreenCenter[1]));
-	map.SetValue(String("rightScreenCenter"), Value(rightScreenCenter));
+	map.SetValue(String("rightScreenCenter"), DynamicList(rightScreenCenter));
 
 	ValueList scale;
 	scale.Add(Value(config.scale[0]));
 	scale.Add(Value(config.scale[1]));
-	map.SetValue(String("scale"), Value(scale));
+	map.SetValue(String("scale"), DynamicList(scale));
 
 	ValueList scaleIn;
 	scaleIn.Add(Value(config.scaleIn[0]));
 	scaleIn.Add(Value(config.scaleIn[1]));
-	map.SetValue(String("scaleIn"), Value(scaleIn));
+	map.SetValue(String("scaleIn"), DynamicList(scaleIn));
 
-	return Value(map);
+	return DynamicMap(map);
 }
 
 static AutomationEvent ValueToAutomationEvent(Value value) {
 	AutomationEvent result = {0};
-	if (value.type != ValueType::Map) return result;
+	if (value.Type() != ValueType::Map) return result;
 
 	ValueDict map = value.GetDict();
 	result.frame = (unsigned int)map.Lookup(String("frame"), Value::zero).IntValue();
 	result.type = (unsigned int)map.Lookup(String("type"), Value::zero).IntValue();
 
-	Value paramsValue = map.Lookup(String("params"), Value::null);
-	if (paramsValue.type == ValueType::List) {
+	Value paramsValue = map.Lookup(String("params"), Value::Null);
+	if (paramsValue.Type() == ValueType::List) {
 		ValueList params = paramsValue.GetList();
 		for (int i = 0; i < 4 && i < params.Count(); i++) result.params[i] = params[i].IntValue();
 	} else {
@@ -288,13 +287,13 @@ static Value AutomationEventToValue(const AutomationEvent& event) {
 
 	ValueList params;
 	for (int i = 0; i < 4; i++) params.Add(Value(event.params[i]));
-	map.SetValue(String("params"), Value(params));
+	map.SetValue(String("params"), DynamicList(params));
 
-	return Value(map);
+	return DynamicMap(map);
 }
 
 static AutomationEventList* GetAutomationEventListPtr(Value value) {
-	if (value.type != ValueType::Map) return nullptr;
+	if (value.Type() != ValueType::Map) return nullptr;
 	ValueDict map = value.GetDict();
 	return (AutomationEventList*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
 }
@@ -309,9 +308,9 @@ static Value AutomationEventListToValue(const AutomationEventList& list) {
 
 	ValueList events;
 	for (unsigned int i = 0; i < list.count; i++) events.Add(AutomationEventToValue(list.events[i]));
-	map.SetValue(String("events"), Value(events));
+	map.SetValue(String("events"), DynamicList(events));
 
-	return Value(map);
+	return DynamicMap(map);
 }
 
 static int ShaderUniformComponentCount(int uniformType) {
@@ -354,7 +353,7 @@ static bool IsShaderUniformUIntType(int uniformType) {
 static void FillFloatComponentsFromValue(Value value, float* out, int components) {
 	for (int i = 0; i < components; i++) out[i] = 0.0f;
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
 		int n = list.Count();
 		if (n > components) n = components;
@@ -362,7 +361,7 @@ static void FillFloatComponentsFromValue(Value value, float* out, int components
 		return;
 	}
 
-	if (value.type == ValueType::Map) {
+	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
 		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).FloatValue();
 		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).FloatValue();
@@ -377,7 +376,7 @@ static void FillFloatComponentsFromValue(Value value, float* out, int components
 static void FillIntComponentsFromValue(Value value, int* out, int components) {
 	for (int i = 0; i < components; i++) out[i] = 0;
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
 		int n = list.Count();
 		if (n > components) n = components;
@@ -385,7 +384,7 @@ static void FillIntComponentsFromValue(Value value, int* out, int components) {
 		return;
 	}
 
-	if (value.type == ValueType::Map) {
+	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
 		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue();
 		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue();
@@ -400,7 +399,7 @@ static void FillIntComponentsFromValue(Value value, int* out, int components) {
 static void FillUIntComponentsFromValue(Value value, unsigned int* out, int components) {
 	for (int i = 0; i < components; i++) out[i] = 0;
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
 		int n = list.Count();
 		if (n > components) n = components;
@@ -411,7 +410,7 @@ static void FillUIntComponentsFromValue(Value value, unsigned int* out, int comp
 		return;
 	}
 
-	if (value.type == ValueType::Map) {
+	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
 		if (components > 0) { int v = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue(); out[0] = (unsigned int)(v < 0 ? 0 : v); }
 		if (components > 1) { int v = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue(); out[1] = (unsigned int)(v < 0 ? 0 : v); }
@@ -429,9 +428,9 @@ static void FillUIntComponentsFromValue(Value value, unsigned int* out, int comp
 static void PackFloatUniformData(Value value, int components, int& count, std::vector<float>& out) {
 	out.clear();
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
-		bool nested = list.Count() > 0 && (list[0].type == ValueType::List || list[0].type == ValueType::Map);
+		bool nested = list.Count() > 0 && (list[0].Type() == ValueType::List || list[0].Type() == ValueType::Map);
 
 		if (nested) {
 			for (int n = 0; n < list.Count(); n++) {
@@ -460,9 +459,9 @@ static void PackFloatUniformData(Value value, int components, int& count, std::v
 static void PackIntUniformData(Value value, int components, int& count, std::vector<int>& out) {
 	out.clear();
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
-		bool nested = list.Count() > 0 && (list[0].type == ValueType::List || list[0].type == ValueType::Map);
+		bool nested = list.Count() > 0 && (list[0].Type() == ValueType::List || list[0].Type() == ValueType::Map);
 
 		if (nested) {
 			for (int n = 0; n < list.Count(); n++) {
@@ -491,9 +490,9 @@ static void PackIntUniformData(Value value, int components, int& count, std::vec
 static void PackUIntUniformData(Value value, int components, int& count, std::vector<unsigned int>& out) {
 	out.clear();
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
-		bool nested = list.Count() > 0 && (list[0].type == ValueType::List || list[0].type == ValueType::Map);
+		bool nested = list.Count() > 0 && (list[0].Type() == ValueType::List || list[0].Type() == ValueType::Map);
 
 		if (nested) {
 			for (int n = 0; n < list.Count(); n++) {
@@ -523,12 +522,12 @@ static void PackUIntUniformData(Value value, int components, int& count, std::ve
 }
 
 struct RaylibCallbackBridgeState {
-	Interpreter* interpreter = nullptr;
-	Value traceLogCallback = Value::null;
-	Value loadFileDataCallback = Value::null;
-	Value saveFileDataCallback = Value::null;
-	Value loadFileTextCallback = Value::null;
-	Value saveFileTextCallback = Value::null;
+	Interpreter interpreter;
+	Value traceLogCallback = Value::Null;
+	Value loadFileDataCallback = Value::Null;
+	Value saveFileDataCallback = Value::Null;
+	Value loadFileTextCallback = Value::Null;
+	Value saveFileTextCallback = Value::Null;
 	bool invokingTraceLogCallback = false;
 };
 
@@ -542,69 +541,34 @@ void ResetRaylibCallbackBridge() {
 	SetSaveFileTextCallback(nullptr);
 	SetTraceLogCallback(nullptr);
 #endif
-	g_callbackBridgeState.interpreter = nullptr;
-	g_callbackBridgeState.traceLogCallback = Value::null;
-	g_callbackBridgeState.loadFileDataCallback = Value::null;
-	g_callbackBridgeState.saveFileDataCallback = Value::null;
-	g_callbackBridgeState.loadFileTextCallback = Value::null;
-	g_callbackBridgeState.saveFileTextCallback = Value::null;
+	g_callbackBridgeState.interpreter = Interpreter();
+	g_callbackBridgeState.traceLogCallback = Value::Null;
+	g_callbackBridgeState.loadFileDataCallback = Value::Null;
+	g_callbackBridgeState.saveFileDataCallback = Value::Null;
+	g_callbackBridgeState.loadFileTextCallback = Value::Null;
+	g_callbackBridgeState.saveFileTextCallback = Value::Null;
 	g_callbackBridgeState.invokingTraceLogCallback = false;
 }
 
 static bool IsFunctionOrNull(Value callback) {
-	return callback.IsNull() || callback.type == ValueType::Function;
-}
-
-static FunctionStorage* BuildCallbackInvoker(Value callback, ValueList args) {
-	if (callback.type != ValueType::Function) return nullptr;
-
-	FunctionStorage* invoker = new FunctionStorage();
-	for (int i = 0; i < args.Count(); i++) {
-		invoker->code.Add(TACLine(TACLine::Op::PushParam, args[i]));
-	}
-
-	invoker->code.Add(TACLine(Value::Temp(0), TACLine::Op::CallFunctionA, callback, Value(args.Count())));
-	return invoker;
+	return callback.IsNull() || callback.Type() == ValueType::Function;
 }
 
 static bool InvokeMiniScriptCallback(Value callback, ValueList args, Value* outResult) {
-	if (outResult != nullptr) *outResult = Value::null;
-	if (callback.type != ValueType::Function) return false;
+	if (outResult != nullptr) *outResult = Value::Null;
+	if (callback.Type() != ValueType::Function) return false;
 
-	Interpreter* interpreter = g_callbackBridgeState.interpreter;
-	if (interpreter == nullptr || interpreter->vm == nullptr) {
-		ResetRaylibCallbackBridge();
-		return false;
-	}
-
-	Machine* vm = interpreter->vm;
-	Context* callerContext = vm->GetTopContext();
-	if (callerContext == nullptr) {
-		ResetRaylibCallbackBridge();
-		return false;
-	}
-
-	FunctionStorage* invoker = BuildCallbackInvoker(callback, args);
-	if (invoker == nullptr) return false;
-
-	Value previousTemp0 = callerContext->GetTemp(0, Value::null);
-	vm->ManuallyPushCall(invoker, Value::Temp(0));
-	delete invoker;
-
-	bool completed = false;
-	try {
-		while (vm->GetTopContext() != callerContext && !vm->yielding) vm->Step();
-		completed = (vm->GetTopContext() == callerContext);
-	} catch (...) {
-		ResetRaylibCallbackBridge();
-		completed = false;
-	}
-
-	Value callbackResult = callerContext->GetTemp(0, Value::null);
-	callerContext->SetTemp(0, previousTemp0);
-
-	if (outResult != nullptr) *outResult = callbackResult;
-	return completed;
+	// TODO(MS2 callback bridge): This needs to SYNCHRONOUSLY invoke a MiniScript
+	// funcref with `args` and return its result, re-entrantly from inside a C
+	// callback (raylib's SetLoadFileDataCallback / SetTraceLogCallback / etc.).
+	// MS1 did this by building a TAC FunctionStorage and single-stepping the VM
+	// (vm->GetTopContext()/Step()/Temp registers).  MS2 replaced TAC with
+	// bytecode and exposes no host API to call a funcref and run it to
+	// completion (no GetTopContext/Step, and Context has no GetTemp/SetTemp).
+	// Until MS2 grows a synchronous "call this function value" entry point, the
+	// raylib file/trace callbacks degrade gracefully (the C fallback path runs).
+	(void)args;
+	return false;
 }
 
 static unsigned char* MiniScriptLoadFileDataBridge(const char* fileName, int* dataSize) {
@@ -719,261 +683,261 @@ static void MiniScriptTraceLogBridge(int logLevel, const char* text, va_list arg
 }
 
 void AddRCoreMethods(ValueDict raylibModule) {
-	Intrinsic *i;
+	Intrinsic i;
 
 	// Drawing-related functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		BeginDrawing();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginDrawing", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginDrawing", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndDrawing();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndDrawing", i->GetFunc());
+	});
+	raylibModule.SetValue("EndDrawing", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("color", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		Value colorVal = context->GetVar(String("color"));
+	i.AddParam("color", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value colorVal = context.GetVar(String("color"));
 		Color color = ValueToColor(colorVal);
 		ClearBackground(color);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("ClearBackground", i->GetFunc());
+	});
+	raylibModule.SetValue("ClearBackground", i.GetFunc());
 
 	// 3D camera and projection functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
 		BeginMode3D(camera);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginMode3D", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginMode3D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndMode3D();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndMode3D", i->GetFunc());
+	});
+	raylibModule.SetValue("EndMode3D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
 		Ray ray = GetScreenToWorldRay(position, camera);
 		return IntrinsicResult(RayToValue(ray));
-	};
-	raylibModule.SetValue("GetScreenToWorldRay", i->GetFunc());
+	});
+	raylibModule.SetValue("GetScreenToWorldRay", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->AddParam("width", Value::zero);
-	i->AddParam("height", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.AddParam("width", Value::zero);
+	i.AddParam("height", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		if (width <= 0) width = GetScreenWidth();
 		if (height <= 0) height = GetScreenHeight();
 		Ray ray = GetScreenToWorldRayEx(position, camera, width, height);
 		return IntrinsicResult(RayToValue(ray));
-	};
-	raylibModule.SetValue("GetScreenToWorldRayEx", i->GetFunc());
+	});
+	raylibModule.SetValue("GetScreenToWorldRayEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context->GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector3 position = ValueToVector3(context.GetVar(String("position")));
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
 		Vector2 result = GetWorldToScreen(position, camera);
 		return IntrinsicResult(Vector2ToValue(result));
-	};
-	raylibModule.SetValue("GetWorldToScreen", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWorldToScreen", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->AddParam("width", Value::zero);
-	i->AddParam("height", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context->GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.AddParam("width", Value::zero);
+	i.AddParam("height", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector3 position = ValueToVector3(context.GetVar(String("position")));
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		if (width <= 0) width = GetScreenWidth();
 		if (height <= 0) height = GetScreenHeight();
 		Vector2 result = GetWorldToScreenEx(position, camera, width, height);
 		return IntrinsicResult(Vector2ToValue(result));
-	};
-	raylibModule.SetValue("GetWorldToScreenEx", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWorldToScreenEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Camera3D camera = ValueToCamera3D(context->GetVar(String("camera")));
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
 		return IntrinsicResult(MatrixToValue(GetCameraMatrix(camera)));
-	};
-	raylibModule.SetValue("GetCameraMatrix", i->GetFunc());
+	});
+	raylibModule.SetValue("GetCameraMatrix", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->AddParam("mode", Value(CAMERA_CUSTOM));
-	i->code = INTRINSIC_LAMBDA {
-		Value cameraValue = context->GetVar(String("camera"));
+	i.AddParam("camera");
+	i.AddParam("mode", Value(CAMERA_CUSTOM));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetVar(String("camera"));
 		Camera3D camera = ValueToCamera3D(cameraValue);
-		int mode = context->GetVar(String("mode")).IntValue();
+		int mode = context.GetVar(String("mode")).IntValue();
 		UpdateCamera((Camera*)&camera, mode);
 		SyncCamera3DValue(cameraValue, camera);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UpdateCamera", i->GetFunc());
+	});
+	raylibModule.SetValue("UpdateCamera", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->AddParam("movement", Vector3ToValue(Vector3{0, 0, 0}));
-	i->AddParam("rotation", Vector3ToValue(Vector3{0, 0, 0}));
-	i->AddParam("zoom", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value cameraValue = context->GetVar(String("camera"));
+	i.AddParam("camera");
+	i.AddParam("movement", Vector3ToValue(Vector3{0, 0, 0}));
+	i.AddParam("rotation", Vector3ToValue(Vector3{0, 0, 0}));
+	i.AddParam("zoom", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetVar(String("camera"));
 		Camera3D camera = ValueToCamera3D(cameraValue);
-		Vector3 movement = ValueToVector3(context->GetVar(String("movement")));
-		Vector3 rotation = ValueToVector3(context->GetVar(String("rotation")));
-		float zoom = context->GetVar(String("zoom")).FloatValue();
+		Vector3 movement = ValueToVector3(context.GetVar(String("movement")));
+		Vector3 rotation = ValueToVector3(context.GetVar(String("rotation")));
+		float zoom = context.GetVar(String("zoom")).FloatValue();
 		UpdateCameraPro((Camera*)&camera, movement, rotation, zoom);
 		SyncCamera3DValue(cameraValue, camera);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UpdateCameraPro", i->GetFunc());
+	});
+	raylibModule.SetValue("UpdateCameraPro", i.GetFunc());
 
 	// Shader functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("vsFileName", String());
-	i->AddParam("fsFileName", String());
-	i->code = INTRINSIC_LAMBDA {
-		String vsFileName = context->GetVar(String("vsFileName")).ToString();
-		String fsFileName = context->GetVar(String("fsFileName")).ToString();
+	i.AddParam("vsFileName", String());
+	i.AddParam("fsFileName", String());
+	i.set_Code(INTRINSIC_LAMBDA {
+		String vsFileName = context.GetVar(String("vsFileName")).ToString();
+		String fsFileName = context.GetVar(String("fsFileName")).ToString();
 		const char* vsPtr = vsFileName.LengthB() > 0 ? vsFileName.c_str() : nullptr;
 		const char* fsPtr = fsFileName.LengthB() > 0 ? fsFileName.c_str() : nullptr;
 		Shader shader = LoadShader(vsPtr, fsPtr);
 		if (!IsShaderValid(shader)) return IntrinsicResult::Null;
 		rcShader++;
 		return IntrinsicResult(ShaderToValue(shader));
-	};
-	raylibModule.SetValue("LoadShader", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadShader", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("vsCode", String());
-	i->AddParam("fsCode", String());
-	i->code = INTRINSIC_LAMBDA {
-		String vsCode = context->GetVar(String("vsCode")).ToString();
-		String fsCode = context->GetVar(String("fsCode")).ToString();
+	i.AddParam("vsCode", String());
+	i.AddParam("fsCode", String());
+	i.set_Code(INTRINSIC_LAMBDA {
+		String vsCode = context.GetVar(String("vsCode")).ToString();
+		String fsCode = context.GetVar(String("fsCode")).ToString();
 		const char* vsPtr = vsCode.LengthB() > 0 ? vsCode.c_str() : nullptr;
 		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
 		Shader shader = LoadShaderFromMemory(vsPtr, fsPtr);
 		if (!IsShaderValid(shader)) return IntrinsicResult::Null;
 		rcShader++;
 		return IntrinsicResult(ShaderToValue(shader));
-	};
-	raylibModule.SetValue("LoadShaderFromMemory", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadShaderFromMemory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
+	i.AddParam("shader");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
 		return IntrinsicResult(IsShaderValid(shader));
-	};
-	raylibModule.SetValue("IsShaderValid", i->GetFunc());
+	});
+	raylibModule.SetValue("IsShaderValid", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
+	i.AddParam("shader");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
 		BeginShaderMode(shader);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginShaderMode", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginShaderMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndShaderMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndShaderMode", i->GetFunc());
+	});
+	raylibModule.SetValue("EndShaderMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("uniformName");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		String uniformName = context->GetVar(String("uniformName")).ToString();
+	i.AddParam("shader");
+	i.AddParam("uniformName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		String uniformName = context.GetVar(String("uniformName")).ToString();
 		return IntrinsicResult(GetShaderLocation(shader, uniformName.c_str()));
-	};
-	raylibModule.SetValue("GetShaderLocation", i->GetFunc());
+	});
+	raylibModule.SetValue("GetShaderLocation", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("attribName");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		String attribName = context->GetVar(String("attribName")).ToString();
+	i.AddParam("shader");
+	i.AddParam("attribName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		String attribName = context.GetVar(String("attribName")).ToString();
 		return IntrinsicResult(GetShaderLocationAttrib(shader, attribName.c_str()));
-	};
-	raylibModule.SetValue("GetShaderLocationAttrib", i->GetFunc());
+	});
+	raylibModule.SetValue("GetShaderLocationAttrib", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("locIndex");
-	i->AddParam("mat");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		int locIndex = context->GetVar(String("locIndex")).IntValue();
-		Matrix mat = ValueToMatrix(context->GetVar(String("mat")));
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.AddParam("mat");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		int locIndex = context.GetVar(String("locIndex")).IntValue();
+		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
 		SetShaderValueMatrix(shader, locIndex, mat);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetShaderValueMatrix", i->GetFunc());
+	});
+	raylibModule.SetValue("SetShaderValueMatrix", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("locIndex");
-	i->AddParam("texture");
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		int locIndex = context->GetVar(String("locIndex")).IntValue();
-		Texture2D texture = ValueToTexture(context->GetVar(String("texture")));
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.AddParam("texture");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		int locIndex = context.GetVar(String("locIndex")).IntValue();
+		Texture2D texture = ValueToTexture(context.GetVar(String("texture")));
 		SetShaderValueTexture(shader, locIndex, texture);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetShaderValueTexture", i->GetFunc());
+	});
+	raylibModule.SetValue("SetShaderValueTexture", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("locIndex");
-	i->AddParam("value");
-	i->AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		int locIndex = context->GetVar(String("locIndex")).IntValue();
-		Value value = context->GetVar(String("value"));
-		int uniformType = context->GetVar(String("uniformType")).IntValue();
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.AddParam("value");
+	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		int locIndex = context.GetVar(String("locIndex")).IntValue();
+		Value value = context.GetVar(String("value"));
+		int uniformType = context.GetVar(String("uniformType")).IntValue();
 
 		BinaryData* rawData = nullptr;
-		if (value.type == ValueType::Map) rawData = ValueToRawData(value);
+		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
 		if (rawData != nullptr && rawData->bytes != nullptr && rawData->length > 0) {
 			SetShaderValue(shader, locIndex, rawData->bytes, uniformType);
 			return IntrinsicResult::Null;
@@ -1005,24 +969,24 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		}
 
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetShaderValue", i->GetFunc());
+	});
+	raylibModule.SetValue("SetShaderValue", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->AddParam("locIndex");
-	i->AddParam("value");
-	i->AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
-	i->AddParam("count", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context->GetVar(String("shader")));
-		int locIndex = context->GetVar(String("locIndex")).IntValue();
-		Value value = context->GetVar(String("value"));
-		int uniformType = context->GetVar(String("uniformType")).IntValue();
-		int count = context->GetVar(String("count")).IntValue();
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.AddParam("value");
+	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
+	i.AddParam("count", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		int locIndex = context.GetVar(String("locIndex")).IntValue();
+		Value value = context.GetVar(String("value"));
+		int uniformType = context.GetVar(String("uniformType")).IntValue();
+		int count = context.GetVar(String("count")).IntValue();
 
 		BinaryData* rawData = nullptr;
-		if (value.type == ValueType::Map) rawData = ValueToRawData(value);
+		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
 		if (rawData != nullptr && rawData->bytes != nullptr && rawData->length > 0) {
 			if (count <= 0) count = 1;
 			SetShaderValueV(shader, locIndex, rawData->bytes, uniformType, count);
@@ -1052,13 +1016,13 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		}
 
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetShaderValueV", i->GetFunc());
+	});
+	raylibModule.SetValue("SetShaderValueV", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("shader");
-	i->code = INTRINSIC_LAMBDA {
-		Value shaderValue = context->GetVar(String("shader"));
+	i.AddParam("shader");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value shaderValue = context.GetVar(String("shader"));
 		Shader shader = ValueToShader(shaderValue);
 		UnloadShader(shader);
 
@@ -1072,324 +1036,324 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		SyncShaderValue(shaderValue, Shader{0, NULL});
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadShader", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadShader", i.GetFunc());
 
 	// Timing functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("fps");
-	i->code = INTRINSIC_LAMBDA {
-		SetTargetFPS(context->GetVar(String("fps")).IntValue());
+	i.AddParam("fps");
+	i.set_Code(INTRINSIC_LAMBDA {
+		SetTargetFPS(context.GetVar(String("fps")).IntValue());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetTargetFPS", i->GetFunc());
+	});
+	raylibModule.SetValue("SetTargetFPS", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetFrameTime());
-	};
-	raylibModule.SetValue("GetFrameTime", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFrameTime", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetTime());
-	};
-	raylibModule.SetValue("GetTime", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTime", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetFPS());
-	};
-	raylibModule.SetValue("GetFPS", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFPS", i.GetFunc());
 
 	// Input-related functions: keyboard
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyPressed(context->GetVar(String("key")).IntValue()));
-	};
-	raylibModule.SetValue("IsKeyPressed", i->GetFunc());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsKeyPressed(context.GetVar(String("key")).IntValue()));
+	});
+	raylibModule.SetValue("IsKeyPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyPressedRepeat(context->GetVar(String("key")).IntValue()));
-	};
-	raylibModule.SetValue("IsKeyPressedRepeat", i->GetFunc());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsKeyPressedRepeat(context.GetVar(String("key")).IntValue()));
+	});
+	raylibModule.SetValue("IsKeyPressedRepeat", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyDown(context->GetVar(String("key")).IntValue()));
-	};
-	raylibModule.SetValue("IsKeyDown", i->GetFunc());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsKeyDown(context.GetVar(String("key")).IntValue()));
+	});
+	raylibModule.SetValue("IsKeyDown", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyReleased(context->GetVar(String("key")).IntValue()));
-	};
-	raylibModule.SetValue("IsKeyReleased", i->GetFunc());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsKeyReleased(context.GetVar(String("key")).IntValue()));
+	});
+	raylibModule.SetValue("IsKeyReleased", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyUp(context->GetVar(String("key")).IntValue()));
-	};
-	raylibModule.SetValue("IsKeyUp", i->GetFunc());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsKeyUp(context.GetVar(String("key")).IntValue()));
+	});
+	raylibModule.SetValue("IsKeyUp", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetKeyPressed());
-	};
-	raylibModule.SetValue("GetKeyPressed", i->GetFunc());
+	});
+	raylibModule.SetValue("GetKeyPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetCharPressed());
-	};
-	raylibModule.SetValue("GetCharPressed", i->GetFunc());
+	});
+	raylibModule.SetValue("GetCharPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		const char* keyName = GetKeyName(context->GetVar(String("key")).IntValue());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		const char* keyName = GetKeyName(context.GetVar(String("key")).IntValue());
 		if (keyName == nullptr) return IntrinsicResult(String());
 		return IntrinsicResult(String(keyName));
-	};
-	raylibModule.SetValue("GetKeyName", i->GetFunc());
+	});
+	raylibModule.SetValue("GetKeyName", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("key");
-	i->code = INTRINSIC_LAMBDA {
-		SetExitKey(context->GetVar(String("key")).IntValue());
+	i.AddParam("key");
+	i.set_Code(INTRINSIC_LAMBDA {
+		SetExitKey(context.GetVar(String("key")).IntValue());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetExitKey", i->GetFunc());
+	});
+	raylibModule.SetValue("SetExitKey", i.GetFunc());
 
 	// Input-related functions: gamepad
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsGamepadAvailable(context->GetVar(String("gamepad")).IntValue()));
-	};
-	raylibModule.SetValue("IsGamepadAvailable", i->GetFunc());
+	i.AddParam("gamepad", 0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsGamepadAvailable(context.GetVar(String("gamepad")).IntValue()));
+	});
+	raylibModule.SetValue("IsGamepadAvailable", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(GetGamepadName(context->GetVar(String("gamepad")).IntValue()));
-	};
-	raylibModule.SetValue("GetGamepadName", i->GetFunc());
+	i.AddParam("gamepad", 0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(GetGamepadName(context.GetVar(String("gamepad")).IntValue()));
+	});
+	raylibModule.SetValue("GetGamepadName", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonPressed(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsGamepadButtonPressed", i->GetFunc());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsGamepadButtonPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonDown(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsGamepadButtonDown", i->GetFunc());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsGamepadButtonDown", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonReleased(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsGamepadButtonReleased", i->GetFunc());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsGamepadButtonReleased", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonUp(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsGamepadButtonUp", i->GetFunc());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsGamepadButtonUp", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGamepadButtonPressed());
-	};
-	raylibModule.SetValue("GetGamepadButtonPressed", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGamepadButtonPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(GetGamepadAxisCount(context->GetVar(String("gamepad")).IntValue()));
-	};
-	raylibModule.SetValue("GetGamepadAxisCount", i->GetFunc());
+	i.AddParam("gamepad", 0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(GetGamepadAxisCount(context.GetVar(String("gamepad")).IntValue()));
+	});
+	raylibModule.SetValue("GetGamepadAxisCount", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("axis");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("axis");
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGamepadAxisMovement(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("axis")).IntValue()));
-	};
-	raylibModule.SetValue("GetGamepadAxisMovement", i->GetFunc());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("axis")).IntValue()));
+	});
+	raylibModule.SetValue("GetGamepadAxisMovement", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("mappings");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(SetGamepadMappings(context->GetVar(String("mappings")).ToString().c_str()));
-	};
-	raylibModule.SetValue("SetGamepadMappings", i->GetFunc());
+	i.AddParam("mappings");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(SetGamepadMappings(context.GetVar(String("mappings")).ToString().c_str()));
+	});
+	raylibModule.SetValue("SetGamepadMappings", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gamepad", 0);
-	i->AddParam("leftMotor", 0.0);
-	i->AddParam("rightMotor", 0.0);
-	i->AddParam("duration", 0.0);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("gamepad", 0);
+	i.AddParam("leftMotor", 0.0);
+	i.AddParam("rightMotor", 0.0);
+	i.AddParam("duration", 0.0);
+	i.set_Code(INTRINSIC_LAMBDA {
 		SetGamepadVibration(
-			context->GetVar(String("gamepad")).IntValue(),
-			context->GetVar(String("leftMotor")).FloatValue(),
-			context->GetVar(String("rightMotor")).FloatValue(),
-			context->GetVar(String("duration")).FloatValue());
+			context.GetVar(String("gamepad")).IntValue(),
+			context.GetVar(String("leftMotor")).FloatValue(),
+			context.GetVar(String("rightMotor")).FloatValue(),
+			context.GetVar(String("duration")).FloatValue());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetGamepadVibration", i->GetFunc());
+	});
+	raylibModule.SetValue("SetGamepadVibration", i.GetFunc());
 
 	// Input-related functions: mouse
 
 	i = Intrinsic::Create("");
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonPressed(context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsMouseButtonPressed", i->GetFunc());
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsMouseButtonPressed(context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsMouseButtonPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonDown(context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsMouseButtonDown", i->GetFunc());
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsMouseButtonDown(context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsMouseButtonDown", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonReleased(context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsMouseButtonReleased", i->GetFunc());
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsMouseButtonReleased(context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsMouseButtonReleased", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("button");
-	i->code = INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonUp(context->GetVar(String("button")).IntValue()));
-	};
-	raylibModule.SetValue("IsMouseButtonUp", i->GetFunc());
+	i.AddParam("button");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(IsMouseButtonUp(context.GetVar(String("button")).IntValue()));
+	});
+	raylibModule.SetValue("IsMouseButtonUp", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetMouseX());
-	};
-	raylibModule.SetValue("GetMouseX", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMouseX", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetMouseY());
-	};
-	raylibModule.SetValue("GetMouseY", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMouseY", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 pos = GetMousePosition();
 		ValueDict posMap;
 		posMap.SetValue(String("x"), Value(pos.x));
 		posMap.SetValue(String("y"), Value(pos.y));
-		return IntrinsicResult(posMap);
-	};
-	raylibModule.SetValue("GetMousePosition", i->GetFunc());
+		return IntrinsicResult(DynamicMap(posMap));
+	});
+	raylibModule.SetValue("GetMousePosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 delta = GetMouseDelta();
 		ValueDict deltaMap;
 		deltaMap.SetValue(String("x"), Value(delta.x));
 		deltaMap.SetValue(String("y"), Value(delta.y));
-		return IntrinsicResult(deltaMap);
-	};
-	raylibModule.SetValue("GetMouseDelta", i->GetFunc());
+		return IntrinsicResult(DynamicMap(deltaMap));
+	});
+	raylibModule.SetValue("GetMouseDelta", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetMouseWheelMove());
-	};
-	raylibModule.SetValue("GetMouseWheelMove", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMouseWheelMove", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("cursor");
-	i->code = INTRINSIC_LAMBDA {
-		SetMouseCursor(context->GetVar(String("cursor")).IntValue());
+	i.AddParam("cursor");
+	i.set_Code(INTRINSIC_LAMBDA {
+		SetMouseCursor(context.GetVar(String("cursor")).IntValue());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetMouseCursor", i->GetFunc());
+	});
+	raylibModule.SetValue("SetMouseCursor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		ShowCursor();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("ShowCursor", i->GetFunc());
+	});
+	raylibModule.SetValue("ShowCursor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		HideCursor();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("HideCursor", i->GetFunc());
+	});
+	raylibModule.SetValue("HideCursor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsCursorHidden());
-	};
-	raylibModule.SetValue("IsCursorHidden", i->GetFunc());
+	});
+	raylibModule.SetValue("IsCursorHidden", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsCursorOnScreen());
-	};
-	raylibModule.SetValue("IsCursorOnScreen", i->GetFunc());
+	});
+	raylibModule.SetValue("IsCursorOnScreen", i.GetFunc());
 
 	// Set window title/icon (platform-gated)
 	i = Intrinsic::Create("");
-	i->AddParam("caption", "raylib-miniscript");
-	i->code = INTRINSIC_LAMBDA {
-		String caption = context->GetVar(String("caption")).GetString();
+	i.AddParam("caption", "raylib-miniscript");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String caption = context.GetVar(String("caption")).ToString();
 #ifdef PLATFORM_WEB
 		_SetWindowTitle_Web(caption.c_str());
 #else
 		SetWindowTitle(caption.c_str());
 #endif
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowTitle", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowTitle", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("image");
-	i->code = INTRINSIC_LAMBDA {
-		Image image = ValueToImage(context->GetVar(String("image")));
+	i.AddParam("image");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image image = ValueToImage(context.GetVar(String("image")));
 #ifdef PLATFORM_WEB
 		int size;
 		unsigned char *data = ExportImageToMemory(image, ".png", &size);
@@ -1399,21 +1363,21 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		SetWindowIcon(image);
 #endif
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowIcon", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowIcon", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("images");
-	i->AddParam("count", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("images");
+	i.AddParam("count", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowIcons");
 		return IntrinsicResult::Null;
 	#endif
-		Value imagesValue = context->GetVar(String("images"));
-		int count = context->GetVar(String("count")).IntValue();
+		Value imagesValue = context.GetVar(String("images"));
+		int count = context.GetVar(String("count")).IntValue();
 
-		if (imagesValue.type != ValueType::List) {
+		if (imagesValue.Type() != ValueType::List) {
 			Image image = ValueToImage(imagesValue);
 			SetWindowIcon(image);
 			return IntrinsicResult::Null;
@@ -1429,610 +1393,610 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		SetWindowIcons(images.data(), count);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowIcons", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowIcons", i.GetFunc());
 
 	// Screen dimension functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetScreenWidth());
-	};
-	raylibModule.SetValue("GetScreenWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("GetScreenWidth", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetScreenHeight());
-	};
-	raylibModule.SetValue("GetScreenHeight", i->GetFunc());
+	});
+	raylibModule.SetValue("GetScreenHeight", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetRenderWidth());
-	};
-	raylibModule.SetValue("GetRenderWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("GetRenderWidth", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetRenderHeight());
-	};
-	raylibModule.SetValue("GetRenderHeight", i->GetFunc());
+	});
+	raylibModule.SetValue("GetRenderHeight", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("width", Value(960));
-	i->AddParam("height", Value(640));
-	i->AddParam("title", Value("raylib-miniscript"));
-	i->code = INTRINSIC_LAMBDA {
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
-		String title = context->GetVar(String("title")).GetString();
+	i.AddParam("width", Value(960));
+	i.AddParam("height", Value(640));
+	i.AddParam("title", Value("raylib-miniscript"));
+	i.set_Code(INTRINSIC_LAMBDA {
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
+		String title = context.GetVar(String("title")).ToString();
 		InitWindow(width, height, title.c_str());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("InitWindow", i->GetFunc());
+	});
+	raylibModule.SetValue("InitWindow", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		CloseWindow();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("CloseWindow", i->GetFunc());
+	});
+	raylibModule.SetValue("CloseWindow", i.GetFunc());
 
 	// Window state functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(WindowShouldClose());
-	};
-	raylibModule.SetValue("WindowShouldClose", i->GetFunc());
+	});
+	raylibModule.SetValue("WindowShouldClose", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsWindowFullscreen());
-	};
-	raylibModule.SetValue("IsWindowFullscreen", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowFullscreen", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowHidden");
 		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowHidden());
-	};
-	raylibModule.SetValue("IsWindowHidden", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowHidden", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMinimized");
 		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowMinimized());
-	};
-	raylibModule.SetValue("IsWindowMinimized", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowMinimized", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMaximized");
 		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowMaximized());
-	};
-	raylibModule.SetValue("IsWindowMaximized", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowMaximized", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowResized");
 		return IntrinsicResult(Value::Truth(false));
 #endif
 		return IntrinsicResult(IsWindowResized());
-	};
-	raylibModule.SetValue("IsWindowResized", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowResized", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("flags");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("flags");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowState");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
 		return IntrinsicResult(IsWindowState(flags));
-	};
-	raylibModule.SetValue("IsWindowState", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowState", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("flags");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("flags");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowState");
 		return IntrinsicResult::Null;
 	#endif
-		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
 		SetWindowState(flags);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowState", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowState", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("flags");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("flags");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ClearWindowState");
 		return IntrinsicResult::Null;
 	#endif
-		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
 		ClearWindowState(flags);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("ClearWindowState", i->GetFunc());
+	});
+	raylibModule.SetValue("ClearWindowState", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		ToggleFullscreen();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("ToggleFullscreen", i->GetFunc());
+	});
+	raylibModule.SetValue("ToggleFullscreen", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ToggleBorderlessWindowed");
 		return IntrinsicResult::Null;
 	#endif
 		ToggleBorderlessWindowed();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("ToggleBorderlessWindowed", i->GetFunc());
+	});
+	raylibModule.SetValue("ToggleBorderlessWindowed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("MaximizeWindow");
 		return IntrinsicResult::Null;
 	#endif
 		MaximizeWindow();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("MaximizeWindow", i->GetFunc());
+	});
+	raylibModule.SetValue("MaximizeWindow", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("MinimizeWindow");
 		return IntrinsicResult::Null;
 	#endif
 		MinimizeWindow();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("MinimizeWindow", i->GetFunc());
+	});
+	raylibModule.SetValue("MinimizeWindow", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("RestoreWindow");
 		return IntrinsicResult::Null;
 	#endif
 		RestoreWindow();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("RestoreWindow", i->GetFunc());
+	});
+	raylibModule.SetValue("RestoreWindow", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("x");
-	i->AddParam("y");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("x");
+	i.AddParam("y");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowPosition");
 		return IntrinsicResult::Null;
 	#endif
-		int x = context->GetVar(String("x")).IntValue();
-		int y = context->GetVar(String("y")).IntValue();
+		int x = context.GetVar(String("x")).IntValue();
+		int y = context.GetVar(String("y")).IntValue();
 		SetWindowPosition(x, y);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowPosition", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowPosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowMonitor");
 		return IntrinsicResult::Null;
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		SetWindowMonitor(monitor);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowMonitor", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowMonitor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("width");
-	i->AddParam("height");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("width");
+	i.AddParam("height");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowMinSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		SetWindowMinSize(width, height);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowMinSize", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowMinSize", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("width");
-	i->AddParam("height");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("width");
+	i.AddParam("height");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowMaxSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		SetWindowMaxSize(width, height);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowMaxSize", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowMaxSize", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("width");
-	i->AddParam("height");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("width");
+	i.AddParam("height");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		SetWindowSize(width, height);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowSize", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowSize", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("opacity");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("opacity");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowOpacity");
 		return IntrinsicResult::Null;
 	#endif
-		float opacity = context->GetVar(String("opacity")).FloatValue();
+		float opacity = context.GetVar(String("opacity")).FloatValue();
 		SetWindowOpacity(opacity);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowOpacity", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowOpacity", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetWindowFocused");
 		return IntrinsicResult::Null;
 	#endif
 		SetWindowFocused();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetWindowFocused", i->GetFunc());
+	});
+	raylibModule.SetValue("SetWindowFocused", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWindowHandle");
 		return IntrinsicResult(PointerToValue(nullptr));
 	#endif
 		return IntrinsicResult(PointerToValue(GetWindowHandle()));
-	};
-	raylibModule.SetValue("GetWindowHandle", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWindowHandle", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorCount");
 		return IntrinsicResult(Value::zero);
 	#endif
 		return IntrinsicResult(GetMonitorCount());
-	};
-	raylibModule.SetValue("GetMonitorCount", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorCount", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetCurrentMonitor");
 		return IntrinsicResult(Value::zero);
 	#endif
 		return IntrinsicResult(GetCurrentMonitor());
-	};
-	raylibModule.SetValue("GetCurrentMonitor", i->GetFunc());
+	});
+	raylibModule.SetValue("GetCurrentMonitor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorPosition");
 		return IntrinsicResult(Vector2ToValue(Vector2{0, 0}));
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(Vector2ToValue(GetMonitorPosition(monitor)));
-	};
-	raylibModule.SetValue("GetMonitorPosition", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorPosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorWidth");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(GetMonitorWidth(monitor));
-	};
-	raylibModule.SetValue("GetMonitorWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorWidth", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorHeight");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(GetMonitorHeight(monitor));
-	};
-	raylibModule.SetValue("GetMonitorHeight", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorHeight", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorPhysicalWidth");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalWidth(monitor));
-	};
-	raylibModule.SetValue("GetMonitorPhysicalWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorPhysicalWidth", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorPhysicalHeight");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalHeight(monitor));
-	};
-	raylibModule.SetValue("GetMonitorPhysicalHeight", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorPhysicalHeight", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorRefreshRate");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		return IntrinsicResult(GetMonitorRefreshRate(monitor));
-	};
-	raylibModule.SetValue("GetMonitorRefreshRate", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorRefreshRate", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("monitor", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("monitor", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorName");
 		return IntrinsicResult(String());
 	#endif
-		int monitor = context->GetVar(String("monitor")).IntValue();
+		int monitor = context.GetVar(String("monitor")).IntValue();
 		String name = GetMonitorName(monitor);
 		return IntrinsicResult(name);
-	};
-	raylibModule.SetValue("GetMonitorName", i->GetFunc());
+	});
+	raylibModule.SetValue("GetMonitorName", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWindowPosition");
 		return IntrinsicResult(Vector2ToValue(Vector2{0, 0}));
 	#endif
 		return IntrinsicResult(Vector2ToValue(GetWindowPosition()));
-	};
-	raylibModule.SetValue("GetWindowPosition", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWindowPosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWindowScaleDPI");
 		return IntrinsicResult(Vector2ToValue(Vector2{0, 0}));
 	#endif
 		return IntrinsicResult(Vector2ToValue(GetWindowScaleDPI()));
-	};
-	raylibModule.SetValue("GetWindowScaleDPI", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWindowScaleDPI", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsWindowFocused());
-	};
-	raylibModule.SetValue("IsWindowFocused", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowFocused", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsWindowReady());
-	};
-	raylibModule.SetValue("IsWindowReady", i->GetFunc());
+	});
+	raylibModule.SetValue("IsWindowReady", i.GetFunc());
 
 	// Additional mouse functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 wheelMove = GetMouseWheelMoveV();
 		ValueDict wheelMap;
 		wheelMap.SetValue(String("x"), Value(wheelMove.x));
 		wheelMap.SetValue(String("y"), Value(wheelMove.y));
-		return IntrinsicResult(wheelMap);
-	};
-	raylibModule.SetValue("GetMouseWheelMoveV", i->GetFunc());
+		return IntrinsicResult(DynamicMap(wheelMap));
+	});
+	raylibModule.SetValue("GetMouseWheelMoveV", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("x");
-	i->AddParam("y");
-	i->code = INTRINSIC_LAMBDA {
-		int x = context->GetVar(String("x")).IntValue();
-		int y = context->GetVar(String("y")).IntValue();
+	i.AddParam("x");
+	i.AddParam("y");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int x = context.GetVar(String("x")).IntValue();
+		int y = context.GetVar(String("y")).IntValue();
 		SetMousePosition(x, y);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetMousePosition", i->GetFunc());
+	});
+	raylibModule.SetValue("SetMousePosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("offsetX");
-	i->AddParam("offsetY");
-	i->code = INTRINSIC_LAMBDA {
-		int offsetX = context->GetVar(String("offsetX")).IntValue();
-		int offsetY = context->GetVar(String("offsetY")).IntValue();
+	i.AddParam("offsetX");
+	i.AddParam("offsetY");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int offsetX = context.GetVar(String("offsetX")).IntValue();
+		int offsetY = context.GetVar(String("offsetY")).IntValue();
 		SetMouseOffset(offsetX, offsetY);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetMouseOffset", i->GetFunc());
+	});
+	raylibModule.SetValue("SetMouseOffset", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("scaleX");
-	i->AddParam("scaleY");
-	i->code = INTRINSIC_LAMBDA {
-		float scaleX = context->GetVar(String("scaleX")).FloatValue();
-		float scaleY = context->GetVar(String("scaleY")).FloatValue();
+	i.AddParam("scaleX");
+	i.AddParam("scaleY");
+	i.set_Code(INTRINSIC_LAMBDA {
+		float scaleX = context.GetVar(String("scaleX")).FloatValue();
+		float scaleY = context.GetVar(String("scaleY")).FloatValue();
 		SetMouseScale(scaleX, scaleY);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetMouseScale", i->GetFunc());
+	});
+	raylibModule.SetValue("SetMouseScale", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EnableCursor();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EnableCursor", i->GetFunc());
+	});
+	raylibModule.SetValue("EnableCursor", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		DisableCursor();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DisableCursor", i->GetFunc());
+	});
+	raylibModule.SetValue("DisableCursor", i.GetFunc());
 
 	// Touch input functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetTouchX());
-	};
-	raylibModule.SetValue("GetTouchX", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTouchX", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetTouchY());
-	};
-	raylibModule.SetValue("GetTouchY", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTouchY", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("index", 0);
-	i->code = INTRINSIC_LAMBDA {
-		int index = context->GetVar(String("index")).IntValue();
+	i.AddParam("index", 0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		int index = context.GetVar(String("index")).IntValue();
 		Vector2 pos = GetTouchPosition(index);
 		ValueDict posMap;
 		posMap.SetValue(String("x"), Value(pos.x));
 		posMap.SetValue(String("y"), Value(pos.y));
-		return IntrinsicResult(posMap);
-	};
-	raylibModule.SetValue("GetTouchPosition", i->GetFunc());
+		return IntrinsicResult(DynamicMap(posMap));
+	});
+	raylibModule.SetValue("GetTouchPosition", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("index", 0);
-	i->code = INTRINSIC_LAMBDA {
-		int index = context->GetVar(String("index")).IntValue();
+	i.AddParam("index", 0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		int index = context.GetVar(String("index")).IntValue();
 		return IntrinsicResult(GetTouchPointId(index));
-	};
-	raylibModule.SetValue("GetTouchPointId", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTouchPointId", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetTouchPointCount());
-	};
-	raylibModule.SetValue("GetTouchPointCount", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTouchPointCount", i.GetFunc());
 
 	// Gesture functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("flags");
-	i->code = INTRINSIC_LAMBDA {
-		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
+	i.AddParam("flags");
+	i.set_Code(INTRINSIC_LAMBDA {
+		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
 		SetGesturesEnabled(flags);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetGesturesEnabled", i->GetFunc());
+	});
+	raylibModule.SetValue("SetGesturesEnabled", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("gesture");
-	i->code = INTRINSIC_LAMBDA {
-		int gesture = context->GetVar(String("gesture")).IntValue();
+	i.AddParam("gesture");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int gesture = context.GetVar(String("gesture")).IntValue();
 		return IntrinsicResult(IsGestureDetected(gesture));
-	};
-	raylibModule.SetValue("IsGestureDetected", i->GetFunc());
+	});
+	raylibModule.SetValue("IsGestureDetected", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureDetected());
-	};
-	raylibModule.SetValue("GetGestureDetected", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGestureDetected", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureHoldDuration());
-	};
-	raylibModule.SetValue("GetGestureHoldDuration", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGestureHoldDuration", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 dragVector = GetGestureDragVector();
 		ValueDict dragMap;
 		dragMap.SetValue(String("x"), Value(dragVector.x));
 		dragMap.SetValue(String("y"), Value(dragVector.y));
-		return IntrinsicResult(dragMap);
-	};
-	raylibModule.SetValue("GetGestureDragVector", i->GetFunc());
+		return IntrinsicResult(DynamicMap(dragMap));
+	});
+	raylibModule.SetValue("GetGestureDragVector", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureDragAngle());
-	};
-	raylibModule.SetValue("GetGestureDragAngle", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGestureDragAngle", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 pinchVector = GetGesturePinchVector();
 		ValueDict pinchMap;
 		pinchMap.SetValue(String("x"), Value(pinchVector.x));
 		pinchMap.SetValue(String("y"), Value(pinchVector.y));
-		return IntrinsicResult(pinchMap);
-	};
-	raylibModule.SetValue("GetGesturePinchVector", i->GetFunc());
+		return IntrinsicResult(DynamicMap(pinchMap));
+	});
+	raylibModule.SetValue("GetGesturePinchVector", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGesturePinchAngle());
-	};
-	raylibModule.SetValue("GetGesturePinchAngle", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGesturePinchAngle", i.GetFunc());
 
 	// 2D rendering mode functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2042,20 +2006,20 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
 		BeginMode2D(camera);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginMode2D", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginMode2D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndMode2D();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndMode2D", i->GetFunc());
+	});
+	raylibModule.SetValue("EndMode2D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2065,15 +2029,15 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
 
 		return IntrinsicResult(MatrixToValue(GetCameraMatrix2D(camera)));
-	};
-	raylibModule.SetValue("GetCameraMatrix2D", i->GetFunc());
+	});
+	raylibModule.SetValue("GetCameraMatrix2D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2086,16 +2050,16 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		ValueDict resultMap;
 		resultMap.SetValue(String("x"), Value(result.x));
 		resultMap.SetValue(String("y"), Value(result.y));
-		return IntrinsicResult(resultMap);
-	};
-	raylibModule.SetValue("GetWorldToScreen2D", i->GetFunc());
+		return IntrinsicResult(DynamicMap(resultMap));
+	});
+	raylibModule.SetValue("GetWorldToScreen2D", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("position");
-	i->AddParam("camera");
-	i->code = INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+	i.AddParam("position");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2108,137 +2072,137 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		ValueDict resultMap;
 		resultMap.SetValue(String("x"), Value(result.x));
 		resultMap.SetValue(String("y"), Value(result.y));
-		return IntrinsicResult(resultMap);
-	};
-	raylibModule.SetValue("GetScreenToWorld2D", i->GetFunc());
+		return IntrinsicResult(DynamicMap(resultMap));
+	});
+	raylibModule.SetValue("GetScreenToWorld2D", i.GetFunc());
 
 	// Blend mode functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("mode");
-	i->code = INTRINSIC_LAMBDA {
-		int mode = context->GetVar(String("mode")).IntValue();
+	i.AddParam("mode");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int mode = context.GetVar(String("mode")).IntValue();
 		BeginBlendMode(mode);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginBlendMode", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginBlendMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndBlendMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndBlendMode", i->GetFunc());
+	});
+	raylibModule.SetValue("EndBlendMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("glSrcFactor");
-	i->AddParam("glDstFactor");
-	i->AddParam("glEquation");
-	i->code = INTRINSIC_LAMBDA {
-		int glSrcFactor = context->GetVar(String("glSrcFactor")).IntValue();
-		int glDstFactor = context->GetVar(String("glDstFactor")).IntValue();
-		int glEquation = context->GetVar(String("glEquation")).IntValue();
+	i.AddParam("glSrcFactor");
+	i.AddParam("glDstFactor");
+	i.AddParam("glEquation");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int glSrcFactor = context.GetVar(String("glSrcFactor")).IntValue();
+		int glDstFactor = context.GetVar(String("glDstFactor")).IntValue();
+		int glEquation = context.GetVar(String("glEquation")).IntValue();
 		rlSetBlendFactors(glSrcFactor, glDstFactor, glEquation);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetBlendFactors", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetBlendFactors", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("glSrcRGB");
-	i->AddParam("glDstRGB");
-	i->AddParam("glSrcAlpha");
-	i->AddParam("glDstAlpha");
-	i->AddParam("glEqRGB");
-	i->AddParam("glEqAlpha");
-	i->code = INTRINSIC_LAMBDA {
-		int glSrcRGB = context->GetVar(String("glSrcRGB")).IntValue();
-		int glDstRGB = context->GetVar(String("glDstRGB")).IntValue();
-		int glSrcAlpha = context->GetVar(String("glSrcAlpha")).IntValue();
-		int glDstAlpha = context->GetVar(String("glDstAlpha")).IntValue();
-		int glEqRGB = context->GetVar(String("glEqRGB")).IntValue();
-		int glEqAlpha = context->GetVar(String("glEqAlpha")).IntValue();
+	i.AddParam("glSrcRGB");
+	i.AddParam("glDstRGB");
+	i.AddParam("glSrcAlpha");
+	i.AddParam("glDstAlpha");
+	i.AddParam("glEqRGB");
+	i.AddParam("glEqAlpha");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int glSrcRGB = context.GetVar(String("glSrcRGB")).IntValue();
+		int glDstRGB = context.GetVar(String("glDstRGB")).IntValue();
+		int glSrcAlpha = context.GetVar(String("glSrcAlpha")).IntValue();
+		int glDstAlpha = context.GetVar(String("glDstAlpha")).IntValue();
+		int glEqRGB = context.GetVar(String("glEqRGB")).IntValue();
+		int glEqAlpha = context.GetVar(String("glEqAlpha")).IntValue();
 		rlSetBlendFactorsSeparate(glSrcRGB, glDstRGB, glSrcAlpha, glDstAlpha, glEqRGB, glEqAlpha);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetBlendFactorsSeparate", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetBlendFactorsSeparate", i.GetFunc());
 
 	// Matrix operations (rlgl)
 
 	i = Intrinsic::Create("");
-	i->AddParam("mode");
-	i->code = INTRINSIC_LAMBDA {
-		int mode = context->GetVar(String("mode")).IntValue();
+	i.AddParam("mode");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int mode = context.GetVar(String("mode")).IntValue();
 		rlMatrixMode(mode);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlMatrixMode", i->GetFunc());
+	});
+	raylibModule.SetValue("rlMatrixMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlPushMatrix();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlPushMatrix", i->GetFunc());
+	});
+	raylibModule.SetValue("rlPushMatrix", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlPopMatrix();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlPopMatrix", i->GetFunc());
+	});
+	raylibModule.SetValue("rlPopMatrix", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlLoadIdentity();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlLoadIdentity", i->GetFunc());
+	});
+	raylibModule.SetValue("rlLoadIdentity", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("x", Value::zero);
-	i->AddParam("y", Value::zero);
-	i->AddParam("z", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		float x = context->GetVar(String("x")).FloatValue();
-		float y = context->GetVar(String("y")).FloatValue();
-		float z = context->GetVar(String("z")).FloatValue();
+	i.AddParam("x", Value::zero);
+	i.AddParam("y", Value::zero);
+	i.AddParam("z", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		float x = context.GetVar(String("x")).FloatValue();
+		float y = context.GetVar(String("y")).FloatValue();
+		float z = context.GetVar(String("z")).FloatValue();
 		rlTranslatef(x, y, z);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlTranslatef", i->GetFunc());
+	});
+	raylibModule.SetValue("rlTranslatef", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("angle", Value::zero);
-	i->AddParam("x", Value::zero);
-	i->AddParam("y", Value::zero);
-	i->AddParam("z", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		float angle = context->GetVar(String("angle")).FloatValue();
-		float x = context->GetVar(String("x")).FloatValue();
-		float y = context->GetVar(String("y")).FloatValue();
-		float z = context->GetVar(String("z")).FloatValue();
+	i.AddParam("angle", Value::zero);
+	i.AddParam("x", Value::zero);
+	i.AddParam("y", Value::zero);
+	i.AddParam("z", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		float angle = context.GetVar(String("angle")).FloatValue();
+		float x = context.GetVar(String("x")).FloatValue();
+		float y = context.GetVar(String("y")).FloatValue();
+		float z = context.GetVar(String("z")).FloatValue();
 		rlRotatef(angle, x, y, z);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlRotatef", i->GetFunc());
+	});
+	raylibModule.SetValue("rlRotatef", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("x", Value(1));
-	i->AddParam("y", Value(1));
-	i->AddParam("z", Value(1));
-	i->code = INTRINSIC_LAMBDA {
-		float x = context->GetVar(String("x")).FloatValue();
-		float y = context->GetVar(String("y")).FloatValue();
-		float z = context->GetVar(String("z")).FloatValue();
+	i.AddParam("x", Value(1));
+	i.AddParam("y", Value(1));
+	i.AddParam("z", Value(1));
+	i.set_Code(INTRINSIC_LAMBDA {
+		float x = context.GetVar(String("x")).FloatValue();
+		float y = context.GetVar(String("y")).FloatValue();
+		float z = context.GetVar(String("z")).FloatValue();
 		rlScalef(x, y, z);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlScalef", i->GetFunc());
+	});
+	raylibModule.SetValue("rlScalef", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("matf");
-	i->code = INTRINSIC_LAMBDA {
-		Value listVal = context->GetVar(String("matf"));
+	i.AddParam("matf");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value listVal = context.GetVar(String("matf"));
 		ValueList list = listVal.GetList();
 		float matf[16];
 		for (int j = 0; j < 16; j++) {
@@ -2246,390 +2210,390 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		}
 		rlMultMatrixf(matf);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlMultMatrixf", i->GetFunc());
+	});
+	raylibModule.SetValue("rlMultMatrixf", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("left");
-	i->AddParam("right");
-	i->AddParam("bottom");
-	i->AddParam("top");
-	i->AddParam("znear");
-	i->AddParam("zfar");
-	i->code = INTRINSIC_LAMBDA {
-		double left = context->GetVar(String("left")).FloatValue();
-		double right = context->GetVar(String("right")).FloatValue();
-		double bottom = context->GetVar(String("bottom")).FloatValue();
-		double top = context->GetVar(String("top")).FloatValue();
-		double znear = context->GetVar(String("znear")).FloatValue();
-		double zfar = context->GetVar(String("zfar")).FloatValue();
+	i.AddParam("left");
+	i.AddParam("right");
+	i.AddParam("bottom");
+	i.AddParam("top");
+	i.AddParam("znear");
+	i.AddParam("zfar");
+	i.set_Code(INTRINSIC_LAMBDA {
+		double left = context.GetVar(String("left")).FloatValue();
+		double right = context.GetVar(String("right")).FloatValue();
+		double bottom = context.GetVar(String("bottom")).FloatValue();
+		double top = context.GetVar(String("top")).FloatValue();
+		double znear = context.GetVar(String("znear")).FloatValue();
+		double zfar = context.GetVar(String("zfar")).FloatValue();
 		rlFrustum(left, right, bottom, top, znear, zfar);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlFrustum", i->GetFunc());
+	});
+	raylibModule.SetValue("rlFrustum", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("left");
-	i->AddParam("right");
-	i->AddParam("bottom");
-	i->AddParam("top");
-	i->AddParam("znear");
-	i->AddParam("zfar");
-	i->code = INTRINSIC_LAMBDA {
-		double left = context->GetVar(String("left")).FloatValue();
-		double right = context->GetVar(String("right")).FloatValue();
-		double bottom = context->GetVar(String("bottom")).FloatValue();
-		double top = context->GetVar(String("top")).FloatValue();
-		double znear = context->GetVar(String("znear")).FloatValue();
-		double zfar = context->GetVar(String("zfar")).FloatValue();
+	i.AddParam("left");
+	i.AddParam("right");
+	i.AddParam("bottom");
+	i.AddParam("top");
+	i.AddParam("znear");
+	i.AddParam("zfar");
+	i.set_Code(INTRINSIC_LAMBDA {
+		double left = context.GetVar(String("left")).FloatValue();
+		double right = context.GetVar(String("right")).FloatValue();
+		double bottom = context.GetVar(String("bottom")).FloatValue();
+		double top = context.GetVar(String("top")).FloatValue();
+		double znear = context.GetVar(String("znear")).FloatValue();
+		double zfar = context.GetVar(String("zfar")).FloatValue();
 		rlOrtho(left, right, bottom, top, znear, zfar);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlOrtho", i->GetFunc());
+	});
+	raylibModule.SetValue("rlOrtho", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("x");
-	i->AddParam("y");
-	i->AddParam("width");
-	i->AddParam("height");
-	i->code = INTRINSIC_LAMBDA {
-		int x = context->GetVar(String("x")).IntValue();
-		int y = context->GetVar(String("y")).IntValue();
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+	i.AddParam("x");
+	i.AddParam("y");
+	i.AddParam("width");
+	i.AddParam("height");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int x = context.GetVar(String("x")).IntValue();
+		int y = context.GetVar(String("y")).IntValue();
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		rlViewport(x, y, width, height);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlViewport", i->GetFunc());
+	});
+	raylibModule.SetValue("rlViewport", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("nearPlane");
-	i->AddParam("farPlane");
-	i->code = INTRINSIC_LAMBDA {
-		double nearPlane = context->GetVar(String("nearPlane")).FloatValue();
-		double farPlane = context->GetVar(String("farPlane")).FloatValue();
+	i.AddParam("nearPlane");
+	i.AddParam("farPlane");
+	i.set_Code(INTRINSIC_LAMBDA {
+		double nearPlane = context.GetVar(String("nearPlane")).FloatValue();
+		double farPlane = context.GetVar(String("farPlane")).FloatValue();
 		rlSetClipPlanes(nearPlane, farPlane);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetClipPlanes", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetClipPlanes", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value(rlGetCullDistanceNear()));
-	};
-	raylibModule.SetValue("rlGetCullDistanceNear", i->GetFunc());
+	});
+	raylibModule.SetValue("rlGetCullDistanceNear", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value(rlGetCullDistanceFar()));
-	};
-	raylibModule.SetValue("rlGetCullDistanceFar", i->GetFunc());
+	});
+	raylibModule.SetValue("rlGetCullDistanceFar", i.GetFunc());
 
 	// Render state toggles (rlgl)
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlEnableBackfaceCulling();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlEnableBackfaceCulling", i->GetFunc());
+	});
+	raylibModule.SetValue("rlEnableBackfaceCulling", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDisableBackfaceCulling();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDisableBackfaceCulling", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDisableBackfaceCulling", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlEnableDepthTest();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlEnableDepthTest", i->GetFunc());
+	});
+	raylibModule.SetValue("rlEnableDepthTest", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDisableDepthTest();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDisableDepthTest", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDisableDepthTest", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlEnableDepthMask();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlEnableDepthMask", i->GetFunc());
+	});
+	raylibModule.SetValue("rlEnableDepthMask", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDisableDepthMask();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDisableDepthMask", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDisableDepthMask", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlEnableWireMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlEnableWireMode", i->GetFunc());
+	});
+	raylibModule.SetValue("rlEnableWireMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDisableWireMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDisableWireMode", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDisableWireMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlEnableSmoothLines();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlEnableSmoothLines", i->GetFunc());
+	});
+	raylibModule.SetValue("rlEnableSmoothLines", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDisableSmoothLines();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDisableSmoothLines", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDisableSmoothLines", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("width", Value(1));
-	i->code = INTRINSIC_LAMBDA {
-		float width = context->GetVar(String("width")).FloatValue();
+	i.AddParam("width", Value(1));
+	i.set_Code(INTRINSIC_LAMBDA {
+		float width = context.GetVar(String("width")).FloatValue();
 		rlSetLineWidth(width);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetLineWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetLineWidth", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value(rlGetLineWidth()));
-	};
-	raylibModule.SetValue("rlGetLineWidth", i->GetFunc());
+	});
+	raylibModule.SetValue("rlGetLineWidth", i.GetFunc());
 
 	// Render batch (rlgl)
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		rlDrawRenderBatchActive();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlDrawRenderBatchActive", i->GetFunc());
+	});
+	raylibModule.SetValue("rlDrawRenderBatchActive", i.GetFunc());
 
 	// Get/set matrices (rlgl)
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(MatrixToValue(rlGetMatrixModelview()));
-	};
-	raylibModule.SetValue("rlGetMatrixModelview", i->GetFunc());
+	});
+	raylibModule.SetValue("rlGetMatrixModelview", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(MatrixToValue(rlGetMatrixProjection()));
-	};
-	raylibModule.SetValue("rlGetMatrixProjection", i->GetFunc());
+	});
+	raylibModule.SetValue("rlGetMatrixProjection", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("proj");
-	i->code = INTRINSIC_LAMBDA {
-		Matrix proj = ValueToMatrix(context->GetVar(String("proj")));
+	i.AddParam("proj");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Matrix proj = ValueToMatrix(context.GetVar(String("proj")));
 		rlSetMatrixProjection(proj);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetMatrixProjection", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetMatrixProjection", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("view");
-	i->code = INTRINSIC_LAMBDA {
-		Matrix view = ValueToMatrix(context->GetVar(String("view")));
+	i.AddParam("view");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Matrix view = ValueToMatrix(context.GetVar(String("view")));
 		rlSetMatrixModelview(view);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("rlSetMatrixModelview", i->GetFunc());
+	});
+	raylibModule.SetValue("rlSetMatrixModelview", i.GetFunc());
 
 	// Scissor mode functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("x");
-	i->AddParam("y");
-	i->AddParam("width");
-	i->AddParam("height");
-	i->code = INTRINSIC_LAMBDA {
-		int x = context->GetVar(String("x")).IntValue();
-		int y = context->GetVar(String("y")).IntValue();
-		int width = context->GetVar(String("width")).IntValue();
-		int height = context->GetVar(String("height")).IntValue();
+	i.AddParam("x");
+	i.AddParam("y");
+	i.AddParam("width");
+	i.AddParam("height");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int x = context.GetVar(String("x")).IntValue();
+		int y = context.GetVar(String("y")).IntValue();
+		int width = context.GetVar(String("width")).IntValue();
+		int height = context.GetVar(String("height")).IntValue();
 		BeginScissorMode(x, y, width, height);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginScissorMode", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginScissorMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		EndScissorMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndScissorMode", i->GetFunc());
+	});
+	raylibModule.SetValue("EndScissorMode", i.GetFunc());
 
 	// VR stereo functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("config");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("config");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("BeginVrStereoMode");
 		return IntrinsicResult::Null;
 	#endif
-		VrStereoConfig config = ValueToVrStereoConfig(context->GetVar(String("config")));
+		VrStereoConfig config = ValueToVrStereoConfig(context.GetVar(String("config")));
 		BeginVrStereoMode(config);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("BeginVrStereoMode", i->GetFunc());
+	});
+	raylibModule.SetValue("BeginVrStereoMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("EndVrStereoMode");
 		return IntrinsicResult::Null;
 	#endif
 		EndVrStereoMode();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EndVrStereoMode", i->GetFunc());
+	});
+	raylibModule.SetValue("EndVrStereoMode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("device");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("device");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadVrStereoConfig");
 		return IntrinsicResult::Null;
 	#endif
-		VrDeviceInfo device = ValueToVrDeviceInfo(context->GetVar(String("device")));
+		VrDeviceInfo device = ValueToVrDeviceInfo(context.GetVar(String("device")));
 		VrStereoConfig config = LoadVrStereoConfig(device);
 		return IntrinsicResult(VrStereoConfigToValue(config));
-	};
-	raylibModule.SetValue("LoadVrStereoConfig", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadVrStereoConfig", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("config");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("config");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("UnloadVrStereoConfig");
 		return IntrinsicResult::Null;
 	#endif
-		VrStereoConfig config = ValueToVrStereoConfig(context->GetVar(String("config")));
+		VrStereoConfig config = ValueToVrStereoConfig(context.GetVar(String("config")));
 		UnloadVrStereoConfig(config);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadVrStereoConfig", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadVrStereoConfig", i.GetFunc());
 
 	// Utility functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("url");
-	i->code = INTRINSIC_LAMBDA {
-		String url = context->GetVar(String("url")).ToString();
+	i.AddParam("url");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String url = context.GetVar(String("url")).ToString();
 		OpenURL(url.c_str());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("OpenURL", i->GetFunc());
+	});
+	raylibModule.SetValue("OpenURL", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		SetClipboardText(text.c_str());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetClipboardText", i->GetFunc());
+	});
+	raylibModule.SetValue("SetClipboardText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetClipboardText());
-	};
-	raylibModule.SetValue("GetClipboardText", i->GetFunc());
+	});
+	raylibModule.SetValue("GetClipboardText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("EnableEventWaiting");
 		return IntrinsicResult::Null;
 	#endif
 		EnableEventWaiting();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("EnableEventWaiting", i->GetFunc());
+	});
+	raylibModule.SetValue("EnableEventWaiting", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("DisableEventWaiting");
 		return IntrinsicResult::Null;
 	#endif
 		DisableEventWaiting();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DisableEventWaiting", i->GetFunc());
+	});
+	raylibModule.SetValue("DisableEventWaiting", i.GetFunc());
 
 #if !defined(PLATFORM_WEB)
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Image image = GetClipboardImage();
 		rcImage++;
 		return IntrinsicResult(ImageToValue(image));
-	};
-	raylibModule.SetValue("GetClipboardImage", i->GetFunc());
+	});
+	raylibModule.SetValue("GetClipboardImage", i.GetFunc());
 #endif
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("ext");
-	i->code = INTRINSIC_LAMBDA {
-		String fileName = context->GetVar(String("fileName")).ToString();
-		String ext = context->GetVar(String("ext")).ToString();
+	i.AddParam("fileName");
+	i.AddParam("ext");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String fileName = context.GetVar(String("fileName")).ToString();
+		String ext = context.GetVar(String("ext")).ToString();
 		return IntrinsicResult(IsFileExtension(fileName.c_str(), ext.c_str()));
-	};
-	raylibModule.SetValue("IsFileExtension", i->GetFunc());
+	});
+	raylibModule.SetValue("IsFileExtension", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
-		String fileName = context->GetVar(String("fileName")).ToString();
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String fileName = context.GetVar(String("fileName")).ToString();
 		TakeScreenshot(fileName.c_str());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("TakeScreenshot", i->GetFunc());
+	});
+	raylibModule.SetValue("TakeScreenshot", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("flags");
-	i->code = INTRINSIC_LAMBDA {
-		unsigned int flags = (unsigned int)context->GetVar(String("flags")).IntValue();
+	i.AddParam("flags");
+	i.set_Code(INTRINSIC_LAMBDA {
+		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
 		SetConfigFlags(flags);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetConfigFlags", i->GetFunc());
+	});
+	raylibModule.SetValue("SetConfigFlags", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize");
-	i->code = INTRINSIC_LAMBDA {
-		Value dataVal = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataVal = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		const unsigned char* bytes = nullptr;
 		String tempStr;
 
-		if (dataVal.type == ValueType::String) {
+		if (dataVal.Type() == ValueType::String) {
 			tempStr = dataVal.ToString();
 			bytes = (const unsigned char*)tempStr.c_str();
 			if (dataSize <= 0) dataSize = tempStr.LengthB();
-		} else if (dataVal.type == ValueType::Map) {
+		} else if (dataVal.Type() == ValueType::Map) {
 			BinaryData* rawData = ValueToRawData(dataVal);
 			if (rawData != nullptr) {
 				bytes = rawData->bytes;
@@ -2646,63 +2610,63 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		String result(encoded);
 		if (encoded != nullptr) MemFree(encoded);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("EncodeDataBase64", i->GetFunc());
+	});
+	raylibModule.SetValue("EncodeDataBase64", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("seconds", 1.0);
-	i->code = INTRINSIC_LAMBDA {
-		double seconds = context->GetVar(String("seconds")).DoubleValue();
+	i.AddParam("seconds", 1.0);
+	i.set_Code(INTRINSIC_LAMBDA {
+		double seconds = context.GetVar(String("seconds")).DoubleValue();
 		WaitTime(seconds);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("WaitTime", i->GetFunc());
+	});
+	raylibModule.SetValue("WaitTime", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SwapScreenBuffer");
 		return IntrinsicResult::Null;
 	#endif
 		SwapScreenBuffer();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SwapScreenBuffer", i->GetFunc());
+	});
+	raylibModule.SetValue("SwapScreenBuffer", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("PollInputEvents");
 		return IntrinsicResult::Null;
 	#endif
 		PollInputEvents();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("PollInputEvents", i->GetFunc());
+	});
+	raylibModule.SetValue("PollInputEvents", i.GetFunc());
 
 	// Load text files
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
-		const char *fileName = context->GetVar("fileName").GetString().c_str();
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		const char *fileName = context.GetVar("fileName").ToString().c_str();
 		char *text = LoadFileText(fileName);
 		if (text == nullptr) return IntrinsicResult::Null;
 		String ret(text);
 		UnloadFileText(text);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("LoadFileText", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFileText", i.GetFunc());
 
 	// File system management
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadFileData");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		int dataSize = 0;
 		unsigned char* data = LoadFileData(fileName.c_str(), &dataSize);
 		if (data == nullptr || dataSize <= 0) return IntrinsicResult::Null;
@@ -2710,17 +2674,17 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		Value result = BytesToRawDataValue(data, dataSize);
 		UnloadFileData(data);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("LoadFileData", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFileData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("data");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("UnloadFileData");
 		return IntrinsicResult::Null;
 	#endif
-		Value dataValue = context->GetVar(String("data"));
+		Value dataValue = context.GetVar(String("data"));
 		BinaryData* rawData = ValueToRawData(dataValue);
 		if (rawData == nullptr || rawData->bytes == nullptr) return IntrinsicResult::Null;
 
@@ -2729,27 +2693,27 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		rawData->length = 0;
 		rawData->ownsBuffer = false;
 
-		if (dataValue.type == ValueType::Map) {
+		if (dataValue.Type() == ValueType::Map) {
 			ValueDict map = dataValue.GetDict();
 			map.SetValue(String("_handle"), Value::zero);
 		}
 
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadFileData", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadFileData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileData");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+		String fileName = context.GetVar(String("fileName")).ToString();
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2757,21 +2721,21 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
 
 		return IntrinsicResult(SaveFileData(fileName.c_str(), (void*)bytes, byteCount));
-	};
-	raylibModule.SetValue("SaveFileData", i->GetFunc());
+	});
+	raylibModule.SetValue("SaveFileData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("data");
+	i.AddParam("dataSize");
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportDataAsCode");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
-		String fileName = context->GetVar(String("fileName")).ToString();
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		String fileName = context.GetVar(String("fileName")).ToString();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2779,41 +2743,41 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
 
 		return IntrinsicResult(ExportDataAsCode(bytes, byteCount, fileName.c_str()));
-	};
-	raylibModule.SetValue("ExportDataAsCode", i->GetFunc());
+	});
+	raylibModule.SetValue("ExportDataAsCode", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// LoadFileText already returns a MiniScript String, so explicit unload is a no-op.
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadFileText", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadFileText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileText");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
-		String text = context->GetVar(String("text")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
+		String text = context.GetVar(String("text")).ToString();
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
-	};
-	raylibModule.SetValue("SaveFileText", i->GetFunc());
+	});
+	raylibModule.SetValue("SaveFileText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("callback", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("callback", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetLoadFileDataCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context->GetVar(String("callback"));
+		Value callback = context.GetVar(String("callback"));
 		if (callback.IsNull()) {
-			g_callbackBridgeState.loadFileDataCallback = Value::null;
+			g_callbackBridgeState.loadFileDataCallback = Value::Null;
 			SetLoadFileDataCallback(nullptr);
 			return IntrinsicResult::Null;
 		}
@@ -2822,8 +2786,8 @@ void AddRCoreMethods(ValueDict raylibModule) {
 			return IntrinsicResult::Null;
 		}
 
-		g_callbackBridgeState.interpreter = (context->vm != nullptr) ? context->vm->interpreter : nullptr;
-		if (g_callbackBridgeState.interpreter == nullptr || g_callbackBridgeState.interpreter->vm == nullptr) {
+		g_callbackBridgeState.interpreter = context.vm.GetInterpreter();
+		if (IsNull(g_callbackBridgeState.interpreter)) {
 			TraceLog(LOG_ERROR, "SetLoadFileDataCallback: interpreter not available.");
 			return IntrinsicResult::Null;
 		}
@@ -2831,19 +2795,19 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		g_callbackBridgeState.loadFileDataCallback = callback;
 		SetLoadFileDataCallback(MiniScriptLoadFileDataBridge);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetLoadFileDataCallback", i->GetFunc());
+	});
+	raylibModule.SetValue("SetLoadFileDataCallback", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("callback", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("callback", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetSaveFileDataCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context->GetVar(String("callback"));
+		Value callback = context.GetVar(String("callback"));
 		if (callback.IsNull()) {
-			g_callbackBridgeState.saveFileDataCallback = Value::null;
+			g_callbackBridgeState.saveFileDataCallback = Value::Null;
 			SetSaveFileDataCallback(nullptr);
 			return IntrinsicResult::Null;
 		}
@@ -2852,8 +2816,8 @@ void AddRCoreMethods(ValueDict raylibModule) {
 			return IntrinsicResult::Null;
 		}
 
-		g_callbackBridgeState.interpreter = (context->vm != nullptr) ? context->vm->interpreter : nullptr;
-		if (g_callbackBridgeState.interpreter == nullptr || g_callbackBridgeState.interpreter->vm == nullptr) {
+		g_callbackBridgeState.interpreter = context.vm.GetInterpreter();
+		if (IsNull(g_callbackBridgeState.interpreter)) {
 			TraceLog(LOG_ERROR, "SetSaveFileDataCallback: interpreter not available.");
 			return IntrinsicResult::Null;
 		}
@@ -2861,19 +2825,19 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		g_callbackBridgeState.saveFileDataCallback = callback;
 		SetSaveFileDataCallback(MiniScriptSaveFileDataBridge);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetSaveFileDataCallback", i->GetFunc());
+	});
+	raylibModule.SetValue("SetSaveFileDataCallback", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("callback", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("callback", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetLoadFileTextCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context->GetVar(String("callback"));
+		Value callback = context.GetVar(String("callback"));
 		if (callback.IsNull()) {
-			g_callbackBridgeState.loadFileTextCallback = Value::null;
+			g_callbackBridgeState.loadFileTextCallback = Value::Null;
 			SetLoadFileTextCallback(nullptr);
 			return IntrinsicResult::Null;
 		}
@@ -2882,8 +2846,8 @@ void AddRCoreMethods(ValueDict raylibModule) {
 			return IntrinsicResult::Null;
 		}
 
-		g_callbackBridgeState.interpreter = (context->vm != nullptr) ? context->vm->interpreter : nullptr;
-		if (g_callbackBridgeState.interpreter == nullptr || g_callbackBridgeState.interpreter->vm == nullptr) {
+		g_callbackBridgeState.interpreter = context.vm.GetInterpreter();
+		if (IsNull(g_callbackBridgeState.interpreter)) {
 			TraceLog(LOG_ERROR, "SetLoadFileTextCallback: interpreter not available.");
 			return IntrinsicResult::Null;
 		}
@@ -2891,19 +2855,19 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		g_callbackBridgeState.loadFileTextCallback = callback;
 		SetLoadFileTextCallback(MiniScriptLoadFileTextBridge);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetLoadFileTextCallback", i->GetFunc());
+	});
+	raylibModule.SetValue("SetLoadFileTextCallback", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("callback", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("callback", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetSaveFileTextCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context->GetVar(String("callback"));
+		Value callback = context.GetVar(String("callback"));
 		if (callback.IsNull()) {
-			g_callbackBridgeState.saveFileTextCallback = Value::null;
+			g_callbackBridgeState.saveFileTextCallback = Value::Null;
 			SetSaveFileTextCallback(nullptr);
 			return IntrinsicResult::Null;
 		}
@@ -2912,8 +2876,8 @@ void AddRCoreMethods(ValueDict raylibModule) {
 			return IntrinsicResult::Null;
 		}
 
-		g_callbackBridgeState.interpreter = (context->vm != nullptr) ? context->vm->interpreter : nullptr;
-		if (g_callbackBridgeState.interpreter == nullptr || g_callbackBridgeState.interpreter->vm == nullptr) {
+		g_callbackBridgeState.interpreter = context.vm.GetInterpreter();
+		if (IsNull(g_callbackBridgeState.interpreter)) {
 			TraceLog(LOG_ERROR, "SetSaveFileTextCallback: interpreter not available.");
 			return IntrinsicResult::Null;
 		}
@@ -2921,303 +2885,303 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		g_callbackBridgeState.saveFileTextCallback = callback;
 		SetSaveFileTextCallback(MiniScriptSaveFileTextBridge);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetSaveFileTextCallback", i->GetFunc());
+	});
+	raylibModule.SetValue("SetSaveFileTextCallback", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("fileRename");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.AddParam("fileRename");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileRename");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
-		String fileRename = context->GetVar(String("fileRename")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileRename = context.GetVar(String("fileRename")).ToString();
 		return IntrinsicResult(FileRename(fileName.c_str(), fileRename.c_str()));
-	};
-	raylibModule.SetValue("FileRename", i->GetFunc());
+	});
+	raylibModule.SetValue("FileRename", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileRemove");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult(FileRemove(fileName.c_str()));
-	};
-	raylibModule.SetValue("FileRemove", i->GetFunc());
+	});
+	raylibModule.SetValue("FileRemove", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("srcPath");
-	i->AddParam("dstPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("srcPath");
+	i.AddParam("dstPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileCopy");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context->GetVar(String("srcPath")).ToString();
-		String dstPath = context->GetVar(String("dstPath")).ToString();
+		String srcPath = context.GetVar(String("srcPath")).ToString();
+		String dstPath = context.GetVar(String("dstPath")).ToString();
 		return IntrinsicResult(FileCopy(srcPath.c_str(), dstPath.c_str()));
-	};
-	raylibModule.SetValue("FileCopy", i->GetFunc());
+	});
+	raylibModule.SetValue("FileCopy", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("srcPath");
-	i->AddParam("dstPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("srcPath");
+	i.AddParam("dstPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileMove");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context->GetVar(String("srcPath")).ToString();
-		String dstPath = context->GetVar(String("dstPath")).ToString();
+		String srcPath = context.GetVar(String("srcPath")).ToString();
+		String dstPath = context.GetVar(String("dstPath")).ToString();
 		return IntrinsicResult(FileMove(srcPath.c_str(), dstPath.c_str()));
-	};
-	raylibModule.SetValue("FileMove", i->GetFunc());
+	});
+	raylibModule.SetValue("FileMove", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("search");
-	i->AddParam("replacement");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.AddParam("search");
+	i.AddParam("replacement");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileTextReplace");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
-		String search = context->GetVar(String("search")).ToString();
-		String replacement = context->GetVar(String("replacement")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
+		String search = context.GetVar(String("search")).ToString();
+		String replacement = context.GetVar(String("replacement")).ToString();
 		return IntrinsicResult(FileTextReplace(fileName.c_str(), search.c_str(), replacement.c_str()));
-	};
-	raylibModule.SetValue("FileTextReplace", i->GetFunc());
+	});
+	raylibModule.SetValue("FileTextReplace", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("search");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.AddParam("search");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileTextFindIndex");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
-		String search = context->GetVar(String("search")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
+		String search = context.GetVar(String("search")).ToString();
 		return IntrinsicResult(FileTextFindIndex(fileName.c_str(), search.c_str()));
-	};
-	raylibModule.SetValue("FileTextFindIndex", i->GetFunc());
+	});
+	raylibModule.SetValue("FileTextFindIndex", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult(FileExists(fileName.c_str()));
-	};
-	raylibModule.SetValue("FileExists", i->GetFunc());
+	});
+	raylibModule.SetValue("FileExists", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("DirectoryExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));
-	};
-	raylibModule.SetValue("DirectoryExists", i->GetFunc());
+	});
+	raylibModule.SetValue("DirectoryExists", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetFileLength");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult(GetFileLength(fileName.c_str()));
-	};
-	raylibModule.SetValue("GetFileLength", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFileLength", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetFileModTime");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult((double)GetFileModTime(fileName.c_str()));
-	};
-	raylibModule.SetValue("GetFileModTime", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFileModTime", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
-		String fileName = context->GetVar(String("fileName")).ToString();
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult(String(GetFileExtension(fileName.c_str())));
-	};
-	raylibModule.SetValue("GetFileExtension", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFileExtension", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("filePath");
-	i->code = INTRINSIC_LAMBDA {
-		String filePath = context->GetVar(String("filePath")).ToString();
+	i.AddParam("filePath");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String filePath = context.GetVar(String("filePath")).ToString();
 		return IntrinsicResult(String(GetFileName(filePath.c_str())));
-	};
-	raylibModule.SetValue("GetFileName", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFileName", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("filePath");
-	i->code = INTRINSIC_LAMBDA {
-		String filePath = context->GetVar(String("filePath")).ToString();
+	i.AddParam("filePath");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String filePath = context.GetVar(String("filePath")).ToString();
 		return IntrinsicResult(String(GetFileNameWithoutExt(filePath.c_str())));
-	};
-	raylibModule.SetValue("GetFileNameWithoutExt", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFileNameWithoutExt", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("filePath");
-	i->code = INTRINSIC_LAMBDA {
-		String filePath = context->GetVar(String("filePath")).ToString();
+	i.AddParam("filePath");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String filePath = context.GetVar(String("filePath")).ToString();
 		return IntrinsicResult(String(GetDirectoryPath(filePath.c_str())));
-	};
-	raylibModule.SetValue("GetDirectoryPath", i->GetFunc());
+	});
+	raylibModule.SetValue("GetDirectoryPath", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(String(GetPrevDirectoryPath(dirPath.c_str())));
-	};
-	raylibModule.SetValue("GetPrevDirectoryPath", i->GetFunc());
+	});
+	raylibModule.SetValue("GetPrevDirectoryPath", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWorkingDirectory");
 		return IntrinsicResult(String());
 	#endif
 		return IntrinsicResult(String(GetWorkingDirectory()));
-	};
-	raylibModule.SetValue("GetWorkingDirectory", i->GetFunc());
+	});
+	raylibModule.SetValue("GetWorkingDirectory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetApplicationDirectory");
 		return IntrinsicResult(String());
 	#endif
 		return IntrinsicResult(String(GetApplicationDirectory()));
-	};
-	raylibModule.SetValue("GetApplicationDirectory", i->GetFunc());
+	});
+	raylibModule.SetValue("GetApplicationDirectory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("MakeDirectory");
 		return IntrinsicResult(-1);
 	#endif
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(MakeDirectory(dirPath.c_str()));
-	};
-	raylibModule.SetValue("MakeDirectory", i->GetFunc());
+	});
+	raylibModule.SetValue("MakeDirectory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ChangeDirectory");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
-	};
-	raylibModule.SetValue("ChangeDirectory", i->GetFunc());
+	});
+	raylibModule.SetValue("ChangeDirectory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("path");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsPathFile");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String path = context->GetVar(String("path")).ToString();
+		String path = context.GetVar(String("path")).ToString();
 		return IntrinsicResult(IsPathFile(path.c_str()));
-	};
-	raylibModule.SetValue("IsPathFile", i->GetFunc());
+	});
+	raylibModule.SetValue("IsPathFile", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
-		String fileName = context->GetVar(String("fileName")).ToString();
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String fileName = context.GetVar(String("fileName")).ToString();
 		return IntrinsicResult(IsFileNameValid(fileName.c_str()));
-	};
-	raylibModule.SetValue("IsFileNameValid", i->GetFunc());
+	});
+	raylibModule.SetValue("IsFileNameValid", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDirectoryFiles");
 		return IntrinsicResult(Value(ValueList()));
 	#endif
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		FilePathList files = LoadDirectoryFiles(dirPath.c_str());
 
 		ValueList result;
 		for (unsigned int n = 0; n < files.count; n++) result.Add(Value(String(files.paths[n])));
 		UnloadDirectoryFiles(files);
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadDirectoryFiles", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadDirectoryFiles", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("basePath");
-	i->AddParam("filter");
-	i->AddParam("scanSubdirs", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("basePath");
+	i.AddParam("filter");
+	i.AddParam("scanSubdirs", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDirectoryFilesEx");
 		return IntrinsicResult(Value(ValueList()));
 	#endif
-		String basePath = context->GetVar(String("basePath")).ToString();
-		String filter = context->GetVar(String("filter")).ToString();
-		bool scanSubdirs = context->GetVar(String("scanSubdirs")).IntValue() != 0;
+		String basePath = context.GetVar(String("basePath")).ToString();
+		String filter = context.GetVar(String("filter")).ToString();
+		bool scanSubdirs = context.GetVar(String("scanSubdirs")).IntValue() != 0;
 
 		FilePathList files = LoadDirectoryFilesEx(basePath.c_str(), filter.c_str(), scanSubdirs);
 		ValueList result;
 		for (unsigned int n = 0; n < files.count; n++) result.Add(Value(String(files.paths[n])));
 		UnloadDirectoryFiles(files);
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadDirectoryFilesEx", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadDirectoryFilesEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("files");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("files");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// LoadDirectoryFiles* wrappers return plain MiniScript lists and release native memory internally.
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadDirectoryFiles", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadDirectoryFiles", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsFileDropped");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
 		return IntrinsicResult(IsFileDropped());
-	};
-	raylibModule.SetValue("IsFileDropped", i->GetFunc());
+	});
+	raylibModule.SetValue("IsFileDropped", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDroppedFiles");
 		return IntrinsicResult(Value(ValueList()));
@@ -3226,54 +3190,54 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		ValueList result;
 		for (unsigned int n = 0; n < files.count; n++) result.Add(Value(String(files.paths[n])));
 		UnloadDroppedFiles(files);
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadDroppedFiles", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadDroppedFiles", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("files");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("files");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// LoadDroppedFiles wrapper returns a plain MiniScript list and releases native memory internally.
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadDroppedFiles", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadDroppedFiles", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dirPath");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("dirPath");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetDirectoryFileCount");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String dirPath = context->GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetVar(String("dirPath")).ToString();
 		return IntrinsicResult((int)GetDirectoryFileCount(dirPath.c_str()));
-	};
-	raylibModule.SetValue("GetDirectoryFileCount", i->GetFunc());
+	});
+	raylibModule.SetValue("GetDirectoryFileCount", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("basePath");
-	i->AddParam("filter");
-	i->AddParam("scanSubdirs", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("basePath");
+	i.AddParam("filter");
+	i.AddParam("scanSubdirs", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetDirectoryFileCountEx");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String basePath = context->GetVar(String("basePath")).ToString();
-		String filter = context->GetVar(String("filter")).ToString();
-		bool scanSubdirs = context->GetVar(String("scanSubdirs")).IntValue() != 0;
+		String basePath = context.GetVar(String("basePath")).ToString();
+		String filter = context.GetVar(String("filter")).ToString();
+		bool scanSubdirs = context.GetVar(String("scanSubdirs")).IntValue() != 0;
 		return IntrinsicResult((int)GetDirectoryFileCountEx(basePath.c_str(), filter.c_str(), scanSubdirs));
-	};
-	raylibModule.SetValue("GetDirectoryFileCountEx", i->GetFunc());
+	});
+	raylibModule.SetValue("GetDirectoryFileCountEx", i.GetFunc());
 
 	// Compression and encoding helpers
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3287,15 +3251,15 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		Value result = BytesToRawDataValue(compressed, compSize);
 		MemFree(compressed);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("CompressData", i->GetFunc());
+	});
+	raylibModule.SetValue("CompressData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("compData");
-	i->AddParam("compDataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value compDataValue = context->GetVar(String("compData"));
-		int compDataSize = context->GetVar(String("compDataSize")).IntValue();
+	i.AddParam("compData");
+	i.AddParam("compDataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value compDataValue = context.GetVar(String("compData"));
+		int compDataSize = context.GetVar(String("compDataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3309,13 +3273,13 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		Value result = BytesToRawDataValue(decompressed, outSize);
 		MemFree(decompressed);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("DecompressData", i->GetFunc());
+	});
+	raylibModule.SetValue("DecompressData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int outputSize = 0;
 		unsigned char* decoded = DecodeDataBase64(text.c_str(), &outputSize);
 		if (decoded == nullptr || outputSize <= 0) return IntrinsicResult::Null;
@@ -3323,15 +3287,15 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		Value result = BytesToRawDataValue(decoded, outputSize);
 		MemFree(decoded);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("DecodeDataBase64", i->GetFunc());
+	});
+	raylibModule.SetValue("DecodeDataBase64", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3339,15 +3303,15 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::zero);
 
 		return IntrinsicResult((int)ComputeCRC32((unsigned char*)bytes, byteCount));
-	};
-	raylibModule.SetValue("ComputeCRC32", i->GetFunc());
+	});
+	raylibModule.SetValue("ComputeCRC32", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3359,16 +3323,16 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		ValueList result;
 		for (int n = 0; n < 4; n++) result.Add(Value((double)hash[n]));
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("ComputeMD5", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("ComputeMD5", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3380,16 +3344,16 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		ValueList result;
 		for (int n = 0; n < 5; n++) result.Add(Value((double)hash[n]));
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("ComputeSHA1", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("ComputeSHA1", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("data");
-	i->AddParam("dataSize", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Value dataValue = context->GetVar(String("data"));
-		int dataSize = context->GetVar(String("dataSize")).IntValue();
+	i.AddParam("data");
+	i.AddParam("dataSize", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value dataValue = context.GetVar(String("data"));
+		int dataSize = context.GetVar(String("dataSize")).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3401,71 +3365,71 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		ValueList result;
 		for (int n = 0; n < 8; n++) result.Add(Value((double)hash[n]));
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("ComputeSHA256", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("ComputeSHA256", i.GetFunc());
 
 	// Automation events functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName", String());
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("fileName", String());
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context->GetVar(String("fileName")).ToString();
+		String fileName = context.GetVar(String("fileName")).ToString();
 		const char* fileNamePtr = fileName.LengthB() > 0 ? fileName.c_str() : nullptr;
 		AutomationEventList list = LoadAutomationEventList(fileNamePtr);
 		return IntrinsicResult(AutomationEventListToValue(list));
-	};
-	raylibModule.SetValue("LoadAutomationEventList", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadAutomationEventList", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("list");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("list");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("UnloadAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		Value listValue = context->GetVar(String("list"));
+		Value listValue = context.GetVar(String("list"));
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
 
 		UnloadAutomationEventList(*listPtr);
 		delete listPtr;
 
-		if (listValue.type == ValueType::Map) {
+		if (listValue.Type() == ValueType::Map) {
 			ValueDict map = listValue.GetDict();
 			map.SetValue(String("_handle"), Value::zero);
 			map.SetValue(String("capacity"), Value::zero);
 			map.SetValue(String("count"), Value::zero);
-			map.SetValue(String("events"), Value(ValueList()));
+			map.SetValue(String("events"), Value::make_list(0));
 		}
 
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadAutomationEventList", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadAutomationEventList", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("list");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("list");
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportAutomationEventList");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		Value listValue = context->GetVar(String("list"));
-		String fileName = context->GetVar(String("fileName")).ToString();
+		Value listValue = context.GetVar(String("list"));
+		String fileName = context.GetVar(String("fileName")).ToString();
 
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr != nullptr) return IntrinsicResult(ExportAutomationEventList(*listPtr, fileName.c_str()));
 
-		if (listValue.type != ValueType::Map) return IntrinsicResult(Value::Truth(false));
+		if (listValue.Type() != ValueType::Map) return IntrinsicResult(Value::Truth(false));
 
 		ValueDict map = listValue.GetDict();
-		Value eventsValue = map.Lookup(String("events"), Value::null);
-		if (eventsValue.type != ValueType::List) return IntrinsicResult(Value::Truth(false));
+		Value eventsValue = map.Lookup(String("events"), Value::Null);
+		if (eventsValue.Type() != ValueType::List) return IntrinsicResult(Value::Truth(false));
 
 		ValueList eventsList = eventsValue.GetList();
 		std::vector<AutomationEvent> events;
@@ -3477,17 +3441,17 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		list.capacity = (unsigned int)events.size();
 		list.events = events.empty() ? nullptr : events.data();
 		return IntrinsicResult(ExportAutomationEventList(list, fileName.c_str()));
-	};
-	raylibModule.SetValue("ExportAutomationEventList", i->GetFunc());
+	});
+	raylibModule.SetValue("ExportAutomationEventList", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("list", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("list", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		Value listValue = context->GetVar(String("list"));
+		Value listValue = context.GetVar(String("list"));
 		if (listValue.IsNull()) {
 			SetAutomationEventList(nullptr);
 			return IntrinsicResult::Null;
@@ -3498,126 +3462,126 @@ void AddRCoreMethods(ValueDict raylibModule) {
 
 		SetAutomationEventList(listPtr);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetAutomationEventList", i->GetFunc());
+	});
+	raylibModule.SetValue("SetAutomationEventList", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("frame");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("frame");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetAutomationEventBaseFrame");
 		return IntrinsicResult::Null;
 	#endif
-		int frame = context->GetVar(String("frame")).IntValue();
+		int frame = context.GetVar(String("frame")).IntValue();
 		SetAutomationEventBaseFrame(frame);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetAutomationEventBaseFrame", i->GetFunc());
+	});
+	raylibModule.SetValue("SetAutomationEventBaseFrame", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("StartAutomationEventRecording");
 		return IntrinsicResult::Null;
 	#endif
 		StartAutomationEventRecording();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("StartAutomationEventRecording", i->GetFunc());
+	});
+	raylibModule.SetValue("StartAutomationEventRecording", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("StopAutomationEventRecording");
 		return IntrinsicResult::Null;
 	#endif
 		StopAutomationEventRecording();
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("StopAutomationEventRecording", i->GetFunc());
+	});
+	raylibModule.SetValue("StopAutomationEventRecording", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("event");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("event");
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("PlayAutomationEvent");
 		return IntrinsicResult::Null;
 	#endif
-		AutomationEvent event = ValueToAutomationEvent(context->GetVar(String("event")));
+		AutomationEvent event = ValueToAutomationEvent(context.GetVar(String("event")));
 		PlayAutomationEvent(event);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("PlayAutomationEvent", i->GetFunc());
+	});
+	raylibModule.SetValue("PlayAutomationEvent", i.GetFunc());
 
 	// Random number generation
 	i = Intrinsic::Create("");
-	i->AddParam("seed");
-	i->code = INTRINSIC_LAMBDA {
-		unsigned int seed = (unsigned int)context->GetVar(String("seed")).IntValue();
+	i.AddParam("seed");
+	i.set_Code(INTRINSIC_LAMBDA {
+		unsigned int seed = (unsigned int)context.GetVar(String("seed")).IntValue();
 		SetRandomSeed(seed);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetRandomSeed", i->GetFunc());
+	});
+	raylibModule.SetValue("SetRandomSeed", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("min");
-	i->AddParam("max");
-	i->code = INTRINSIC_LAMBDA {
-		int min = context->GetVar(String("min")).IntValue();
-		int max = context->GetVar(String("max")).IntValue();
+	i.AddParam("min");
+	i.AddParam("max");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int min = context.GetVar(String("min")).IntValue();
+		int max = context.GetVar(String("max")).IntValue();
 		return IntrinsicResult(GetRandomValue(min, max));
-	};
-	raylibModule.SetValue("GetRandomValue", i->GetFunc());
+	});
+	raylibModule.SetValue("GetRandomValue", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("count");
-	i->AddParam("min");
-	i->AddParam("max");
-	i->code = INTRINSIC_LAMBDA {
-		unsigned int count = (unsigned int)context->GetVar(String("count")).IntValue();
-		int min = context->GetVar(String("min")).IntValue();
-		int max = context->GetVar(String("max")).IntValue();
+	i.AddParam("count");
+	i.AddParam("min");
+	i.AddParam("max");
+	i.set_Code(INTRINSIC_LAMBDA {
+		unsigned int count = (unsigned int)context.GetVar(String("count")).IntValue();
+		int min = context.GetVar(String("min")).IntValue();
+		int max = context.GetVar(String("max")).IntValue();
 
 		int* sequence = LoadRandomSequence(count, min, max);
-		if (sequence == nullptr) return IntrinsicResult(Value::null);
+		if (sequence == nullptr) return IntrinsicResult(Value::Null);
 
 		ValueList result;
 		for (unsigned int i = 0; i < count; i++) {
 			result.Add(Value(sequence[i]));
 		}
 		UnloadRandomSequence(sequence);
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("LoadRandomSequence", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadRandomSequence", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("sequence", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("sequence", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 		// LoadRandomSequence wrapper returns a plain MiniScript list and unloads native memory immediately.
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadRandomSequence", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadRandomSequence", i.GetFunc());
 
 	// Logging and tracing
 	i = Intrinsic::Create("");
-	i->AddParam("logLevel");
-	i->code = INTRINSIC_LAMBDA {
-		int logLevel = context->GetVar(String("logLevel")).IntValue();
+	i.AddParam("logLevel");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int logLevel = context.GetVar(String("logLevel")).IntValue();
 		SetTraceLogLevel(logLevel);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetTraceLogLevel", i->GetFunc());
+	});
+	raylibModule.SetValue("SetTraceLogLevel", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("callback", Value::null);
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("callback", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetTraceLogCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context->GetVar(String("callback"));
+		Value callback = context.GetVar(String("callback"));
 		if (callback.IsNull()) {
-			g_callbackBridgeState.traceLogCallback = Value::null;
+			g_callbackBridgeState.traceLogCallback = Value::Null;
 			g_callbackBridgeState.invokingTraceLogCallback = false;
 			SetTraceLogCallback(nullptr);
 			return IntrinsicResult::Null;
@@ -3627,8 +3591,8 @@ void AddRCoreMethods(ValueDict raylibModule) {
 			return IntrinsicResult::Null;
 		}
 
-		g_callbackBridgeState.interpreter = (context->vm != nullptr) ? context->vm->interpreter : nullptr;
-		if (g_callbackBridgeState.interpreter == nullptr || g_callbackBridgeState.interpreter->vm == nullptr) {
+		g_callbackBridgeState.interpreter = context.vm.GetInterpreter();
+		if (IsNull(g_callbackBridgeState.interpreter)) {
 			fprintf(stderr, "SetTraceLogCallback: interpreter not available.\n");
 			return IntrinsicResult::Null;
 		}
@@ -3637,17 +3601,17 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		g_callbackBridgeState.invokingTraceLogCallback = false;
 		SetTraceLogCallback(MiniScriptTraceLogBridge);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetTraceLogCallback", i->GetFunc());
+	});
+	raylibModule.SetValue("SetTraceLogCallback", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("logLevel");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		int logLevel = context->GetVar(String("logLevel")).IntValue();
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("logLevel");
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int logLevel = context.GetVar(String("logLevel")).IntValue();
+		String text = context.GetVar(String("text")).ToString();
 		TraceLog(logLevel, "%s", text.c_str());
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("TraceLog", i->GetFunc());
+	});
+	raylibModule.SetValue("TraceLog", i.GetFunc());
 }

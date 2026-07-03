@@ -18,10 +18,18 @@ fi
 echo "Building raylib-miniscript (desktop)..."
 
 # Check for symlinks
-if [ ! -e "MiniScript" ]; then
-    echo -e "${RED}Error: MiniScript symlink not found!${NC}"
-    echo "Create a symlink to MiniScript-cpp/src/MiniScript:"
-    echo "  ln -s /path/to/MiniScript-cpp/src/MiniScript MiniScript"
+if [ ! -e "MiniScript2" ]; then
+    echo -e "${RED}Error: MiniScript2 symlink not found!${NC}"
+    echo "Create a symlink to the miniscript2 repo:"
+    echo "  ln -s /path/to/miniscript2 MiniScript2"
+    exit 1
+fi
+
+# The generated/ tree is produced by MiniScript2's own transpile step, not here.
+if [ ! -f "MiniScript2/generated/App.g.cpp" ]; then
+    echo -e "${RED}Error: MiniScript2 generated sources not found!${NC}"
+    echo "Transpile the C# reference implementation in the miniscript2 repo first:"
+    echo "  (cd MiniScript2 && ./tools/build.sh transpile)"
     exit 1
 fi
 

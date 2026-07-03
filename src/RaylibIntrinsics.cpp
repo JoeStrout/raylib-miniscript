@@ -9,8 +9,7 @@
 #include "RaylibTypes.h"
 #include "RawData.h"
 #include "raylib.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 #include <math.h>
 #include <string.h>
 #include <map>
@@ -32,54 +31,54 @@ void AddConstants(ValueDict raylibModule);
 
 // Add intrinsics to the interpreter
 void AddRaylibIntrinsics() {
-	Intrinsic *f;
+	Intrinsic f;
 
 	// Create accessors for the classes
 	f = Intrinsic::Create("RawData");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(RawDataClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(RawDataClass())); });
 
 	f = Intrinsic::Create("Image");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ImageClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ImageClass())); });
 
 	f = Intrinsic::Create("Texture");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(TextureClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(TextureClass())); });
 
 	f = Intrinsic::Create("Font");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(FontClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(FontClass())); });
 
 	f = Intrinsic::Create("Wave");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(WaveClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(WaveClass())); });
 
 	f = Intrinsic::Create("Music");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MusicClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MusicClass())); });
 
 	f = Intrinsic::Create("Sound");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(SoundClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(SoundClass())); });
 
 	f = Intrinsic::Create("AudioStream");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(AudioStreamClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(AudioStreamClass())); });
 
 	f = Intrinsic::Create("Shader");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ShaderClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ShaderClass())); });
 
 	f = Intrinsic::Create("Mesh");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MeshClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MeshClass())); });
 
 	f = Intrinsic::Create("Material");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(MaterialClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MaterialClass())); });
 
 	f = Intrinsic::Create("Model");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ModelClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ModelClass())); });
 
 	f = Intrinsic::Create("ModelAnimation");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(ModelAnimationClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ModelAnimationClass())); });
 
 	f = Intrinsic::Create("Camera3D");
-	f->code = INTRINSIC_LAMBDA { return IntrinsicResult(Camera3DClass()); };
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(Camera3DClass())); });
 
 	// Create and register the main raylib module
 	f = Intrinsic::Create("raylib");
-	f->code = INTRINSIC_LAMBDA {
+	f.set_Code(INTRINSIC_LAMBDA {
 		static ValueDict raylibModule;
 
 		if (raylibModule.Count() == 0) {
@@ -93,6 +92,6 @@ void AddRaylibIntrinsics() {
 			AddConstants(raylibModule);
 		}
 
-		return IntrinsicResult(raylibModule);
-	};
+		return IntrinsicResult(StaticMap(raylibModule));
+	});
 }

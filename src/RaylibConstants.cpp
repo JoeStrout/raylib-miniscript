@@ -10,7 +10,7 @@
 #include "raylib.h"
 #include "raymath.h"
 #include "rlgl.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 
 using namespace MiniScript;
 

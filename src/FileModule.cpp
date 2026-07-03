@@ -9,10 +9,8 @@
 #ifndef PLATFORM_WEB
 
 #include "FileModule.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 #include "RawData.h"
-#include "SimpleString.h"
 #include "macros.h"
 
 #include <stdio.h>
@@ -45,8 +43,8 @@ using namespace MiniScript;
 
 static Value _handle("_handle");
 
-// RefCountedStorage class to wrap a FILE*
-class FileHandleStorage : public RefCountedStorage {
+// Wraps a FILE* for storage behind an opaque MiniScript Handle Value.
+class FileHandleStorage {
 public:
 	FileHandleStorage(FILE *file) : f(file) {}
 	virtual ~FileHandleStorage() { if (f) fclose(f); }
@@ -78,14 +76,14 @@ static int CopyFileHelper(const char* source, const char* destination) {
 #endif
 }
 
-static IntrinsicResult intrinsic_getcwd(Context *context, IntrinsicResult partialResult) {
+static IntrinsicResult intrinsic_getcwd(Context context, IntrinsicResult partialResult) {
 	char buf[1024];
 	getcwd(buf, sizeof(buf));
 	return IntrinsicResult(String(buf));
 }
 
-static IntrinsicResult intrinsic_chdir(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
+static IntrinsicResult intrinsic_chdir(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
 	if (path.IsNull()) return IntrinsicResult(Value::zero);
 	String pathStr = path.ToString();
 	bool ok = false;
@@ -95,8 +93,8 @@ static IntrinsicResult intrinsic_chdir(Context *context, IntrinsicResult partial
 	return IntrinsicResult(Value::Truth(ok));
 }
 
-static IntrinsicResult intrinsic_readdir(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
+static IntrinsicResult intrinsic_readdir(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
 	String pathStr = path.ToString();
 	if (path.IsNull() || pathStr.empty()) pathStr = ".";
 	ValueList result;
@@ -123,11 +121,11 @@ static IntrinsicResult intrinsic_readdir(Context *context, IntrinsicResult parti
 		closedir(dir);
 	}
 #endif
-	return IntrinsicResult(result);
+	return IntrinsicResult(DynamicList(result));
 }
 
-static IntrinsicResult intrinsic_basename(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
+static IntrinsicResult intrinsic_basename(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
 	if (path.IsNull()) return IntrinsicResult(Value::zero);
 	String pathStr = path.ToString();
 #if WINDOWS
@@ -160,8 +158,8 @@ static String dirnameHelper(String pathStr) {
 	return result;
 }
 
-static IntrinsicResult intrinsic_dirname(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
+static IntrinsicResult intrinsic_dirname(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
 	if (path.IsNull()) return IntrinsicResult(Value::zero);
 	String pathStr = path.ToString();
 	if (pathStr.LengthB() > 0 && pathStr[pathStr.LengthB()-1] == PATHSEP) {
@@ -170,9 +168,9 @@ static IntrinsicResult intrinsic_dirname(Context *context, IntrinsicResult parti
 	return IntrinsicResult(dirnameHelper(pathStr));
 }
 
-static IntrinsicResult intrinsic_exists(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::null);
+static IntrinsicResult intrinsic_exists(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
+	if (path.IsNull()) return IntrinsicResult(Value::Null);
 	String pathStr = path.ToString();
 #if WINDOWS
 	char pathBuf[512];
@@ -202,8 +200,8 @@ static String timestampToString(const struct tm& t) {
 	return result;
 }
 
-static IntrinsicResult intrinsic_info(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
+static IntrinsicResult intrinsic_info(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
 	String pathStr;
 	if (!path.IsNull()) pathStr = path.ToString();
 	if (pathStr.empty()) {
@@ -216,21 +214,21 @@ static IntrinsicResult intrinsic_info(Context *context, IntrinsicResult partialR
 	char pathBuf[512];
 	_fullpath(pathBuf, pathStr.c_str(), sizeof(pathBuf));
 	struct _stati64 stats;
-	if (_stati64(pathBuf, &stats) != 0) return IntrinsicResult(Value::null);
+	if (_stati64(pathBuf, &stats) != 0) return IntrinsicResult(Value::Null);
 	ValueDict map;
 	map.SetValue("path", String(pathBuf));
 	map.SetValue("isDirectory", (stats.st_mode & _S_IFDIR) != 0);
-	map.SetValue("size", stats.st_size);
+	map.SetValue("size", Value((double)stats.st_size));
 	gmtime_s(&t, &stats.st_mtime);
 #else
 	char pathBuf[PATH_MAX];
 	realpath(pathStr.c_str(), pathBuf);
 	struct stat stats;
-	if (stat(pathStr.c_str(), &stats) < 0) return IntrinsicResult(Value::null);
+	if (stat(pathStr.c_str(), &stats) < 0) return IntrinsicResult(Value::Null);
 	ValueDict map;
 	map.SetValue("path", String(pathBuf));
 	map.SetValue("isDirectory", S_ISDIR(stats.st_mode));
-	map.SetValue("size", stats.st_size);
+	map.SetValue("size", Value((double)stats.st_size));
 	#if defined(__APPLE__) || defined(__FreeBSD__)
 		tzset();
 		localtime_r(&(stats.st_mtimespec.tv_sec), &t);
@@ -239,13 +237,13 @@ static IntrinsicResult intrinsic_info(Context *context, IntrinsicResult partialR
 	#endif
 #endif
 	map.SetValue("date", timestampToString(t));
-	Value result(map);
+	Value result = DynamicMap(map);
 	return IntrinsicResult(result);
 }
 
-static IntrinsicResult intrinsic_mkdir(Context *context, IntrinsicResult partialResult) {
-	Value path = context->GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::null);
+static IntrinsicResult intrinsic_mkdir(Context context, IntrinsicResult partialResult) {
+	Value path = context.GetVar("path");
+	if (path.IsNull()) return IntrinsicResult(Value::Null);
 	String pathStr = path.ToString();
 #if WINDOWS
 	char pathBuf[512];
@@ -257,9 +255,9 @@ static IntrinsicResult intrinsic_mkdir(Context *context, IntrinsicResult partial
 	return IntrinsicResult(result);
 }
 
-static IntrinsicResult intrinsic_child(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("parentPath").ToString();
-	String filename = context->GetVar("childName").ToString();
+static IntrinsicResult intrinsic_child(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("parentPath").ToString();
+	String filename = context.GetVar("childName").ToString();
 #if WINDOWS
 	String pathSep = "\\";
 #else
@@ -269,22 +267,22 @@ static IntrinsicResult intrinsic_child(Context *context, IntrinsicResult partial
 	return IntrinsicResult(path + pathSep + filename);
 }
 
-static IntrinsicResult intrinsic_rename(Context *context, IntrinsicResult partialResult) {
-	String oldPath = context->GetVar("oldPath").ToString();
-	String newPath = context->GetVar("newPath").ToString();
+static IntrinsicResult intrinsic_rename(Context context, IntrinsicResult partialResult) {
+	String oldPath = context.GetVar("oldPath").ToString();
+	String newPath = context.GetVar("newPath").ToString();
 	int err = rename(oldPath.c_str(), newPath.c_str());
 	return IntrinsicResult(Value::Truth(err == 0));
 }
 
-static IntrinsicResult intrinsic_copy(Context *context, IntrinsicResult partialResult) {
-	String oldPath = context->GetVar("oldPath").ToString();
-	String newPath = context->GetVar("newPath").ToString();
+static IntrinsicResult intrinsic_copy(Context context, IntrinsicResult partialResult) {
+	String oldPath = context.GetVar("oldPath").ToString();
+	String newPath = context.GetVar("newPath").ToString();
 	int result = CopyFileHelper(oldPath.c_str(), newPath.c_str());
 	return IntrinsicResult(Value::Truth(result == 0));
 }
 
-static IntrinsicResult intrinsic_remove(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
+static IntrinsicResult intrinsic_remove(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
 #if WINDOWS
 	bool isDir = false;
 	struct _stati64 stats;
@@ -301,9 +299,9 @@ static IntrinsicResult intrinsic_remove(Context *context, IntrinsicResult partia
 	return IntrinsicResult(Value::Truth(err == 0));
 }
 
-static IntrinsicResult intrinsic_fopen(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
-	Value modeVal = context->GetVar("mode");
+static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
+	Value modeVal = context.GetVar("mode");
 	String mode = modeVal.ToString();
 	FILE *handle;
 	if (modeVal.IsNull() || mode.empty() || mode == "rw+" || mode == "r+") {
@@ -315,22 +313,22 @@ static IntrinsicResult intrinsic_fopen(Context *context, IntrinsicResult partial
 	if (handle == NULL) return IntrinsicResult::Null;
 
 	ValueDict instance;
-	instance.SetValue(Value::magicIsA, fileHandleClass);
+	instance.SetValue(Value::magicIsA, StaticMap(fileHandleClass));
 
-	Value fileWrapper = Value::NewHandle(new FileHandleStorage(handle));
+	Value fileWrapper = Value::NewHandle(new FileHandleStorage(handle), [](void* p) { delete (FileHandleStorage*)p; });
 	instance.SetValue(_handle, fileWrapper);
 
-	Value result(instance);
+	Value result = DynamicMap(instance);
 	instance.SetValue(result, fileWrapper);
 
 	return IntrinsicResult(result);
 }
 
-static IntrinsicResult intrinsic_fclose(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
+static IntrinsicResult intrinsic_fclose(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult(Value::zero);
 	fclose(handle);
@@ -338,32 +336,32 @@ static IntrinsicResult intrinsic_fclose(Context *context, IntrinsicResult partia
 	return IntrinsicResult(Value::one);
 }
 
-static IntrinsicResult intrinsic_isOpen(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
+static IntrinsicResult intrinsic_isOpen(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	return IntrinsicResult(Value::Truth(storage->f != NULL));
 }
 
-static IntrinsicResult intrinsic_fwrite(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
-	String data = context->GetVar("data").ToString();
+static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
+	String data = context.GetVar("data").ToString();
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult(Value::zero);
 	size_t written = fwrite(data.c_str(), 1, data.sizeB(), handle);
 	return IntrinsicResult((int)written);
 }
 
-static IntrinsicResult intrinsic_fwriteLine(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
-	String data = context->GetVar("data").ToString();
+static IntrinsicResult intrinsic_fwriteLine(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
+	String data = context.GetVar("data").ToString();
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult(Value::zero);
 	size_t written = fwrite(data.c_str(), 1, data.sizeB(), handle);
@@ -382,44 +380,44 @@ static String ReadFileHelper(FILE *handle, long bytesToRead) {
 	return result;
 }
 
-static IntrinsicResult intrinsic_fread(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
-	long bytesToRead = context->GetVar("byteCount").IntValue();
+static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
+	long bytesToRead = context.GetVar("byteCount").IntValue();
 	if (bytesToRead == 0) return IntrinsicResult(Value::emptyString);
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult(Value::zero);
 	String result = ReadFileHelper(handle, bytesToRead);
 	return IntrinsicResult(result);
 }
 
-static IntrinsicResult intrinsic_fposition(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
+static IntrinsicResult intrinsic_fposition(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult::Null;
-	return IntrinsicResult(ftell(handle));
+	return IntrinsicResult(Value((double)ftell(handle)));
 }
 
-static IntrinsicResult intrinsic_feof(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
+static IntrinsicResult intrinsic_feof(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult::Null;
 	return IntrinsicResult(Value::Truth(feof(handle) != 0));
 }
 
-static IntrinsicResult intrinsic_freadLine(Context *context, IntrinsicResult partialResult) {
-	Value self = context->GetVar("self");
+static IntrinsicResult intrinsic_freadLine(Context context, IntrinsicResult partialResult) {
+	Value self = context.GetVar("self");
 	Value fileWrapper = self.Lookup(_handle);
-	if (fileWrapper.IsNull() or fileWrapper.type != ValueType::Handle) return IntrinsicResult::Null;
-	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.data.ref;
+	if (fileWrapper.IsNull() or fileWrapper.Type() != ValueType::Handle) return IntrinsicResult::Null;
+	FileHandleStorage *storage = (FileHandleStorage*)fileWrapper.HandlePtr();
 	FILE *handle = storage->f;
 	if (handle == NULL) return IntrinsicResult::Null;
 
@@ -436,8 +434,8 @@ static IntrinsicResult intrinsic_freadLine(Context *context, IntrinsicResult par
 	return IntrinsicResult(result);
 }
 
-static IntrinsicResult intrinsic_loadRaw(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
+static IntrinsicResult intrinsic_loadRaw(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
 	FILE *handle = fopen(path.c_str(), "rb");
 	if (handle == NULL) return IntrinsicResult::Null;
 
@@ -452,9 +450,9 @@ static IntrinsicResult intrinsic_loadRaw(Context *context, IntrinsicResult parti
 	return IntrinsicResult(MiniScript::RawDataToValue(data));
 }
 
-static IntrinsicResult intrinsic_saveRaw(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
-	MiniScript::BinaryData* data = MiniScript::ValueToRawData(context->GetVar("data"));
+static IntrinsicResult intrinsic_saveRaw(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
+	MiniScript::BinaryData* data = MiniScript::ValueToRawData(context.GetVar("data"));
 	if (data == nullptr) return IntrinsicResult(String("saveRaw: data is not a RawData object"));
 
 	FILE *handle = fopen(path.c_str(), "wb");
@@ -467,8 +465,8 @@ static IntrinsicResult intrinsic_saveRaw(Context *context, IntrinsicResult parti
 	return IntrinsicResult::Null;
 }
 
-static IntrinsicResult intrinsic_readLines(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
+static IntrinsicResult intrinsic_readLines(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
 	FILE *handle = fopen(path.c_str(), "r");
 	if (handle == NULL) return IntrinsicResult::Null;
 
@@ -497,18 +495,18 @@ static IntrinsicResult intrinsic_readLines(Context *context, IntrinsicResult par
 		}
 	}
 	fclose(handle);
-	return IntrinsicResult(list);
+	return IntrinsicResult(DynamicList(list));
 }
 
-static IntrinsicResult intrinsic_writeLines(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
-	Value lines = context->GetVar("lines");
+static IntrinsicResult intrinsic_writeLines(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
+	Value lines = context.GetVar("lines");
 
 	FILE *handle = fopen(path.c_str(), "w");
 	if (handle == NULL) return IntrinsicResult::Null;
 
 	size_t written = 0;
-	if (lines.type == ValueType::List) {
+	if (lines.Type() == ValueType::List) {
 		ValueList list = lines.GetList();
 		for (int i = 0; i < list.Count(); i++) {
 			String data = list[i].ToString();
@@ -525,186 +523,186 @@ static IntrinsicResult intrinsic_writeLines(Context *context, IntrinsicResult pa
 	return IntrinsicResult((int)written);
 }
 
-static IntrinsicResult intrinsic_FileHandle(Context *context, IntrinsicResult partialResult) {
-	return IntrinsicResult(fileHandleClass);
+static IntrinsicResult intrinsic_FileHandle(Context context, IntrinsicResult partialResult) {
+	return IntrinsicResult(StaticMap(fileHandleClass));
 }
 
-static IntrinsicResult intrinsic_File(Context *context, IntrinsicResult partialResult) {
-	return IntrinsicResult(fileModule);
+static IntrinsicResult intrinsic_File(Context context, IntrinsicResult partialResult) {
+	return IntrinsicResult(StaticMap(fileModule));
 }
 
 void AddFileModuleIntrinsics() {
-	Intrinsic *i;
+	Intrinsic i;
 
 	// file module
 
 	// Get current working directory
 	i = Intrinsic::Create("");
-	i->code = &intrinsic_getcwd;
-	fileModule.SetValue("curdir", i->GetFunc());
+	i.set_Code(&intrinsic_getcwd);
+	fileModule.SetValue("curdir", i.GetFunc());
 
 	// Change current working directory
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_chdir;
-	fileModule.SetValue("setdir", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_chdir);
+	fileModule.SetValue("setdir", i.GetFunc());
 
 	// Get list of file and directory names in the given directory
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_readdir;
-	fileModule.SetValue("children", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_readdir);
+	fileModule.SetValue("children", i.GetFunc());
 
 	// Get the filename (last path component) of a path string
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_basename;
-	fileModule.SetValue("name", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_basename);
+	fileModule.SetValue("name", i.GetFunc());
 
 	// Get whether a file or directory exists at the given path
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_exists;
-	fileModule.SetValue("exists", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_exists);
+	fileModule.SetValue("exists", i.GetFunc());
 
 	// Get a map of info (path, isDirectory, size, date) about the given path
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_info;
-	fileModule.SetValue("info", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_info);
+	fileModule.SetValue("info", i.GetFunc());
 
 	// Create a directory at the given path
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_mkdir;
-	fileModule.SetValue("makedir", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_mkdir);
+	fileModule.SetValue("makedir", i.GetFunc());
 
 	// Get the parent directory of the given path
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_dirname;
-	fileModule.SetValue("parent", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_dirname);
+	fileModule.SetValue("parent", i.GetFunc());
 
 	// Combine a parent path and child name into a single path
 	i = Intrinsic::Create("");
-	i->AddParam("parentPath");
-	i->AddParam("childName");
-	i->code = &intrinsic_child;
-	fileModule.SetValue("child", i->GetFunc());
+	i.AddParam("parentPath");
+	i.AddParam("childName");
+	i.set_Code(&intrinsic_child);
+	fileModule.SetValue("child", i.GetFunc());
 
 	// Move (rename) a file or directory
 	i = Intrinsic::Create("");
-	i->AddParam("oldPath");
-	i->AddParam("newPath");
-	i->code = &intrinsic_rename;
-	fileModule.SetValue("move", i->GetFunc());
+	i.AddParam("oldPath");
+	i.AddParam("newPath");
+	i.set_Code(&intrinsic_rename);
+	fileModule.SetValue("move", i.GetFunc());
 
 	// Copy a file
 	i = Intrinsic::Create("");
-	i->AddParam("oldPath");
-	i->AddParam("newPath");
-	i->code = &intrinsic_copy;
-	fileModule.SetValue("copy", i->GetFunc());
+	i.AddParam("oldPath");
+	i.AddParam("newPath");
+	i.set_Code(&intrinsic_copy);
+	fileModule.SetValue("copy", i.GetFunc());
 
 	// Delete a file or empty directory
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_remove;
-	fileModule.SetValue("delete", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_remove);
+	fileModule.SetValue("delete", i.GetFunc());
 
 	// Open a file; returns a FileHandle, or null on failure
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->AddParam("mode", "r+");
-	i->code = &intrinsic_fopen;
-	fileModule.SetValue("open", i->GetFunc());
+	i.AddParam("path");
+	i.AddParam("mode", "r+");
+	i.set_Code(&intrinsic_fopen);
+	fileModule.SetValue("open", i.GetFunc());
 
 	// Read all lines from a text file, returning a list of strings
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_readLines;
-	fileModule.SetValue("readLines", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_readLines);
+	fileModule.SetValue("readLines", i.GetFunc());
 
 	// Write a list of strings (or a single string) to a text file
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->AddParam("lines");
-	i->code = &intrinsic_writeLines;
-	fileModule.SetValue("writeLines", i->GetFunc());
+	i.AddParam("path");
+	i.AddParam("lines");
+	i.set_Code(&intrinsic_writeLines);
+	fileModule.SetValue("writeLines", i.GetFunc());
 
 	// Load a binary file, returning a RawData object
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->code = &intrinsic_loadRaw;
-	fileModule.SetValue("loadRaw", i->GetFunc());
+	i.AddParam("path");
+	i.set_Code(&intrinsic_loadRaw);
+	fileModule.SetValue("loadRaw", i.GetFunc());
 
 	// Save a RawData object to a binary file
 	i = Intrinsic::Create("");
-	i->AddParam("path");
-	i->AddParam("data");
-	i->code = &intrinsic_saveRaw;
-	fileModule.SetValue("saveRaw", i->GetFunc());
+	i.AddParam("path");
+	i.AddParam("data");
+	i.set_Code(&intrinsic_saveRaw);
+	fileModule.SetValue("saveRaw", i.GetFunc());
 
 	// FileHandle methods
 
 	// Close the file handle
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->code = &intrinsic_fclose;
-	fileHandleClass.SetValue("close", i->GetFunc());
+	i.AddParam("self");
+	i.set_Code(&intrinsic_fclose);
+	fileHandleClass.SetValue("close", i.GetFunc());
 
 	// Get whether the file handle is still open
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->code = &intrinsic_isOpen;
-	fileHandleClass.SetValue("isOpen", i->GetFunc());
+	i.AddParam("self");
+	i.set_Code(&intrinsic_isOpen);
+	fileHandleClass.SetValue("isOpen", i.GetFunc());
 
 	// Write a string to the file
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->AddParam("data");
-	i->code = &intrinsic_fwrite;
-	fileHandleClass.SetValue("write", i->GetFunc());
+	i.AddParam("self");
+	i.AddParam("data");
+	i.set_Code(&intrinsic_fwrite);
+	fileHandleClass.SetValue("write", i.GetFunc());
 
 	// Write a string followed by a newline to the file
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->AddParam("data");
-	i->code = &intrinsic_fwriteLine;
-	fileHandleClass.SetValue("writeLine", i->GetFunc());
+	i.AddParam("self");
+	i.AddParam("data");
+	i.set_Code(&intrinsic_fwriteLine);
+	fileHandleClass.SetValue("writeLine", i.GetFunc());
 
 	// Read up to byteCount bytes from the file (or all remaining if -1)
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->AddParam("byteCount", -1);
-	i->code = &intrinsic_fread;
-	fileHandleClass.SetValue("read", i->GetFunc());
+	i.AddParam("self");
+	i.AddParam("byteCount", -1);
+	i.set_Code(&intrinsic_fread);
+	fileHandleClass.SetValue("read", i.GetFunc());
 
 	// Read the next line from the file
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->code = &intrinsic_freadLine;
-	fileHandleClass.SetValue("readLine", i->GetFunc());
+	i.AddParam("self");
+	i.set_Code(&intrinsic_freadLine);
+	fileHandleClass.SetValue("readLine", i.GetFunc());
 
 	// Get the current read/write position in the file
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->code = &intrinsic_fposition;
-	fileHandleClass.SetValue("position", i->GetFunc());
+	i.AddParam("self");
+	i.set_Code(&intrinsic_fposition);
+	fileHandleClass.SetValue("position", i.GetFunc());
 
 	// Get whether the file position is at the end of the file
 	i = Intrinsic::Create("");
-	i->AddParam("self");
-	i->code = &intrinsic_feof;
-	fileHandleClass.SetValue("atEnd", i->GetFunc());
+	i.AddParam("self");
+	i.set_Code(&intrinsic_feof);
+	fileHandleClass.SetValue("atEnd", i.GetFunc());
 
 	// Register global 'file' and 'FileHandle' intrinsics
-	Intrinsic *f;
+	Intrinsic f;
 	f = Intrinsic::Create("file");
-	f->code = &intrinsic_File;
+	f.set_Code(&intrinsic_File);
 
 	f = Intrinsic::Create("FileHandle");
-	f->code = &intrinsic_FileHandle;
+	f.set_Code(&intrinsic_FileHandle);
 }
 
 #endif // !PLATFORM_WEB

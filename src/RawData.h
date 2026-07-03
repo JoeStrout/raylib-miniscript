@@ -9,7 +9,7 @@
 #ifndef RAWDATA_H
 #define RAWDATA_H
 
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 
 namespace MiniScript {
 
@@ -75,7 +75,7 @@ private:
 };
 
 // Get the RawData class (MiniScript intrinsic class)
-ValueDict RawDataClass();
+ValueDict& RawDataClass();
 
 // Convert between MiniScript Value and BinaryData
 Value RawDataToValue(BinaryData* data);

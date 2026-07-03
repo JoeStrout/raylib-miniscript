@@ -9,7 +9,7 @@
 #define RAYLIBINTRINSICS_H
 
 namespace MiniScript {
-	class Interpreter;
+	struct Interpreter;
 }
 
 // Add Raylib intrinsics to the global state

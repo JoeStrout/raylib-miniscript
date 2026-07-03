@@ -1,10 +1,10 @@
 // raylib-miniscript - MiniScript + Raylib
 // A MiniScript-driven application with Raylib graphics
 
+// Include MiniScript before raylib: raylib.h #defines PI as a macro, which
+// otherwise clobbers MiniScript's Math::PI constant when its headers are parsed.
+#include "miniscript.h"
 #include "raylib.h"
-#include "SimpleString.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptIntrinsics.h"
 #include "RaylibIntrinsics.h"
 #include "FileModule.h"
 #include "MoreIntrinsics.h"
@@ -33,25 +33,26 @@ enum ScriptState {
 	COMPLETE
 };
 
-static Interpreter* interpreter = nullptr;
+static Interpreter interpreter;   // value type; default-constructed with null storage until InitMiniScript
 static ScriptState scriptState = LOADING;
 static String scriptSource;
 static String loadError;
 static String runtimeError;
-static ValueList stackTrace;
+static Value stackTrace;           // stack trace list Value, captured on error
 
 //--------------------------------------------------------------------------------
 // Output callbacks for MiniScript
 //--------------------------------------------------------------------------------
 
-static void Print(String s, bool lineBreak = true) {
+static void Print(String s, Boolean lineBreak = true) {
 	printf("%s%s", s.c_str(), lineBreak ? "\n" : "");
 }
 
-static void PrintErr(String s, bool lineBreak = true) {
+static void PrintErr(String s, Boolean lineBreak = true) {
 	runtimeError = s;
 	scriptState = ERRORED;
-	stackTrace = Intrinsics::StackList(interpreter->vm);
+	// Capture a stack trace if the VM exists (it won't for compile-time errors).
+	if (!IsNull(interpreter.vm())) stackTrace = interpreter.vm().BuildStackTrace();
 	ResetRaylibCallbackBridge();
 	printf("%s%s", s.c_str(), lineBreak ? "\n" : "");
 }
@@ -124,15 +125,15 @@ void loadScriptFromFile(const char *path) {
 //--------------------------------------------------------------------------------
 
 void InitMiniScript() {
-	MiniScript::hostVersion = 0.3;
+	MiniScript::hostVersion = "0.3";   // a String in MS2, not a double
 	MiniScript::hostName = "raylib-miniscript";
 	MiniScript::hostInfo = "https://github.com/JoeStrout/raylib-miniscript";
 	ResetRaylibCallbackBridge();
 
-	interpreter = new Interpreter();
-	interpreter->standardOutput = &Print;
-	interpreter->errorOutput = &PrintErr;
-	interpreter->implicitOutput = &Print;
+	interpreter = Interpreter::New();
+	interpreter.set_standardOutput(&Print);
+	interpreter.set_errorOutput(&PrintErr);
+	interpreter.set_implicitOutput(&Print);
 
 	// Add Raylib intrinsics
 	AddRaylibIntrinsics();
@@ -162,8 +163,8 @@ void RunScript() {
 	}
 
 	printf("Compiling script...\n");
-	interpreter->Reset(scriptSource);
-	interpreter->Compile();
+	interpreter.Reset(scriptSource);
+	interpreter.Compile();
 
 	printf("Starting script execution...\n");
 	scriptState = RUNNING;
@@ -180,15 +181,10 @@ void MainLoop() {
 	}
 
 	if (scriptState == RUNNING) {
-		if (!interpreter->Done()) {
-			try {
-				interpreter->RunUntilDone(0.1, true);
-			} catch (MiniscriptException& mse) {
-				PrintErr("Runtime Exception: " + mse.message);
-				interpreter->vm->Stop();
-				ResetRaylibCallbackBridge();
-				scriptState = ERRORED;
-			}
+		if (!interpreter.Done()) {
+			// MS2 does not throw for runtime errors; they are delivered to the
+			// errorOutput delegate (PrintErr), which sets the ERRORED state.
+			interpreter.RunUntilDone(0.1, true);
 		} else {
 			scriptState = COMPLETE;
 			printf("Script finished\n");
@@ -215,10 +211,12 @@ void MainLoop() {
 				DrawText("The game has halted due to an error:", 10, 50, 20, RED);
 				DrawText(runtimeError.c_str(), 10, 80, 20, RED);
 				int y = 110;
-				for (int i = 0; i < stackTrace.Count(); i++) {
-					String entry = stackTrace[i].ToString();
-					DrawText(entry.c_str(), 30, y, 20, GRAY);
-					y += 20;
+				if (stackTrace.IsList()) {
+					for (int i = 0; i < stackTrace.ListCount(); i++) {
+						String entry = stackTrace.ListGet(i).ToString();
+						DrawText(entry.c_str(), 30, y, 20, GRAY);
+						y += 20;
+					}
 				}
 			}
 		} else if (scriptState == COMPLETE) {
@@ -236,10 +234,7 @@ void MainLoop() {
 
 void CleanupMiniScript() {
 	ResetRaylibCallbackBridge();
-	if (interpreter) {
-		delete interpreter;
-		interpreter = nullptr;
-	}
+	interpreter = nullptr;   // releases the shared InterpreterStorage
 }
 
 //--------------------------------------------------------------------------------

@@ -9,10 +9,10 @@
 #include "RaylibTypes.h"
 #include "RawData.h"
 #include "raylib.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 #include "UnicodeUtil.h"
 #include "macros.h"
+#include <string>
 
 using namespace MiniScript;
 
@@ -23,11 +23,11 @@ using namespace MiniScript;
 static int* GetCodepointsFromValue(Value value, int* codepointCount) {
 	*codepointCount = 0;
 
-	if (value.type == ValueType::Null) {
+	if (value.Type() == ValueType::Null) {
 		return nullptr;
 	}
 
-	if (value.type == ValueType::String) {
+	if (value.Type() == ValueType::String) {
 		// Use MiniScript's UTF-8 utilities to parse the string
 		String str = value.ToString();
 		int count = str.Length();  // Character count in the string
@@ -49,7 +49,7 @@ static int* GetCodepointsFromValue(Value value, int* codepointCount) {
 		return codepoints;
 	}
 
-	if (value.type == ValueType::List) {
+	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
 		int count = list.Count();
 		if (count == 0) {
@@ -70,30 +70,30 @@ static int* GetCodepointsFromValue(Value value, int* codepointCount) {
 }
 
 void AddRTextMethods(ValueDict raylibModule) {
-	Intrinsic *i;
+	Intrinsic i;
 
 	// Font loading
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->code = INTRINSIC_LAMBDA {
-		String path = context->GetVar(String("fileName")).ToString();
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String path = context.GetVar(String("fileName")).ToString();
 		Font font = LoadFont(path.c_str());
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("LoadFont", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFont", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileName");
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("codepoints", Value::null);
-	i->AddParam("codepointCount", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		String path = context->GetVar(String("fileName")).ToString();
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		Value codepointsVal = context->GetVar(String("codepoints"));
+	i.AddParam("fileName");
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("codepoints", Value::Null);
+	i.AddParam("codepointCount", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String path = context.GetVar(String("fileName")).ToString();
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
+		Value codepointsVal = context.GetVar(String("codepoints"));
 
 		// Support both list of ints and UTF-8 string for codepoints
 		int codepointCount = 0;
@@ -106,19 +106,19 @@ void AddRTextMethods(ValueDict raylibModule) {
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("LoadFontEx", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFontEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("image");
-	i->AddParam("key", ColorToValue(Color{255, 0, 255, 255}));
-	i->AddParam("firstChar", Value(32));
-	i->code = INTRINSIC_LAMBDA {
-		Image image = ValueToImage(context->GetVar(String("image")));
-		Color key = ValueToColor(context->GetVar(String("key")));
-		Value firstCharVal = context->GetVar(String("firstChar"));
+	i.AddParam("image");
+	i.AddParam("key", ColorToValue(Color{255, 0, 255, 255}));
+	i.AddParam("firstChar", Value(32));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image image = ValueToImage(context.GetVar(String("image")));
+		Color key = ValueToColor(context.GetVar(String("key")));
+		Value firstCharVal = context.GetVar(String("firstChar"));
 		int firstChar;
-		if (firstCharVal.type == ValueType::String) {
+		if (firstCharVal.Type() == ValueType::String) {
 			String s = firstCharVal.ToString();
 			firstChar = s.empty() ? 32 : (int)s[0];
 		} else {
@@ -127,46 +127,46 @@ void AddRTextMethods(ValueDict raylibModule) {
 		Font font = LoadFontFromImage(image, key, firstChar);
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("LoadFontFromImage", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFontFromImage", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
+	i.AddParam("font");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
 		return IntrinsicResult(IsFontValid(font));
-	};
-	raylibModule.SetValue("IsFontValid", i->GetFunc());
+	});
+	raylibModule.SetValue("IsFontValid", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
+	i.AddParam("font");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
 		UnloadFont(font);
 		// Free the heap-allocated Font struct
-		ValueDict map = context->GetVar(String("font")).GetDict();
+		ValueDict map = context.GetVar(String("font")).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Font* fontPtr = (Font*)ValueToPointer(handleVal);
 		delete fontPtr;
 		rcFont--;
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadFont", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadFont", i.GetFunc());
 
 	// Construct a Font from individual components (glyphs, recs, texture)
 	// This is needed for manual font construction, e.g. SDF fonts
 	i = Intrinsic::Create("");
-	i->AddParam("baseSize");
-	i->AddParam("glyphs");
-	i->AddParam("recs");
-	i->AddParam("texture");
-	i->AddParam("glyphPadding", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		int baseSize = context->GetVar(String("baseSize")).IntValue();
-		ValueList glyphsList = context->GetVar(String("glyphs")).GetList();
-		ValueList recsList = context->GetVar(String("recs")).GetList();
-		Texture2D texture = ValueToTexture(context->GetVar(String("texture")));
-		int glyphPadding = context->GetVar(String("glyphPadding")).IntValue();
+	i.AddParam("baseSize");
+	i.AddParam("glyphs");
+	i.AddParam("recs");
+	i.AddParam("texture");
+	i.AddParam("glyphPadding", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		int baseSize = context.GetVar(String("baseSize")).IntValue();
+		ValueList glyphsList = context.GetVar(String("glyphs")).GetList();
+		ValueList recsList = context.GetVar(String("recs")).GetList();
+		Texture2D texture = ValueToTexture(context.GetVar(String("texture")));
+		int glyphPadding = context.GetVar(String("glyphPadding")).IntValue();
 
 		int glyphCount = glyphsList.Count();
 		if (glyphCount == 0 || glyphCount != recsList.Count()) return IntrinsicResult::Null;
@@ -192,179 +192,179 @@ void AddRTextMethods(ValueDict raylibModule) {
 			font.glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
 			font.glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
 			font.glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
-			font.glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::null));
+			font.glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::Null));
 		}
 
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("MakeFont", i->GetFunc());
+	});
+	raylibModule.SetValue("MakeFont", i.GetFunc());
 
 	// Text drawing
 
 	i = Intrinsic::Create("");
-	i->AddParam("posX", Value::zero);
-	i->AddParam("posY", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		int posX = context->GetVar(String("posX")).IntValue();
-		int posY = context->GetVar(String("posY")).IntValue();
+	i.AddParam("posX", Value::zero);
+	i.AddParam("posY", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		int posX = context.GetVar(String("posX")).IntValue();
+		int posY = context.GetVar(String("posY")).IntValue();
 		DrawFPS(posX, posY);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawFPS", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawFPS", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("posX", Value::zero);
-	i->AddParam("posY", Value::zero);
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("color", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
-		int posX = context->GetVar(String("posX")).IntValue();
-		int posY = context->GetVar(String("posY")).IntValue();
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		Color color = ValueToColor(context->GetVar(String("color")));
+	i.AddParam("text");
+	i.AddParam("posX", Value::zero);
+	i.AddParam("posY", Value::zero);
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("color", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
+		int posX = context.GetVar(String("posX")).IntValue();
+		int posY = context.GetVar(String("posY")).IntValue();
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
+		Color color = ValueToColor(context.GetVar(String("color")));
 		DrawText(text.c_str(), posX, posY, fontSize, color);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawText", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("text");
-	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("spacing", Value::zero);
-	i->AddParam("tint", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		String text = context->GetVar(String("text")).ToString();
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		float fontSize = context->GetVar(String("fontSize")).FloatValue();
-		float spacing = context->GetVar(String("spacing")).FloatValue();
-		Color tint = ValueToColor(context->GetVar(String("tint")));
+	i.AddParam("font");
+	i.AddParam("text");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("spacing", Value::zero);
+	i.AddParam("tint", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		String text = context.GetVar(String("text")).ToString();
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		float fontSize = context.GetVar(String("fontSize")).FloatValue();
+		float spacing = context.GetVar(String("spacing")).FloatValue();
+		Color tint = ValueToColor(context.GetVar(String("tint")));
 		DrawTextEx(font, text.c_str(), position, fontSize, spacing, tint);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawTextEx", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawTextEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("text");
-	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
-	i->AddParam("origin", Vector2ToValue(Vector2{0, 0}));
-	i->AddParam("rotation", Value::zero);
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("spacing", Value::zero);
-	i->AddParam("tint", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		String text = context->GetVar(String("text")).ToString();
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		Vector2 origin = ValueToVector2(context->GetVar(String("origin")));
-		float rotation = context->GetVar(String("rotation")).FloatValue();
-		float fontSize = context->GetVar(String("fontSize")).FloatValue();
-		float spacing = context->GetVar(String("spacing")).FloatValue();
-		Color tint = ValueToColor(context->GetVar(String("tint")));
+	i.AddParam("font");
+	i.AddParam("text");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("origin", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("rotation", Value::zero);
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("spacing", Value::zero);
+	i.AddParam("tint", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		String text = context.GetVar(String("text")).ToString();
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		Vector2 origin = ValueToVector2(context.GetVar(String("origin")));
+		float rotation = context.GetVar(String("rotation")).FloatValue();
+		float fontSize = context.GetVar(String("fontSize")).FloatValue();
+		float spacing = context.GetVar(String("spacing")).FloatValue();
+		Color tint = ValueToColor(context.GetVar(String("tint")));
 		DrawTextPro(font, text.c_str(), position, origin, rotation, fontSize, spacing, tint);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawTextPro", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawTextPro", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("codepoint");
-	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("tint", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		int codepoint = context->GetVar(String("codepoint")).IntValue();
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		float fontSize = context->GetVar(String("fontSize")).FloatValue();
-		Color tint = ValueToColor(context->GetVar(String("tint")));
+	i.AddParam("font");
+	i.AddParam("codepoint");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("tint", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		int codepoint = context.GetVar(String("codepoint")).IntValue();
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		float fontSize = context.GetVar(String("fontSize")).FloatValue();
+		Color tint = ValueToColor(context.GetVar(String("tint")));
 		DrawTextCodepoint(font, codepoint, position, fontSize, tint);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawTextCodepoint", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawTextCodepoint", i.GetFunc());
 
 	// Text measurement
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("fontSize", Value(20));
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
+	i.AddParam("text");
+	i.AddParam("fontSize", Value(20));
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
 		int width = MeasureText(text.c_str(), fontSize);
 		return IntrinsicResult(Value(width));
-	};
-	raylibModule.SetValue("MeasureText", i->GetFunc());
+	});
+	raylibModule.SetValue("MeasureText", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("text");
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("spacing", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		String text = context->GetVar(String("text")).ToString();
-		float fontSize = context->GetVar(String("fontSize")).FloatValue();
-		float spacing = context->GetVar(String("spacing")).FloatValue();
+	i.AddParam("font");
+	i.AddParam("text");
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("spacing", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		String text = context.GetVar(String("text")).ToString();
+		float fontSize = context.GetVar(String("fontSize")).FloatValue();
+		float spacing = context.GetVar(String("spacing")).FloatValue();
 		Vector2 size = MeasureTextEx(font, text.c_str(), fontSize, spacing);
 		Value result = Vector2ToValue(size);
 		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("MeasureTextEx", i->GetFunc());
+	});
+	raylibModule.SetValue("MeasureTextEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("codepoint");
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		int codepoint = context->GetVar(String("codepoint")).IntValue();
+	i.AddParam("font");
+	i.AddParam("codepoint");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		int codepoint = context.GetVar(String("codepoint")).IntValue();
 		int index = GetGlyphIndex(font, codepoint);
 		return IntrinsicResult(Value(index));
-	};
-	raylibModule.SetValue("GetGlyphIndex", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGlyphIndex", i.GetFunc());
 
 	// Additional font and text functions
 
 	i = Intrinsic::Create("");
-	i->code = INTRINSIC_LAMBDA {
+	i.set_Code(INTRINSIC_LAMBDA {
 		Font font = GetFontDefault();
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("GetFontDefault", i->GetFunc());
+	});
+	raylibModule.SetValue("GetFontDefault", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("spacing");
-	i->code = INTRINSIC_LAMBDA {
-		int spacing = context->GetVar(String("spacing")).IntValue();
+	i.AddParam("spacing");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int spacing = context.GetVar(String("spacing")).IntValue();
 		SetTextLineSpacing(spacing);
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("SetTextLineSpacing", i->GetFunc());
+	});
+	raylibModule.SetValue("SetTextLineSpacing", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("codepoint");
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		int codepoint = context->GetVar(String("codepoint")).IntValue();
+	i.AddParam("font");
+	i.AddParam("codepoint");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		int codepoint = context.GetVar(String("codepoint")).IntValue();
 		Rectangle rec = GetGlyphAtlasRec(font, codepoint);
 		return IntrinsicResult(RectangleToValue(rec));
-	};
-	raylibModule.SetValue("GetGlyphAtlasRec", i->GetFunc());
+	});
+	raylibModule.SetValue("GetGlyphAtlasRec", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("codepoint");
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		int codepoint = context->GetVar(String("codepoint")).IntValue();
+	i.AddParam("font");
+	i.AddParam("codepoint");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		int codepoint = context.GetVar(String("codepoint")).IntValue();
 		GlyphInfo info = GetGlyphInfo(font, codepoint);
 
 		ValueDict result;
@@ -373,122 +373,122 @@ void AddRTextMethods(ValueDict raylibModule) {
 		result.SetValue(String("offsetY"), Value(info.offsetY));
 		result.SetValue(String("advanceX"), Value(info.advanceX));
 		result.SetValue(String("image"), ImageToValue(info.image));
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("GetGlyphInfo", i->GetFunc());
+		return IntrinsicResult(DynamicMap(result));
+	});
+	raylibModule.SetValue("GetGlyphInfo", i.GetFunc());
 
 	// UTF-8 and codepoint functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int count = GetCodepointCount(text.c_str());
 		return IntrinsicResult(Value(count));
-	};
-	raylibModule.SetValue("GetCodepointCount", i->GetFunc());
+	});
+	raylibModule.SetValue("GetCodepointCount", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("codepointSize", Value::null);
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.AddParam("codepointSize", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int codepointSize = 0;
 		int codepoint = GetCodepoint(text.c_str(), &codepointSize);
 
 		ValueDict result;
 		result.SetValue(String("codepoint"), Value(codepoint));
 		result.SetValue(String("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("GetCodepoint", i->GetFunc());
+		return IntrinsicResult(DynamicMap(result));
+	});
+	raylibModule.SetValue("GetCodepoint", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("codepointSize", Value::null);
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.AddParam("codepointSize", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int codepointSize = 0;
 		int codepoint = GetCodepointNext(text.c_str(), &codepointSize);
 
 		ValueDict result;
 		result.SetValue(String("codepoint"), Value(codepoint));
 		result.SetValue(String("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("GetCodepointNext", i->GetFunc());
+		return IntrinsicResult(DynamicMap(result));
+	});
+	raylibModule.SetValue("GetCodepointNext", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("codepointSize", Value::null);
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.AddParam("codepointSize", Value::Null);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int codepointSize = 0;
 		int codepoint = GetCodepointPrevious(text.c_str(), &codepointSize);
 
 		ValueDict result;
 		result.SetValue(String("codepoint"), Value(codepoint));
 		result.SetValue(String("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("GetCodepointPrevious", i->GetFunc());
+		return IntrinsicResult(DynamicMap(result));
+	});
+	raylibModule.SetValue("GetCodepointPrevious", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("codepoint");
-	i->code = INTRINSIC_LAMBDA {
-		int codepoint = context->GetVar(String("codepoint")).IntValue();
+	i.AddParam("codepoint");
+	i.set_Code(INTRINSIC_LAMBDA {
+		int codepoint = context.GetVar(String("codepoint")).IntValue();
 		int utf8Size = 0;
 		const char* utf8 = CodepointToUTF8(codepoint, &utf8Size);
 		return IntrinsicResult(Value(String(utf8, utf8Size)));
-	};
-	raylibModule.SetValue("CodepointToUTF8", i->GetFunc());
+	});
+	raylibModule.SetValue("CodepointToUTF8", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text1");
-	i->AddParam("text2");
-	i->code = INTRINSIC_LAMBDA {
-		String text1 = context->GetVar(String("text1")).ToString();
-		String text2 = context->GetVar(String("text2")).ToString();
+	i.AddParam("text1");
+	i.AddParam("text2");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text1 = context.GetVar(String("text1")).ToString();
+		String text2 = context.GetVar(String("text2")).ToString();
 		bool equal = TextIsEqual(text1.c_str(), text2.c_str());
 		return IntrinsicResult(Value(equal));
-	};
-	raylibModule.SetValue("TextIsEqual", i->GetFunc());
+	});
+	raylibModule.SetValue("TextIsEqual", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		unsigned int length = TextLength(text.c_str());
 		return IntrinsicResult(Value((int)length));
-	};
-	raylibModule.SetValue("TextLength", i->GetFunc());
+	});
+	raylibModule.SetValue("TextLength", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("dst");
-	i->AddParam("src");
-	i->code = INTRINSIC_LAMBDA {
-		String src = context->GetVar(String("src")).ToString();
+	i.AddParam("dst");
+	i.AddParam("src");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String src = context.GetVar(String("src")).ToString();
 		// MiniScript strings are immutable, so we just return the source string
 		// The actual TextCopy in raylib copies to a pre-allocated buffer
 		return IntrinsicResult(Value(src));
-	};
-	raylibModule.SetValue("TextCopy", i->GetFunc());
+	});
+	raylibModule.SetValue("TextCopy", i.GetFunc());
 
 	// Memory-related functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileType");
-	i->AddParam("fileData");
-	i->AddParam("fontSize");
-	i->AddParam("codepoints", Value::null);
-	i->AddParam("codepointCount", Value::zero);
-	i->code = INTRINSIC_LAMBDA {
-		String fileType = context->GetVar(String("fileType")).ToString();
-		BinaryData* data = ValueToRawData(context->GetVar(String("fileData")));
+	i.AddParam("fileType");
+	i.AddParam("fileData");
+	i.AddParam("fontSize");
+	i.AddParam("codepoints", Value::Null);
+	i.AddParam("codepointCount", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String fileType = context.GetVar(String("fileType")).ToString();
+		BinaryData* data = ValueToRawData(context.GetVar(String("fileData")));
 		if (!data) return IntrinsicResult::Null;
 
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		Value codepointsVal = context->GetVar(String("codepoints"));
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
+		Value codepointsVal = context.GetVar(String("codepoints"));
 		int codepointCount = 0;
 
 		// Support both list of ints and UTF-8 string for codepoints
@@ -501,22 +501,22 @@ void AddRTextMethods(ValueDict raylibModule) {
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
-	};
-	raylibModule.SetValue("LoadFontFromMemory", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadFontFromMemory", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("fileData");
-	i->AddParam("fontSize");
-	i->AddParam("codepoints", Value::null);
-	i->AddParam("codepointCount", Value::zero);
-	i->AddParam("type", Value::zero);  // FONT_DEFAULT
-	i->code = INTRINSIC_LAMBDA {
-		BinaryData* data = ValueToRawData(context->GetVar(String("fileData")));
+	i.AddParam("fileData");
+	i.AddParam("fontSize");
+	i.AddParam("codepoints", Value::Null);
+	i.AddParam("codepointCount", Value::zero);
+	i.AddParam("type", Value::zero);  // FONT_DEFAULT
+	i.set_Code(INTRINSIC_LAMBDA {
+		BinaryData* data = ValueToRawData(context.GetVar(String("fileData")));
 		if (!data) return IntrinsicResult::Null;
 
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		Value codepointsVal = context->GetVar(String("codepoints"));
-		int type = context->GetVar(String("type")).IntValue();
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
+		Value codepointsVal = context.GetVar(String("codepoints"));
+		int type = context.GetVar(String("type")).IntValue();
 
 		// Support both list of ints and UTF-8 string for codepoints
 		int codepointCount = 0;
@@ -537,27 +537,27 @@ void AddRTextMethods(ValueDict raylibModule) {
 				glyphDict.SetValue(String("offsetY"), Value(glyphs[i].offsetY));
 				glyphDict.SetValue(String("advanceX"), Value(glyphs[i].advanceX));
 				glyphDict.SetValue(String("image"), ImageToValue(glyphs[i].image));
-				result.Add(Value(glyphDict));
+				result.Add(DynamicMap(glyphDict));
 			}
 		}
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadFontData", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadFontData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("glyphs");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("glyphs");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// In our implementation, glyphs is a list of dictionaries
 		// We don't need to explicitly free them as MiniScript manages the memory
 		// This is a no-op for our purposes
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadFontData", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadFontData", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
 		int count = 0;
 		int* codepoints = LoadCodepoints(text.c_str(), &count);
 
@@ -569,23 +569,23 @@ void AddRTextMethods(ValueDict raylibModule) {
 			}
 			UnloadCodepoints(codepoints);
 		}
-		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadCodepoints", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadCodepoints", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("codepoints");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("codepoints");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// In our implementation, codepoints is a MiniScript list
 		// We don't need to explicitly free it as MiniScript manages the memory
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadCodepoints", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadCodepoints", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("codepoints");
-	i->code = INTRINSIC_LAMBDA {
-		Value codepointsVal = context->GetVar(String("codepoints"));
+	i.AddParam("codepoints");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value codepointsVal = context.GetVar(String("codepoints"));
 
 		// Support both list of ints and UTF-8 string for codepoints
 		int count = 0;
@@ -598,32 +598,32 @@ void AddRTextMethods(ValueDict raylibModule) {
 		delete[] codepoints;
 
 		return IntrinsicResult(Value(result));
-	};
-	raylibModule.SetValue("LoadUTF8", i->GetFunc());
+	});
+	raylibModule.SetValue("LoadUTF8", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
 		// In our implementation, text is a MiniScript string
 		// We don't need to explicitly free it as MiniScript manages the memory
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("UnloadUTF8", i->GetFunc());
+	});
+	raylibModule.SetValue("UnloadUTF8", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("font");
-	i->AddParam("codepoints");
-	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
-	i->AddParam("fontSize", Value(20));
-	i->AddParam("spacing", Value::zero);
-	i->AddParam("tint", ColorToValue(BLACK));
-	i->code = INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context->GetVar(String("font")));
-		Value codepointsVal = context->GetVar(String("codepoints"));
-		Vector2 position = ValueToVector2(context->GetVar(String("position")));
-		float fontSize = context->GetVar(String("fontSize")).FloatValue();
-		float spacing = context->GetVar(String("spacing")).FloatValue();
-		Color tint = ValueToColor(context->GetVar(String("tint")));
+	i.AddParam("font");
+	i.AddParam("codepoints");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("spacing", Value::zero);
+	i.AddParam("tint", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetVar(String("font")));
+		Value codepointsVal = context.GetVar(String("codepoints"));
+		Vector2 position = ValueToVector2(context.GetVar(String("position")));
+		float fontSize = context.GetVar(String("fontSize")).FloatValue();
+		float spacing = context.GetVar(String("spacing")).FloatValue();
+		Color tint = ValueToColor(context.GetVar(String("tint")));
 
 		// Support both list of ints and UTF-8 string for codepoints
 		int count = 0;
@@ -634,21 +634,21 @@ void AddRTextMethods(ValueDict raylibModule) {
 		delete[] codepoints;
 
 		return IntrinsicResult::Null;
-	};
-	raylibModule.SetValue("DrawTextCodepoints", i->GetFunc());
+	});
+	raylibModule.SetValue("DrawTextCodepoints", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("glyphs");
-	i->AddParam("glyphRecs");
-	i->AddParam("fontSize");
-	i->AddParam("padding");
-	i->AddParam("packMethod");
-	i->code = INTRINSIC_LAMBDA {
-		ValueList glyphsList = context->GetVar(String("glyphs")).GetList();
-		ValueList recsList = context->GetVar(String("glyphRecs")).GetList();
-		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		int padding = context->GetVar(String("padding")).IntValue();
-		int packMethod = context->GetVar(String("packMethod")).IntValue();
+	i.AddParam("glyphs");
+	i.AddParam("glyphRecs");
+	i.AddParam("fontSize");
+	i.AddParam("padding");
+	i.AddParam("packMethod");
+	i.set_Code(INTRINSIC_LAMBDA {
+		ValueList glyphsList = context.GetVar(String("glyphs")).GetList();
+		ValueList recsList = context.GetVar(String("glyphRecs")).GetList();
+		int fontSize = context.GetVar(String("fontSize")).IntValue();
+		int padding = context.GetVar(String("padding")).IntValue();
+		int packMethod = context.GetVar(String("packMethod")).IntValue();
 
 		int glyphCount = glyphsList.Count();
 		if (glyphCount == 0 || glyphCount != recsList.Count()) return IntrinsicResult::Null;
@@ -663,7 +663,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 			glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
 			glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
 			glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
-			glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::null));
+			glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::Null));
 
 			recs[i] = ValueToRectangle(recsList[i]);
 		}
@@ -686,15 +686,15 @@ void AddRTextMethods(ValueDict raylibModule) {
 
 		rcImage++;
 		return IntrinsicResult(ImageToValue(atlas));
-	};
-	raylibModule.SetValue("GenImageFontAtlas", i->GetFunc());
+	});
+	raylibModule.SetValue("GenImageFontAtlas", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("args", Value(ValueList()));
-	i->code = INTRINSIC_LAMBDA {
-		String text = context->GetVar(String("text")).ToString();
-		ValueList args = context->GetVar(String("args")).GetList();
+	i.AddParam("text");
+	i.AddParam("args", Value::make_list(0));
+	i.set_Code(INTRINSIC_LAMBDA {
+		String text = context.GetVar(String("text")).ToString();
+		ValueList args = context.GetVar(String("args")).GetList();
 
 		// Simple implementation: replace %s, %d, %f with args in order
 		std::string result = text.c_str();
@@ -730,136 +730,136 @@ void AddRTextMethods(ValueDict raylibModule) {
 		}
 
 		return IntrinsicResult(Value(String(result.c_str())));
-	};
-	raylibModule.SetValue("TextFormat", i->GetFunc());
+	});
+	raylibModule.SetValue("TextFormat", i.GetFunc());
 
 	// Text manipulation functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("search");
-	i->code = INTRINSIC_LAMBDA {
-		const char* text = context->GetVar(String("text")).ToString().c_str();
-		const char* search = context->GetVar(String("search")).ToString().c_str();
+	i.AddParam("text");
+	i.AddParam("search");
+	i.set_Code(INTRINSIC_LAMBDA {
+		const char* text = context.GetVar(String("text")).ToString().c_str();
+		const char* search = context.GetVar(String("search")).ToString().c_str();
 		int result = TextFindIndex(text, search);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("TextFindIndex", i->GetFunc());
+	});
+	raylibModule.SetValue("TextFindIndex", i.GetFunc());
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("begin");
-	i->AddParam("end");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String beginStr = context->GetVar(String("begin")).ToString();
-		String endStr = context->GetVar(String("end")).ToString();
+	i.AddParam("text");
+	i.AddParam("begin");
+	i.AddParam("end");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String beginStr = context.GetVar(String("begin")).ToString();
+		String endStr = context.GetVar(String("end")).ToString();
 		const char* result = GetTextBetween(textStr.c_str(), beginStr.c_str(), endStr.c_str());
 		String ret(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("GetTextBetween", i->GetFunc());
+	});
+	raylibModule.SetValue("GetTextBetween", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("search");
-	i->AddParam("replacement");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String searchStr = context->GetVar(String("search")).ToString();
-		String replacementStr = context->GetVar(String("replacement")).ToString();
+	i.AddParam("text");
+	i.AddParam("search");
+	i.AddParam("replacement");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String searchStr = context.GetVar(String("search")).ToString();
+		String replacementStr = context.GetVar(String("replacement")).ToString();
 		const char* result = TextReplace(textStr.c_str(), searchStr.c_str(), replacementStr.c_str());
 		String ret(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextReplace", i->GetFunc());
+	});
+	raylibModule.SetValue("TextReplace", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("search");
-	i->AddParam("replacement");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String searchStr = context->GetVar(String("search")).ToString();
-		String replacementStr = context->GetVar(String("replacement")).ToString();
+	i.AddParam("text");
+	i.AddParam("search");
+	i.AddParam("replacement");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String searchStr = context.GetVar(String("search")).ToString();
+		String replacementStr = context.GetVar(String("replacement")).ToString();
 		char* result = TextReplaceAlloc(textStr.c_str(), searchStr.c_str(), replacementStr.c_str());
 		if (result == nullptr) return IntrinsicResult::Null;
 		String ret(result);
 		MemFree(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextReplaceAlloc", i->GetFunc());
+	});
+	raylibModule.SetValue("TextReplaceAlloc", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("begin");
-	i->AddParam("end");
-	i->AddParam("replacement");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String beginStr = context->GetVar(String("begin")).ToString();
-		String endStr = context->GetVar(String("end")).ToString();
-		String replacementStr = context->GetVar(String("replacement")).ToString();
+	i.AddParam("text");
+	i.AddParam("begin");
+	i.AddParam("end");
+	i.AddParam("replacement");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String beginStr = context.GetVar(String("begin")).ToString();
+		String endStr = context.GetVar(String("end")).ToString();
+		String replacementStr = context.GetVar(String("replacement")).ToString();
 		const char* result = TextReplaceBetween(textStr.c_str(), beginStr.c_str(), endStr.c_str(), replacementStr.c_str());
 		String ret(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextReplaceBetween", i->GetFunc());
+	});
+	raylibModule.SetValue("TextReplaceBetween", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("begin");
-	i->AddParam("end");
-	i->AddParam("replacement");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String beginStr = context->GetVar(String("begin")).ToString();
-		String endStr = context->GetVar(String("end")).ToString();
-		String replacementStr = context->GetVar(String("replacement")).ToString();
+	i.AddParam("text");
+	i.AddParam("begin");
+	i.AddParam("end");
+	i.AddParam("replacement");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String beginStr = context.GetVar(String("begin")).ToString();
+		String endStr = context.GetVar(String("end")).ToString();
+		String replacementStr = context.GetVar(String("replacement")).ToString();
 		char* result = TextReplaceBetweenAlloc(textStr.c_str(), beginStr.c_str(), endStr.c_str(), replacementStr.c_str());
 		if (result == nullptr) return IntrinsicResult::Null;
 		String ret(result);
 		MemFree(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextReplaceBetweenAlloc", i->GetFunc());
+	});
+	raylibModule.SetValue("TextReplaceBetweenAlloc", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("insert");
-	i->AddParam("position");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String insertStr = context->GetVar(String("insert")).ToString();
-		int position = context->GetVar(String("position")).IntValue();
+	i.AddParam("text");
+	i.AddParam("insert");
+	i.AddParam("position");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String insertStr = context.GetVar(String("insert")).ToString();
+		int position = context.GetVar(String("position")).IntValue();
 		const char* result = TextInsert(textStr.c_str(), insertStr.c_str(), position);
 		String ret(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextInsert", i->GetFunc());
+	});
+	raylibModule.SetValue("TextInsert", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("insert");
-	i->AddParam("position");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String insertStr = context->GetVar(String("insert")).ToString();
-		int position = context->GetVar(String("position")).IntValue();
+	i.AddParam("text");
+	i.AddParam("insert");
+	i.AddParam("position");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String insertStr = context.GetVar(String("insert")).ToString();
+		int position = context.GetVar(String("position")).IntValue();
 		char* result = TextInsertAlloc(textStr.c_str(), insertStr.c_str(), position);
 		if (result == nullptr) return IntrinsicResult::Null;
 		String ret(result);
 		MemFree(result);
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextInsertAlloc", i->GetFunc());
+	});
+	raylibModule.SetValue("TextInsertAlloc", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("delimiter");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String delimiterStr = context->GetVar(String("delimiter")).ToString();
-		if (delimiterStr.LengthB() == 0) return IntrinsicResult(Value::null);
+	i.AddParam("text");
+	i.AddParam("delimiter");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String delimiterStr = context.GetVar(String("delimiter")).ToString();
+		if (delimiterStr.LengthB() == 0) return IntrinsicResult(Value::Null);
 
 		char delimiter = delimiterStr.data()[0];
 		int count = 0;
@@ -869,16 +869,16 @@ void AddRTextMethods(ValueDict raylibModule) {
 		for (int i = 0; i < count; i++) {
 			result.Add(Value(String(parts[i])));
 		}
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("TextSplit", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("TextSplit", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("textList");
-	i->AddParam("delimiter", "");
-	i->code = INTRINSIC_LAMBDA {
-		ValueList textList = context->GetVar(String("textList")).GetList();
-		String delimiterStr = context->GetVar(String("delimiter")).ToString();
+	i.AddParam("textList");
+	i.AddParam("delimiter", "");
+	i.set_Code(INTRINSIC_LAMBDA {
+		ValueList textList = context.GetVar(String("textList")).GetList();
+		String delimiterStr = context.GetVar(String("delimiter")).ToString();
 
 		int count = textList.Count();
 		if (count == 0) return IntrinsicResult(String());
@@ -892,94 +892,94 @@ void AddRTextMethods(ValueDict raylibModule) {
 		String ret(TextJoin(parts, count, delimiterStr.c_str()));
 		delete[] parts;
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextJoin", i->GetFunc());
+	});
+	raylibModule.SetValue("TextJoin", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->AddParam("append");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
-		String appendStr = context->GetVar(String("append")).ToString();
+	i.AddParam("text");
+	i.AddParam("append");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
+		String appendStr = context.GetVar(String("append")).ToString();
 		// In MiniScript, we just return the concatenated string
 		String result = textStr + appendStr;
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("TextAppend", i->GetFunc());
+	});
+	raylibModule.SetValue("TextAppend", i.GetFunc());
 
 	// Text case conversion functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		String ret(TextToUpper(textStr.c_str()));
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextToUpper", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToUpper", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		String ret(TextToLower(textStr.c_str()));
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextToLower", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToLower", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		String ret(TextToPascal(textStr.c_str()));
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextToPascal", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToPascal", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		String ret(TextToSnake(textStr.c_str()));
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextToSnake", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToSnake", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		String ret(TextToCamel(textStr.c_str()));
 		return IntrinsicResult(ret);
-	};
-	raylibModule.SetValue("TextToCamel", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToCamel", i.GetFunc());
 
 	// Text to value conversion functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		const char* text = context->GetVar(String("text")).ToString().c_str();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		const char* text = context.GetVar(String("text")).ToString().c_str();
 		int result = TextToInteger(text);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("TextToInteger", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToInteger", i.GetFunc());
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		const char* text = context->GetVar(String("text")).ToString().c_str();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		const char* text = context.GetVar(String("text")).ToString().c_str();
 		float result = TextToFloat(text);
 		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("TextToFloat", i->GetFunc());
+	});
+	raylibModule.SetValue("TextToFloat", i.GetFunc());
 
 	// Text line loading functions
 
 	i = Intrinsic::Create("");
-	i->AddParam("text");
-	i->code = INTRINSIC_LAMBDA {
-		String textStr = context->GetVar(String("text")).ToString();
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetVar(String("text")).ToString();
 		int count = 0;
 		char** lines = LoadTextLines(textStr.c_str(), &count);
 
@@ -988,7 +988,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 			result.Add(Value(String(lines[i])));
 		}
 		UnloadTextLines(lines, count);
-		return IntrinsicResult(result);
-	};
-	raylibModule.SetValue("LoadTextLines", i->GetFunc());
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("LoadTextLines", i.GetFunc());
 }

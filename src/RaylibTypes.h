@@ -1,24 +1,25 @@
+// Include MiniScript before raylib: raylib.h #defines PI as a macro, which
+// otherwise clobbers MiniScript's Math::PI constant when its headers are parsed.
+#include "miniscript.h"
 #include "raylib.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptTypes.h"
 
 using namespace MiniScript;
 
 // MiniScript classes (maps) that represent various Raylib structs
-ValueDict ImageClass();
-ValueDict TextureClass();
-ValueDict FontClass();
-ValueDict WaveClass();
-ValueDict MusicClass();
-ValueDict SoundClass();
-ValueDict AudioStreamClass();
-ValueDict RenderTextureClass();
-ValueDict ShaderClass();
-ValueDict MeshClass();
-ValueDict MaterialClass();
-ValueDict ModelClass();
-ValueDict ModelAnimationClass();
-ValueDict Camera3DClass();
+ValueDict& ImageClass();
+ValueDict& TextureClass();
+ValueDict& FontClass();
+ValueDict& WaveClass();
+ValueDict& MusicClass();
+ValueDict& SoundClass();
+ValueDict& AudioStreamClass();
+ValueDict& RenderTextureClass();
+ValueDict& ShaderClass();
+ValueDict& MeshClass();
+ValueDict& MaterialClass();
+ValueDict& ModelClass();
+ValueDict& ModelAnimationClass();
+ValueDict& Camera3DClass();
 
 // Convert a Raylib Texture to a MiniScript map
 // Allocates the Texture on the heap and stores pointer in _handle

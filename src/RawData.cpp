@@ -7,15 +7,22 @@
 
 #include "RaylibTypes.h"
 #include "RawData.h"
-#include "MiniscriptInterpreter.h"
+#include "miniscript.h"
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 
 namespace MiniScript {
 
+// MS2 has no exceptions: intrinsics report runtime errors via the VM and return.
+// This helper mirrors the old RuntimeException/IndexException(...).raise() sites.
+static IntrinsicResult raiseError(Context context, const char* msg) {
+	context.vm.RaiseRuntimeError(msg);
+	return IntrinsicResult::Null;
+}
+
 // Macro to reduce boilerplate
-#define INTRINSIC_LAMBDA [](Context *context, IntrinsicResult partialResult) -> IntrinsicResult
+#define INTRINSIC_LAMBDA [](Context context, IntrinsicResult partialResult) -> IntrinsicResult
 
 // Check if this system is little endian
 static bool IsSystemLittleEndian() {
@@ -53,7 +60,9 @@ BinaryData::~BinaryData() {
 
 void BinaryData::Resize(int newSize) {
     if (!ownsBuffer) {
-        throw RuntimeException("Cannot resize RawData buffer that we don't own");
+        // Defensive: the resize intrinsic guards this and reports a script-level
+        // error via the VM; we simply refuse the resize here.
+        return;
     }
 
     if (newSize == length) return;
@@ -247,16 +256,16 @@ static String kHandle("_handle");
 static String kLittleEndian("littleEndian");
 
 // Helper: get BinaryData from a RawData object
-static BinaryData* GetBinaryData(Context* context) {
-    Value self = context->GetVar(String("self"));
-    if (self.type != ValueType::Map) {
-        RuntimeException("RawData required for self parameter").raise();
+static BinaryData* GetBinaryData(Context context) {
+    Value self = context.GetVar(String("self"));
+    if (self.Type() != ValueType::Map) {
+        { context.vm.RaiseRuntimeError("RawData required for self parameter"); return nullptr; }
     }
 
     ValueDict map = self.GetDict();
-    Value handleVal = map.Lookup(kHandle, Value::null);
+    Value handleVal = map.Lookup(kHandle, Value::Null);
 
-    if (handleVal.type != ValueType::Number) {
+    if (handleVal.Type() != ValueType::Number) {
         return nullptr;
     }
 
@@ -271,36 +280,36 @@ static BinaryData* GetBinaryData(Context* context) {
     return data;
 }
 
-ValueDict RawDataClass() {
+ValueDict& RawDataClass() {
     static ValueDict rawDataClass;
 
     if (rawDataClass.Count() > 0) return rawDataClass;
 
-    rawDataClass.SetValue(kHandle, Value::null);
+    rawDataClass.SetValue(kHandle, Value::Null);
     rawDataClass.SetValue(kLittleEndian, Value::one);
 
-    Intrinsic* f;
+    Intrinsic f;
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->code = INTRINSIC_LAMBDA {
+    f.AddParam("self");
+    f.set_Code(INTRINSIC_LAMBDA {
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return IntrinsicResult(Value::zero);
         return IntrinsicResult(Value(data->length));
-    };
+    });
     // get the size of this RawData object in bytes
-    rawDataClass.SetValue(String("len"), f->GetFunc());
+    rawDataClass.SetValue(String("len"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("bytes", 32);
-    f->code = INTRINSIC_LAMBDA {
-        int newSize = context->GetVar(String("bytes")).IntValue();
+    f.AddParam("self");
+    f.AddParam("bytes", 32);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int newSize = context.GetVar(String("bytes")).IntValue();
         if (newSize < 0) {
-            RuntimeException("bytes parameter must be >= 0").raise();
+            return raiseError(context, "bytes parameter must be >= 0");
         }
 
-        Value self = context->GetVar(String("self"));
+        Value self = context.GetVar(String("self"));
         ValueDict map = self.GetDict();
         BinaryData* oldData = GetBinaryData(context);
 
@@ -311,7 +320,7 @@ ValueDict RawDataClass() {
         if (newSize == 0) {
             // Delete old data
             if (oldData != nullptr) delete oldData;
-            map.SetValue(kHandle, Value::null);
+            map.SetValue(kHandle, Value::Null);
             return IntrinsicResult::Null;
         }
 
@@ -320,352 +329,353 @@ ValueDict RawDataClass() {
             BinaryData* newData = new BinaryData(newSize);
             map.SetValue(kHandle, Value((double)(intptr_t)newData));
         } else {
+            if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
             oldData->Resize(newSize);
         }
 
         return IntrinsicResult::Null;
-    };
+    });
     // resize this RawData object to the given number of bytes
-    rawDataClass.SetValue(String("resize"), f->GetFunc());
+    rawDataClass.SetValue(String("resize"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset >= data->length) IndexException().raise();
+        if (offset < 0 || offset >= data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetUInt8(offset));
-    };
+    });
     // get unsigned byte (0-255) at the given byte offset
-    rawDataClass.SetValue(String("byte"), f->GetFunc());
+    rawDataClass.SetValue(String("byte"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int value = context->GetVar(String("value")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int value = context.GetVar(String("value")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset >= data->length) IndexException().raise();
+        if (offset < 0 || offset >= data->length) return raiseError(context, "index out of range");
 
         data->SetUInt8(offset, (uint8_t)value);
         return IntrinsicResult::Null;
-    };
+    });
     // set unsigned byte at the given byte offset
-    rawDataClass.SetValue(String("setByte"), f->GetFunc());
+    rawDataClass.SetValue(String("setByte"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset >= data->length) IndexException().raise();
+        if (offset < 0 || offset >= data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetInt8(offset));
-    };
+    });
     // get signed byte (-128 to 127) at the given byte offset
-    rawDataClass.SetValue(String("sbyte"), f->GetFunc());
+    rawDataClass.SetValue(String("sbyte"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int value = context->GetVar(String("value")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int value = context.GetVar(String("value")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset >= data->length) IndexException().raise();
+        if (offset < 0 || offset >= data->length) return raiseError(context, "index out of range");
 
         data->SetInt8(offset, (int8_t)value);
         return IntrinsicResult::Null;
-    };
+    });
     // set signed byte at the given byte offset
-    rawDataClass.SetValue(String("setSbyte"), f->GetFunc());
+    rawDataClass.SetValue(String("setSbyte"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 2 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 2 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetUInt16(offset));
-    };
+    });
     // get unsigned 16-bit integer (0-65535) at the given byte offset
-    rawDataClass.SetValue(String("ushort"), f->GetFunc());
+    rawDataClass.SetValue(String("ushort"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int value = context->GetVar(String("value")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int value = context.GetVar(String("value")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 2 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 2 > data->length) return raiseError(context, "index out of range");
 
         data->SetUInt16(offset, (uint16_t)value);
         return IntrinsicResult::Null;
-    };
+    });
     // set unsigned 16-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setUshort"), f->GetFunc());
+    rawDataClass.SetValue(String("setUshort"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 2 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 2 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetInt16(offset));
-    };
+    });
     // get signed 16-bit integer (-32768 to 32767) at the given byte offset
-    rawDataClass.SetValue(String("short"), f->GetFunc());
+    rawDataClass.SetValue(String("short"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int value = context->GetVar(String("value")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int value = context.GetVar(String("value")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 2 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 2 > data->length) return raiseError(context, "index out of range");
 
         data->SetInt16(offset, (int16_t)value);
         return IntrinsicResult::Null;
-    };
+    });
     // set signed 16-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setShort"), f->GetFunc());
+    rawDataClass.SetValue(String("setShort"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult((double)data->GetUInt32(offset));
-    };
+    });
     // get unsigned 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("uint"), f->GetFunc());
+    rawDataClass.SetValue(String("uint"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        double value = context->GetVar(String("value")).DoubleValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        double value = context.GetVar(String("value")).DoubleValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         data->SetUInt32(offset, (uint32_t)value);
         return IntrinsicResult::Null;
-    };
+    });
     // set unsigned 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setUint"), f->GetFunc());
+    rawDataClass.SetValue(String("setUint"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetInt32(offset));
-    };
+    });
     // get signed 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("int"), f->GetFunc());
+    rawDataClass.SetValue(String("int"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int value = context->GetVar(String("value")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int value = context.GetVar(String("value")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         data->SetInt32(offset, value);
         return IntrinsicResult::Null;
-    };
+    });
     // set signed 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setInt"), f->GetFunc());
+    rawDataClass.SetValue(String("setInt"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetFloat(offset));
-    };
+    });
     // get 32-bit float at the given byte offset
-    rawDataClass.SetValue(String("float"), f->GetFunc());
+    rawDataClass.SetValue(String("float"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        float value = context->GetVar(String("value")).FloatValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        float value = context.GetVar(String("value")).FloatValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 4 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 4 > data->length) return raiseError(context, "index out of range");
 
         data->SetFloat(offset, value);
         return IntrinsicResult::Null;
-    };
+    });
     // set 32-bit float at the given byte offset
-    rawDataClass.SetValue(String("setFloat"), f->GetFunc());
+    rawDataClass.SetValue(String("setFloat"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 8 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 8 > data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetDouble(offset));
-    };
+    });
     // get 64-bit double at the given byte offset
-    rawDataClass.SetValue(String("double"), f->GetFunc());
+    rawDataClass.SetValue(String("double"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", 0);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        double value = context->GetVar(String("value")).DoubleValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", 0);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        double value = context.GetVar(String("value")).DoubleValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset + 8 > data->length) IndexException().raise();
+        if (offset < 0 || offset + 8 > data->length) return raiseError(context, "index out of range");
 
         data->SetDouble(offset, value);
         return IntrinsicResult::Null;
-    };
+    });
     // set 64-bit double at the given byte offset
-    rawDataClass.SetValue(String("setDouble"), f->GetFunc());
+    rawDataClass.SetValue(String("setDouble"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("bytes", -1);
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        int byteCount = context->GetVar(String("bytes")).IntValue();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("bytes", -1);
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        int byteCount = context.GetVar(String("bytes")).IntValue();
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
         if (byteCount < 0) byteCount = data->length - offset;
-        if (offset < 0 || byteCount < 0) IndexException().raise();
+        if (offset < 0 || byteCount < 0) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->GetUTF8(offset, byteCount));
-    };
+    });
     // get UTF-8 string from the given byte offset (bytes=-1 reads to end)
-    rawDataClass.SetValue(String("utf8"), f->GetFunc());
+    rawDataClass.SetValue(String("utf8"), f.GetFunc());
 
     f = Intrinsic::Create("");
-    f->AddParam("self");
-    f->AddParam("offset", 0);
-    f->AddParam("value", "");
-    f->code = INTRINSIC_LAMBDA {
-        int offset = context->GetVar(String("offset")).IntValue();
-        String value = context->GetVar(String("value")).ToString();
+    f.AddParam("self");
+    f.AddParam("offset", 0);
+    f.AddParam("value", "");
+    f.set_Code(INTRINSIC_LAMBDA {
+        int offset = context.GetVar(String("offset")).IntValue();
+        String value = context.GetVar(String("value")).ToString();
         if (value.empty()) return IntrinsicResult(Value::zero);
 
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) IndexException().raise();
+        if (data == nullptr) return raiseError(context, "index out of range");
 
         if (offset < 0) offset += data->length;
-        if (offset < 0 || offset >= data->length) IndexException().raise();
+        if (offset < 0 || offset >= data->length) return raiseError(context, "index out of range");
 
         return IntrinsicResult(data->SetUTF8(offset, value));
-    };
+    });
     // write a UTF-8 string at the given byte offset; returns bytes written
-    rawDataClass.SetValue(String("setUtf8"), f->GetFunc());
+    rawDataClass.SetValue(String("setUtf8"), f.GetFunc());
 
     return rawDataClass;
 }
 
 Value RawDataToValue(BinaryData* data) {
-    if (data == nullptr) return Value::null;
+    if (data == nullptr) return Value::Null;
 
     ValueDict map = RawDataClass();
     map.SetValue(kHandle, Value((double)(intptr_t)data));
     map.SetValue(kLittleEndian, Value(data->littleEndian ? 1.0 : 0.0));
-    return Value(map);
+    return DynamicMap(map);
 }
 
 BinaryData* ValueToRawData(Value value) {
-    if (value.type != ValueType::Map) return nullptr;
+    if (value.Type() != ValueType::Map) return nullptr;
 
     ValueDict map = value.GetDict();
-    Value handleVal = map.Lookup(kHandle, Value::null);
+    Value handleVal = map.Lookup(kHandle, Value::Null);
 
-    if (handleVal.type != ValueType::Number) return nullptr;
+    if (handleVal.Type() != ValueType::Number) return nullptr;
 
     BinaryData* data = (BinaryData*)ValueToPointer(handleVal);
 

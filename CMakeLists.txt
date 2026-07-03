@@ -4,24 +4,33 @@ project(raylib-miniscript VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# MiniScript source files
-set(MINISCRIPT_SOURCES
-    MiniScript/Dictionary.cpp
-    MiniScript/List.cpp
-    MiniScript/MiniscriptInterpreter.cpp
-    MiniScript/MiniscriptIntrinsics.cpp
-    MiniScript/MiniscriptKeywords.cpp
-    MiniScript/MiniscriptLexer.cpp
-    MiniScript/MiniscriptParser.cpp
-    MiniScript/MiniscriptTAC.cpp
-    MiniScript/MiniscriptTypes.cpp
-    MiniScript/QA.cpp
-    MiniScript/SimpleString.cpp
-    MiniScript/SimpleVector.cpp
-    MiniScript/SplitJoin.cpp
-    MiniScript/UnicodeUtil.cpp
-    MiniScript/UnitTest.cpp
+# MiniScript 2 source files.
+#
+# MiniScript2 is a sibling repo reached through the MiniScript2 symlink
+# (-> ../miniscript2). We compile it from source rather than linking a
+# prebuilt static library, because the same sources must also compile into
+# the Emscripten/wasm web build, where a native .a cannot be linked.
+#
+# It has two source trees:
+#   cpp/core   - hand-written core runtime (.cpp and .c)
+#   generated  - C++ transpiled from the C# reference implementation (*.g.cpp).
+#                This set changes when MiniScript2 is re-transpiled, so we glob
+#                it (CONFIGURE_DEPENDS re-globs when the folder contents change).
+# The editline REPL sources are intentionally excluded; this is a GUI host.
+set(MS2_DIR ${CMAKE_SOURCE_DIR}/MiniScript2)
+
+file(GLOB MS2_CORE_SOURCES CONFIGURE_DEPENDS
+    ${MS2_DIR}/cpp/core/*.cpp
+    ${MS2_DIR}/cpp/core/*.c
 )
+list(FILTER MS2_CORE_SOURCES EXCLUDE REGEX "core/test_.*")
+list(FILTER MS2_CORE_SOURCES EXCLUDE REGEX "core/debug_.*")
+
+file(GLOB MS2_GEN_SOURCES CONFIGURE_DEPENDS
+    ${MS2_DIR}/generated/*.g.cpp
+)
+
+set(MINISCRIPT_SOURCES ${MS2_CORE_SOURCES} ${MS2_GEN_SOURCES})
 
 # Application source files
 set(APP_SOURCES
@@ -52,7 +61,9 @@ add_executable(raylib-miniscript
 # Include directories (common to all platforms)
 target_include_directories(raylib-miniscript PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/MiniScript
+    ${MS2_DIR}/cpp/core
+    ${MS2_DIR}/cpp
+    ${MS2_DIR}/generated
 )
 
 if(EMSCRIPTEN)

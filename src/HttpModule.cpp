@@ -17,10 +17,7 @@
 //
 
 #include "HttpModule.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptIntrinsics.h"
-#include "MiniscriptErrors.h"
-#include "MiniscriptTypes.h"
+#include "miniscript.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -68,15 +65,13 @@ static std::string UrlEncode(const char* src, size_t len) {
 // Convert a MiniScript map to application/x-www-form-urlencoded body.
 static std::string MapToFormData(ValueDict dict) {
 	std::string result;
-	ValueDictIterator iter = dict.GetIterator();
-	while (!iter.Done()) {
-		String k = iter.Key().ToString();
-		String v = iter.Value().ToString();
+	for (Value key : dict.Keys()) {
+		String k = key.ToString();
+		String v = dict.Lookup(key, Value::Null).ToString();
 		std::string ek = UrlEncode(k.c_str(), (size_t)k.LengthB());
 		std::string ev = UrlEncode(v.c_str(), (size_t)v.LengthB());
 		if (!result.empty()) result += '&';
 		result += ek + '=' + ev;
-		iter.Next();
 	}
 	return result;
 }
@@ -88,10 +83,11 @@ static std::string MapToFormData(ValueDict dict) {
 #ifndef PLATFORM_WEB
 
 // Perform a synchronous HTTP/HTTPS POST.
-// Returns the response body, or raises RuntimeException on error.
+// Returns the response body; on error, returns "" and sets *errOut.
 static std::string DoHttpPost(const char* url,
 							  const std::string& body,
-							  const std::vector<std::string>& headers);
+							  const std::vector<std::string>& headers,
+                              std::string* errOut);
 
 //--------------------------------------------------
 // Windows: WinHTTP
@@ -108,7 +104,8 @@ static std::wstring ToWide(const char* s) {
 
 static std::string DoHttpPost(const char* urlStr,
 							  const std::string& body,
-							  const std::vector<std::string>& headers) {
+							  const std::vector<std::string>& headers,
+                              std::string* errOut) {
 	std::wstring wUrl = ToWide(urlStr);
 
 	// Crack URL into components.
@@ -120,19 +117,19 @@ static std::string DoHttpPost(const char* urlStr,
 	uc.lpszUrlPath         = wPath;
 	uc.dwUrlPathLength     = (DWORD)(sizeof(wPath) / sizeof(wchar_t));
 	if (!WinHttpCrackUrl(wUrl.c_str(), 0, 0, &uc)) {
-		RuntimeException(String("http.post: invalid URL: ") + urlStr).raise();
+		{ if (errOut) *errOut = std::string("http.post: invalid URL: ") + urlStr; return std::string(); }
 	}
 	bool isHttps = (uc.nScheme == INTERNET_SCHEME_HTTPS);
 
 	HINTERNET hSession = WinHttpOpen(L"raylib-miniscript/1.0",
 		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	if (!hSession) RuntimeException(String("http.post: WinHttpOpen failed")).raise();
+	if (!hSession) { if (errOut) *errOut = "http.post: WinHttpOpen failed"; return std::string(); }
 
 	HINTERNET hConnect = WinHttpConnect(hSession, wHost, uc.nPort, 0);
 	if (!hConnect) {
 		WinHttpCloseHandle(hSession);
-		RuntimeException(String("http.post: WinHttpConnect failed")).raise();
+		{ if (errOut) *errOut = "http.post: WinHttpConnect failed"; return std::string(); }
 	}
 
 	DWORD flags = isHttps ? WINHTTP_FLAG_SECURE : 0;
@@ -142,7 +139,7 @@ static std::string DoHttpPost(const char* urlStr,
 	if (!hRequest) {
 		WinHttpCloseHandle(hConnect);
 		WinHttpCloseHandle(hSession);
-		RuntimeException(String("http.post: WinHttpOpenRequest failed")).raise();
+		{ if (errOut) *errOut = "http.post: WinHttpOpenRequest failed"; return std::string(); }
 	}
 
 	// Add custom headers.
@@ -164,7 +161,7 @@ static std::string DoHttpPost(const char* urlStr,
 		WinHttpCloseHandle(hRequest);
 		WinHttpCloseHandle(hConnect);
 		WinHttpCloseHandle(hSession);
-		RuntimeException(String("http.post: WinHttpSendRequest failed")).raise();
+		{ if (errOut) *errOut = "http.post: WinHttpSendRequest failed"; return std::string(); }
 	}
 
 	ok = WinHttpReceiveResponse(hRequest, nullptr);
@@ -172,7 +169,7 @@ static std::string DoHttpPost(const char* urlStr,
 		WinHttpCloseHandle(hRequest);
 		WinHttpCloseHandle(hConnect);
 		WinHttpCloseHandle(hSession);
-		RuntimeException(String("http.post: WinHttpReceiveResponse failed")).raise();
+		{ if (errOut) *errOut = "http.post: WinHttpReceiveResponse failed"; return std::string(); }
 	}
 
 	// Read response body.
@@ -204,7 +201,8 @@ static size_t CurlWriteCallback(char* ptr, size_t size, size_t nmemb, void* user
 
 static std::string DoHttpPost(const char* urlStr,
 							  const std::string& body,
-							  const std::vector<std::string>& headers) {
+							  const std::vector<std::string>& headers,
+                              std::string* errOut) {
 	struct curl_slist* headerList = nullptr;
 	for (const auto& h : headers) {
 		headerList = curl_slist_append(headerList, h.c_str());
@@ -213,7 +211,7 @@ static std::string DoHttpPost(const char* urlStr,
 	CURL* curl = curl_easy_init();
 	if (!curl) {
 		curl_slist_free_all(headerList);
-		RuntimeException(String("http.post: failed to initialize curl")).raise();
+		{ if (errOut) *errOut = "http.post: failed to initialize curl"; return std::string(); }
 	}
 
 	std::string responseBody;
@@ -230,7 +228,7 @@ static std::string DoHttpPost(const char* urlStr,
 	curl_easy_cleanup(curl);
 
 	if (res != CURLE_OK) {
-		RuntimeException(String("http.post: ") + curl_easy_strerror(res)).raise();
+		{ if (errOut) *errOut = std::string("http.post: ") + curl_easy_strerror(res); return std::string(); }
 	}
 	return responseBody;
 }
@@ -241,15 +239,15 @@ static std::string DoHttpPost(const char* urlStr,
 // Shared intrinsic (calls DoHttpPost)
 //--------------------------------------------------
 
-static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult partialResult) {
-	String url = context->GetVar("url").ToString();
-	Value dataVal = context->GetVar("data");
-	Value headersVal = context->GetVar("headers");
+static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult partialResult) {
+	String url = context.GetVar("url").ToString();
+	Value dataVal = context.GetVar("data");
+	Value headersVal = context.GetVar("headers");
 
 	// Build request body.
 	std::string body;
 	bool injectFormType = false;
-	if (dataVal.type == ValueType::Map) {
+	if (dataVal.Type() == ValueType::Map) {
 		body = MapToFormData(dataVal.GetDict());
 		injectFormType = true;
 	} else if (!dataVal.IsNull()) {
@@ -262,24 +260,22 @@ static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult par
 	if (injectFormType) {
 		headers.push_back("Content-Type: application/x-www-form-urlencoded");
 	}
-	if (headersVal.type == ValueType::Map) {
+	if (headersVal.Type() == ValueType::Map) {
 		ValueDict hmap = headersVal.GetDict();
-		ValueDictIterator iter = hmap.GetIterator();
-		while (!iter.Done()) {
+		for (Value key : hmap.Keys()) {
 			headers.push_back(
-				std::string(iter.Key().ToString().c_str()) +
+				std::string(key.ToString().c_str()) +
 				": " +
-				std::string(iter.Value().ToString().c_str()));
-			iter.Next();
+				std::string(hmap.Lookup(key, Value::Null).ToString().c_str()));
 		}
 	}
 
-	try {
-		std::string responseBody = DoHttpPost(url.c_str(), body, headers);
-		return IntrinsicResult(String(responseBody.c_str(), (long)responseBody.size()));
-	} catch (MiniscriptException& e) {
-		return IntrinsicResult(e.message);
-	}
+	// MS2 has no exceptions: DoHttpPost reports failure via errOut, and (as in
+	// 1.x) http.post returns the error message string on failure.
+	std::string err;
+	std::string responseBody = DoHttpPost(url.c_str(), body, headers, &err);
+	if (!err.empty()) return IntrinsicResult(String(err.c_str()));
+	return IntrinsicResult(String(responseBody.c_str(), (long)responseBody.size()));
 }
 
 //----------------------------------------------------------------------
@@ -310,7 +306,7 @@ static void http_fetch_done(emscripten_fetch_t* fetch) {
 	}
 }
 
-static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult partialResult) {
+static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult partialResult) {
 	// State 2: fetch has completed — collect the response.
 	if (!partialResult.Done()) {
 		long fetchId = (long)partialResult.Result().DoubleValue();
@@ -331,15 +327,15 @@ static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult par
 	}
 
 	// State 1: start the fetch.
-	String url = context->GetVar("url").ToString();
-	Value dataVal = context->GetVar("data");
-	Value headersVal = context->GetVar("headers");
+	String url = context.GetVar("url").ToString();
+	Value dataVal = context.GetVar("data");
+	Value headersVal = context.GetVar("headers");
 
 	long fetchId = nextHttpFetchId++;
 	HttpFetchState& state = activeHttpFetches[fetchId]; // default-construct in place
 
 	bool injectFormType = false;
-	if (dataVal.type == ValueType::Map) {
+	if (dataVal.Type() == ValueType::Map) {
 		state.body = MapToFormData(dataVal.GetDict());
 		injectFormType = true;
 	} else if (!dataVal.IsNull()) {
@@ -352,7 +348,7 @@ static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult par
 		state.headerStrings.push_back("Content-Type");
 		state.headerStrings.push_back("application/x-www-form-urlencoded");
 	}
-	if (headersVal.type == ValueType::Map) {
+	if (headersVal.Type() == ValueType::Map) {
 		ValueDict hmap = headersVal.GetDict();
 		ValueDictIterator iter = hmap.GetIterator();
 		while (!iter.Done()) {
@@ -387,21 +383,21 @@ static IntrinsicResult intrinsic_http_post(Context* context, IntrinsicResult par
 
 static ValueDict httpMap;
 
-static IntrinsicResult intrinsic_http(Context* context, IntrinsicResult partialResult) {
-	return IntrinsicResult(httpMap);
+static IntrinsicResult intrinsic_http(Context context, IntrinsicResult partialResult) {
+	return IntrinsicResult(StaticMap(httpMap));
 }
 
 void AddHttpIntrinsics() {
-	Intrinsic *i;
+	Intrinsic i;
 
 	// Send an HTTP POST request; returns the response body as a string
 	i = Intrinsic::Create("");
-	i->AddParam("url", "");
-	i->AddParam("data");
-	i->AddParam("headers");
-	i->code = intrinsic_http_post;
-	httpMap.SetValue(String("post"), i->GetFunc());
+	i.AddParam("url", "");
+	i.AddParam("data");
+	i.AddParam("headers");
+	i.set_Code(intrinsic_http_post);
+	httpMap.SetValue(String("post"), i.GetFunc());
 
-	Intrinsic* httpFunc = Intrinsic::Create("http");
-	httpFunc->code = intrinsic_http;
+	Intrinsic httpFunc = Intrinsic::Create("http");
+	httpFunc.set_Code(intrinsic_http);
 }

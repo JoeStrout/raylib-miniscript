@@ -8,9 +8,7 @@
 #include "MoreIntrinsics.h"
 #include "RaylibTypes.h"
 #include "raylib.h"
-#include "MiniscriptInterpreter.h"
-#include "MiniscriptIntrinsics.h"
-#include "MiniscriptParser.h"
+#include "miniscript.h"
 #include <map>
 #include <cstring>
 
@@ -42,8 +40,6 @@ static int exitResult = 0;
 // Environment variable support
 //--------------------------------------------------------------------------------
 
-static bool assignEnvVar(ValueDict& dict, Value key, Value value);  // forward declaration
-
 // Get a reference to the shared environment map.
 // On desktop, initialized from the OS environment on first call.
 // On web, starts empty (populated via setEnvVar).
@@ -62,7 +58,6 @@ static ValueDict& envMapRef() {
 			envMap.SetValue(varName, valueStr);
 		}
 #endif
-		envMap.SetAssignOverride(assignEnvVar);
 	}
 	return envMap;
 }
@@ -79,11 +74,6 @@ static void setEnvVar(const char* key, const char* value) {
 	envMapRef().SetValue(String(key), String(value));
 }
 
-static bool assignEnvVar(ValueDict& dict, Value key, Value value) {
-	setEnvVar(key.ToString().c_str(), value.ToString().c_str());
-	return true;	// setEnvVar already updated the map
-}
-
 static ValueDict getEnvMap() {
 	return envMapRef();
 }
@@ -91,8 +81,8 @@ static ValueDict getEnvMap() {
 // Expand any occurrences of $VAR, $(VAR) or ${VAR} on all platforms,
 // and also of %VAR% under Windows only, using variables from getEnvMap().
 static String ExpandVariables(String path) {
-	long p0, p1;
-	long len = path.LengthB();
+	int p0, p1;
+	int len = path.LengthB();
 	ValueDict envMap = getEnvMap();
 	while (true) {
 		p0 = path.IndexOfB("${");
@@ -146,8 +136,12 @@ static String ExpandVariables(String path) {
 	return path;
 }
 
-static IntrinsicResult intrinsic_env(Context *context, IntrinsicResult partialResult) {
-	return IntrinsicResult(getEnvMap());
+static IntrinsicResult intrinsic_env(Context context, IntrinsicResult partialResult) {
+	// The env map has stable identity (scripts may hold onto it), so root it
+	// once via StaticMap.  Note: unlike MS1, assigning to a member of this map
+	// from script does NOT propagate to the OS environment (MS2 dropped the
+	// map assign-override hook); host code changes the OS env via setEnvVar().
+	return IntrinsicResult(StaticMap(envMapRef()));
 }
 
 // Get the import search directory at the given index from MS_IMPORT_PATH.
@@ -199,24 +193,23 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 	}
 }
 
-static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partialResult) {
-	// State 3: Import function has finished, store result in parent context
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::String) {
-		Value importedValues = context->GetTemp(0);
-		String libname = partialResult.Result().ToString();
-		Context *callerContext = context->parent;
-		if (callerContext) {
-			callerContext->SetVar(libname, importedValues);
-		}
+static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
+	// State 3: the imported module finished running; store its locals map
+	// (the manual-call result) under the library name in the caller's scope.
+	if (!partialResult.Done() && partialResult.result.Type() == ValueType::String) {
+		Value importedValues = context.vm.ManualCallResult;
+		String libname = partialResult.result.ToString();
+		context.vm.SetVar(libname, importedValues);
 		return IntrinsicResult::Null;
 	}
 
 	// State 2: File has been fetched, parse and create import
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::Number) {
-		long fetchId = (long)partialResult.Result().DoubleValue();
+	if (!partialResult.Done() && partialResult.result.Type() == ValueType::Number) {
+		long fetchId = (long)partialResult.result.DoubleValue();
 		auto it = activeImportFetches.find(fetchId);
 		if (it == activeImportFetches.end()) {
-			RuntimeException("import: internal error (fetch not found)").raise();
+			context.vm.RaiseRuntimeError("import: internal error (fetch not found)");
+			return IntrinsicResult::Null;
 		}
 
 		ImportFetchData& data = it->second;
@@ -233,7 +226,8 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 			if (!moduleData) {
 				emscripten_fetch_close(fetch);
 				activeImportFetches.erase(it);
-				RuntimeException("import: memory allocation failed").raise();
+				context.vm.RaiseRuntimeError("import: memory allocation failed");
+				return IntrinsicResult::Null;
 			}
 			memcpy(moduleData, fetch->data, fetch->numBytes);
 			moduleData[fetch->numBytes] = '\0';
@@ -243,11 +237,13 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 			emscripten_fetch_close(fetch);
 			activeImportFetches.erase(it);
 
-			Parser parser;
-			parser.errorContext = libname + ".ms";
-			parser.Parse(moduleSource);
-			FunctionStorage *import = parser.CreateImport();
-			context->vm->ManuallyPushCall(import, Value::Temp(0));
+			Value compileErr;
+			FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
+			if (IsNull(moduleMain)) {
+				if (!compileErr.IsNull()) return IntrinsicResult(compileErr);
+				return IntrinsicResult::Null;
+			}
+			context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
 
 			return IntrinsicResult(libname, false);
 		} else {
@@ -275,23 +271,27 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 
 				return IntrinsicResult(Value((double)newFetchId), false);
 			} else {
-				RuntimeException("import: library not found: " + libname).raise();
+				context.vm.RaiseRuntimeError("import: library not found: " + libname);
+				return IntrinsicResult::Null;
 			}
 		}
 	}
 
 	// State 1: Start the import - fetch the file
-	String libname = context->GetVar("libname").ToString();
+	String libname = context.GetVar("libname").ToString();
 	if (libname.empty()) {
-		RuntimeException("import: libname required").raise();
+		context.vm.RaiseRuntimeError("import: libname required");
+		return IntrinsicResult::Null;
 	}
 	if (libname.IndexOfB('/') >= 0) {
-		RuntimeException("import: argument must be library name, not path").raise();
+		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
+		return IntrinsicResult::Null;
 	}
 
 	String dir = GetImportDir(0);
 	if (dir.empty()) {
-		RuntimeException("import: no import paths configured").raise();
+		context.vm.RaiseRuntimeError("import: no import paths configured");
+		return IntrinsicResult::Null;
 	}
 	String path = dir + "/" + libname + ".ms";
 
@@ -314,25 +314,25 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 
 #else // PLATFORM_DESKTOP
 
-static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partialResult) {
-	// State 2: Import function has finished, store result in parent context
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::String) {
-		Value importedValues = context->GetTemp(0);
-		String libname = partialResult.Result().ToString();
-		Context *callerContext = context->parent;
-		if (callerContext) {
-			callerContext->SetVar(libname, importedValues);
-		}
+static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
+	// State 2: the imported module finished running; store its locals map
+	// (the manual-call result) under the library name in the caller's scope.
+	if (!partialResult.Done() && partialResult.result.Type() == ValueType::String) {
+		Value importedValues = context.vm.ManualCallResult;
+		String libname = partialResult.result.ToString();
+		context.vm.SetVar(libname, importedValues);
 		return IntrinsicResult::Null;
 	}
 
 	// State 1: Load and parse the file synchronously
-	String libname = context->GetVar("libname").ToString();
+	String libname = context.GetVar("libname").ToString();
 	if (libname.empty()) {
-		RuntimeException("import: libname required").raise();
+		context.vm.RaiseRuntimeError("import: libname required");
+		return IntrinsicResult::Null;
 	}
 	if (libname.IndexOfB('/') >= 0) {
-		RuntimeException("import: argument must be library name, not path").raise();
+		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
+		return IntrinsicResult::Null;
 	}
 
 	// Search each directory in MS_IMPORT_PATH
@@ -352,14 +352,20 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 	}
 
 	if (!found) {
-		RuntimeException("import: library not found: " + libname).raise();
+		context.vm.RaiseRuntimeError("import: library not found: " + libname);
+		return IntrinsicResult::Null;
 	}
 
-	Parser parser;
-	parser.errorContext = libname + ".ms";
-	parser.Parse(moduleSource);
-	FunctionStorage *import = parser.CreateImport();
-	context->vm->ManuallyPushCall(import, Value::Temp(0));
+	// Compile the module and push it as a manual call; we'll be re-invoked
+	// (State 2) when it finishes.  moduleMain is the module's @main; nested
+	// functions are reachable from its constant pool.
+	Value compileErr;
+	FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
+	if (IsNull(moduleMain)) {
+		if (!compileErr.IsNull()) return IntrinsicResult(compileErr);
+		return IntrinsicResult::Null;
+	}
+	context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
 
 	return IntrinsicResult(libname, false);
 }
@@ -370,11 +376,11 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 // Exit intrinsic
 //--------------------------------------------------------------------------------
 
-static IntrinsicResult intrinsic_exit(Context *context, IntrinsicResult partialResult) {
+static IntrinsicResult intrinsic_exit(Context context, IntrinsicResult partialResult) {
 	exitASAP = true;
-	Value resultCode = context->GetVar("resultCode");
+	Value resultCode = context.GetVar("resultCode");
 	if (!resultCode.IsNull()) exitResult = (int)resultCode.IntValue();
-	context->vm->Stop();
+	context.vm.Stop();
 	return IntrinsicResult::Null;
 }
 
@@ -396,30 +402,22 @@ void UpdateScriptDir(const char* path) {
 	}
 }
 
-void RunScriptSource(Interpreter* interpreter, String source) {
-	// Save the current global variables
-	ValueDict savedGlobals = interpreter->vm->GetGlobalContext()->variables;
-
-	// Save the cached type maps (which may have user-added methods)
-	Value savedMapType = interpreter->vm->mapType;
-	Value savedListType = interpreter->vm->listType;
-	Value savedStringType = interpreter->vm->stringType;
-	Value savedNumberType = interpreter->vm->numberType;
-	Value savedFunctionType = interpreter->vm->functionType;
-
-	// Reset and recompile with the new source
-	interpreter->Reset(source);
-	interpreter->Compile();
-
-	// Restore the saved globals and type maps into the new VM
-	if (interpreter->vm) {
-		interpreter->vm->GetGlobalContext()->variables = savedGlobals;
-		interpreter->vm->mapType = savedMapType;
-		interpreter->vm->listType = savedListType;
-		interpreter->vm->stringType = savedStringType;
-		interpreter->vm->numberType = savedNumberType;
-		interpreter->vm->functionType = savedFunctionType;
-	}
+void RunScriptSource(Interpreter interpreter, String source) {
+	// NOTE (MS2 `run` globals): MS1 preserved ALL globals across this reset by
+	// snapshotting the globals ValueDict (and re-installing the cached type
+	// maps).  In MS2 the type maps live in CoreIntrinsics and persist across a
+	// reset, so they no longer need saving.  Globals, however, now live in
+	// @main's named registers, and MS2 does not yet expose a working
+	// snapshot/restore (SetGlobalValue is a no-op outside REPL mode, and the
+	// globals VarMap overflow is still stubbed).
+	//
+	// The agreed fix is to inject a saved-globals map at reset time: after
+	// compiling the new source (when @main is the only frame), walk the saved
+	// globals and, for each, update the matching @main register or append a new
+	// one (bumping @main's MaxRegs).  Until that MS2 API lands, `run`
+	// recompiles WITHOUT preserving globals.
+	interpreter.Reset(source);
+	interpreter.Compile();
 }
 
 //--------------------------------------------------------------------------------
@@ -449,13 +447,14 @@ static void run_fetch_completed(emscripten_fetch_t *fetch) {
 	}
 }
 
-static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialResult) {
+static IntrinsicResult intrinsic_run(Context context, IntrinsicResult partialResult) {
 	// State 2: File has been fetched, run it
-	if (!partialResult.Done() && partialResult.Result().type == ValueType::Number) {
+	if (!partialResult.Done() && partialResult.Result().Type() == ValueType::Number) {
 		long fetchId = (long)partialResult.Result().DoubleValue();
 		auto it = activeRunFetches.find(fetchId);
 		if (it == activeRunFetches.end()) {
-			RuntimeException("run: internal error (fetch not found)").raise();
+			context.vm.RaiseRuntimeError("run: internal error (fetch not found)");
+			return IntrinsicResult::Null;
 		}
 
 		RunFetchData& data = it->second;
@@ -472,7 +471,8 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 			if (!fileData) {
 				emscripten_fetch_close(fetch);
 				activeRunFetches.erase(it);
-				RuntimeException("run: memory allocation failed").raise();
+				context.vm.RaiseRuntimeError("run: memory allocation failed");
+				return IntrinsicResult::Null;
 			}
 			memcpy(fileData, fetch->data, fetch->numBytes);
 			fileData[fetch->numBytes] = '\0';
@@ -483,21 +483,23 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 			activeRunFetches.erase(it);
 
 			UpdateScriptDir(path.c_str());
-			RunScriptSource(context->vm->interpreter, source);
+			RunScriptSource(context.vm.GetInterpreter(), source);
 			return IntrinsicResult::Null;
 		} else {
 			emscripten_fetch_close(fetch);
 			activeRunFetches.erase(it);
-			RuntimeException("run: failed to load file: " + path).raise();
+			context.vm.RaiseRuntimeError("run: failed to load file: " + path);
+			return IntrinsicResult::Null;
 		}
 	}
 
 	// State 1: Start the fetch
-	String path = context->GetVar("path").ToString();
+	String path = context.GetVar("path").ToString();
 	if (path.empty()) {
-		RuntimeException("run: path required").raise();
+		context.vm.RaiseRuntimeError("run: path required");
+		return IntrinsicResult::Null;
 	}
-	if (!path.EndsWith(".ms")) path += ".ms"
+	if (!path.EndsWith(".ms")) path += ".ms";
 
 	long fetchId = nextRunFetchId++;
 	RunFetchData& data = activeRunFetches[fetchId];
@@ -517,21 +519,23 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 
 #else // PLATFORM_DESKTOP
 
-static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialResult) {
-	String path = context->GetVar("path").ToString();
+static IntrinsicResult intrinsic_run(Context context, IntrinsicResult partialResult) {
+	String path = context.GetVar("path").ToString();
 	if (path.empty()) {
-		RuntimeException("run: path required").raise();
+		context.vm.RaiseRuntimeError("run: path required");
+		return IntrinsicResult::Null;
 	}
 
 	char* text = LoadFileText(path.c_str());
 	if (text == nullptr) {
-		RuntimeException("run: failed to load file: " + path).raise();
+		context.vm.RaiseRuntimeError("run: failed to load file: " + path);
+		return IntrinsicResult::Null;
 	}
 	String source(text);
 	UnloadFileText(text);
 
 	UpdateScriptDir(path.c_str());
-	RunScriptSource(context->vm->interpreter, source);
+	RunScriptSource(context.vm.GetInterpreter(), source);
 	return IntrinsicResult::Null;
 }
 
@@ -543,23 +547,23 @@ static IntrinsicResult intrinsic_run(Context *context, IntrinsicResult partialRe
 
 void AddMoreIntrinsics() {
 	// Import a MiniScript library by name, searching MS_IMPORT_PATH
-	Intrinsic *importFunc = Intrinsic::Create("import");
-	importFunc->AddParam("libname", "");
-	importFunc->code = &intrinsic_import;
+	Intrinsic importFunc = Intrinsic::Create("import");
+	importFunc.AddParam("libname", "");
+	importFunc.set_Code(&intrinsic_import);
 
 	// Exit the program with the given result code
-	Intrinsic *exitFunc = Intrinsic::Create("exit");
-	exitFunc->AddParam("resultCode");
-	exitFunc->code = &intrinsic_exit;
+	Intrinsic exitFunc = Intrinsic::Create("exit");
+	exitFunc.AddParam("resultCode");
+	exitFunc.set_Code(&intrinsic_exit);
 
 	// Get a map of all environment variables
-	Intrinsic *envFunc = Intrinsic::Create("env");
-	envFunc->code = &intrinsic_env;
+	Intrinsic envFunc = Intrinsic::Create("env");
+	envFunc.set_Code(&intrinsic_env);
 
 	// Load and run a MiniScript file in the current interpreter context
-	Intrinsic *runFunc = Intrinsic::Create("run");
-	runFunc->AddParam("path", "");
-	runFunc->code = &intrinsic_run;
+	Intrinsic runFunc = Intrinsic::Create("run");
+	runFunc.AddParam("path", "");
+	runFunc.set_Code(&intrinsic_run);
 
 #ifdef PLATFORM_WEB
 	// On web, set default path variables (on desktop, these are set in main.cpp)
@@ -568,8 +572,8 @@ void AddMoreIntrinsics() {
 #endif
 
 	// Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)
-	Intrinsic *rcFunc = Intrinsic::Create("resourceCounts");
-	rcFunc->code = [](Context *context, IntrinsicResult partialResult) -> IntrinsicResult {
+	Intrinsic rcFunc = Intrinsic::Create("resourceCounts");
+	rcFunc.set_Code([](Context context, IntrinsicResult partialResult) -> IntrinsicResult {
 		ValueDict map;
 		int total = 0;
 		auto add = [&](const char* name, int count) {
@@ -590,8 +594,8 @@ void AddMoreIntrinsics() {
 		add("Model", rcModel);
 		add("ModelAnimation", rcModelAnimation);
 		map.SetValue(String("total"), Value(total));
-		return IntrinsicResult(Value(map));
-	};
+		return IntrinsicResult(DynamicMap(map));
+	});
 
 	// Set the default import search path (variables are expanded at import time)
 	setEnvVar("MS_IMPORT_PATH",
