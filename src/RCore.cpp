@@ -557,18 +557,19 @@ static bool IsFunctionOrNull(Value callback) {
 static bool InvokeMiniScriptCallback(Value callback, ValueList args, Value* outResult) {
 	if (outResult != nullptr) *outResult = Value::Null;
 	if (callback.Type() != ValueType::Function) return false;
+	if (IsNull(g_callbackBridgeState.interpreter)) return false;
 
-	// TODO(MS2 callback bridge): This needs to SYNCHRONOUSLY invoke a MiniScript
-	// funcref with `args` and return its result, re-entrantly from inside a C
-	// callback (raylib's SetLoadFileDataCallback / SetTraceLogCallback / etc.).
-	// MS1 did this by building a TAC FunctionStorage and single-stepping the VM
-	// (vm->GetTopContext()/Step()/Temp registers).  MS2 replaced TAC with
-	// bytecode and exposes no host API to call a funcref and run it to
-	// completion (no GetTopContext/Step, and Context has no GetTemp/SetTemp).
-	// Until MS2 grows a synchronous "call this function value" entry point, the
-	// raylib file/trace callbacks degrade gracefully (the C fallback path runs).
-	(void)args;
-	return false;
+	// Synchronously call the MiniScript funcref with `args` and run it to
+	// completion, re-entrantly from inside this C callback.  MS2's
+	// Interpreter::RunFunction (-> VM::RunFunction) pushes a frame for the
+	// callee above the active native frame and drives the VM until it returns,
+	// then restores the interrupted outer execution state.  If the callback
+	// raises a runtime error, RunFunction surfaces it on the outer run (which
+	// then stops and reports it); we still return true here, having handled the
+	// call, so raylib does not also run its C fallback path.
+	Value result = g_callbackBridgeState.interpreter.RunFunction(callback, args);
+	if (outResult != nullptr) *outResult = result;
+	return true;
 }
 
 static unsigned char* MiniScriptLoadFileDataBridge(const char* fileName, int* dataSize) {
@@ -2648,8 +2649,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		const char *fileName = context.GetVar("fileName").ToString().c_str();
-		char *text = LoadFileText(fileName);
+		// Hold the String in a named local: ToString() returns a temporary whose
+		// c_str() would otherwise dangle before LoadFileText reads it.
+		String fileName = context.GetVar("fileName").ToString();
+		char *text = LoadFileText(fileName.c_str());
 		if (text == nullptr) return IntrinsicResult::Null;
 		String ret(text);
 		UnloadFileText(text);

@@ -9,42 +9,54 @@ Ordered roughly by impact.
 
 ---
 
-## 1. Raylib callback bridge — synchronous funcref invocation disabled
+## 1. Raylib callback bridge — synchronous funcref invocation ✅ IMPLEMENTED (pending transpile + test)
 
-**Where:** `src/RCore.cpp`, `InvokeMiniScriptCallback()` (stubbed to return `false`).
-Affects the intrinsics `SetLoadFileDataCallback`, `SetSaveFileDataCallback`,
-`SetLoadFileTextCallback`, `SetSaveFileTextCallback`, and `SetTraceLogCallback`.
+**Where:** `src/RCore.cpp`, `InvokeMiniScriptCallback()`. Affects the intrinsics
+`SetLoadFileDataCallback`, `SetSaveFileDataCallback`, `SetLoadFileTextCallback`,
+`SetSaveFileTextCallback`, and `SetTraceLogCallback`.
 
-**Current behavior:** The intrinsics still register the raylib C callbacks, but when
-raylib invokes them the bridge returns `false`, so raylib falls back to its default C
-behavior (e.g. normal file I/O; trace text printed to stderr). Script-supplied
-callbacks are effectively **not called**.
-
-**Why:** These raylib callbacks are **synchronous C functions** — raylib calls them
-mid-operation and needs the result immediately, so the bridge must invoke a MiniScript
-funcref *re-entrantly, to completion, right now* (we're already nested inside
-`vm.Run()` via the intrinsic that called the raylib function). MS1 did this by:
-- building a TAC `FunctionStorage` that pushed the args and did `CallFunctionA` into
-  the callback (`BuildCallbackInvoker`), then
-- `vm->ManuallyPushCall(invoker, Value::Temp(0))` and
-- `while (vm->GetTopContext() != callerContext && !vm->yielding) vm->Step();`
-- reading the result from `callerContext->GetTemp(0)`.
-
-MS2 removed all of that surface: TAC/`FunctionStorage` are gone (replaced by
-bytecode `FuncDef`), the VM exposes no `GetTopContext()`/`Step()`, and `Context` has no
-`GetTemp`/`SetTemp`.
-
-**Proposed MS2 fix:** a host-facing **synchronous funcref-call API**, e.g.
+**Resolution:** Added a host-facing synchronous funcref-call API to MS2:
 ```cpp
-// Invoke a MiniScript function value with the given args, running the VM
-// re-entrantly to completion, and return its result. Safe to call from inside
-// an intrinsic / native callback.
-Value VM::CallFunction(Value funcRef, List<Value> args);   // or on Interpreter
+Value VM::RunFunction(Value funcRef, ValueList args);          // cs/VM.cs
+Value Interpreter::RunFunction(Value funcRef, ValueList args); // cs/Interpreter.cs (thin wrapper)
 ```
-Internally this mirrors the VM's `CALL` opcode setup (frame + args + result reg) and
-runs the nested call to completion (the re-entrancy MS1 got via `Step()` looping).
-Re-entrancy safety of `VM::Run` needs checking (MS1 avoided nested `Run` by
-single-stepping). Once it exists, `InvokeMiniScriptCallback` becomes a thin wrapper.
+`InvokeMiniScriptCallback` is now a thin wrapper that calls
+`g_callbackBridgeState.interpreter.RunFunction(callback, args)` and returns the result.
+**Needs `cs/VM.cs` + `cs/Interpreter.cs` transpiled, then rebuild + test.**
+
+**Why it was hard:** These raylib callbacks are **synchronous C functions** — raylib
+calls them mid-operation and needs the result immediately, so the bridge must invoke a
+MiniScript funcref *re-entrantly, to completion, right now* (we're already nested inside
+`vm.Run()` via the intrinsic that called the raylib function). Unlike `import` (which
+can defer via a not-done `IntrinsicResult` and let the outer loop resume), a C callback
+is stuck mid-operation and cannot unwind. MS1 did this by building a TAC
+`FunctionStorage`, `ManuallyPushCall` + `while (GetTopContext() != caller) Step();`,
+reading the result from a temp register. MS2 removed all of that surface (TAC/
+`FunctionStorage` gone; no `GetTopContext`/`Step`; no `GetTemp`/`SetTemp`).
+
+**How `RunFunction` works (implemented):** it reuses the same *manual-call sentinel*
+the `import` path already uses to run a pushed frame to completion:
+- Pick a callee base **above the active native frame** so we don't clobber the calling
+  intrinsic's registers. The VM now tracks `_nativeFrameTop = calleeBase + callee.MaxRegs`
+  for the duration of each `InvokeNativeCallback`; `RunFunction` uses
+  `max(_nativeFrameTop, BaseIndex + CurrentFunction.MaxRegs)`.
+- Clear the callee frame, bind args positionally (defaults for missing, error for extra),
+  push a `CallInfo` carrying the funcref's closure `OuterVars` with `CopyResultToReg = -1`.
+- Arm `_hasPendingManualCall` / `_pendingManualCallDepth = runDepth`; the existing
+  `RETURN` handler stops `RunInner` the instant our frame returns (into `ManualCallResult`).
+- Drive `RunInner(0)` (re-entrant; `_activeVM` set as in `Run`), then **restore** all
+  saved outer execution state (PC, base, func, callStackTop, pending-manual-call fields,
+  pending self/super, error). A nested runtime error is surfaced on the outer run.
+
+Because the pre-sized register/`stack` array never reallocates during a run, the
+suspended outer `RunInner`'s cached frame pointers stay valid across the nested run.
+
+**Follow-ups / caveats to verify during testing:**
+- Bound-method funcrefs: `RunFunction` does not inject `self` (callbacks are plain
+  functions). Fine for the raylib hooks; revisit if a use case needs method callbacks.
+- If a callback function *yields*, it can't (there's no one to yield to inside a C
+  callback); such a callback would spin. The raylib file/trace callbacks are simple
+  synchronous functions, so this shouldn't arise in practice.
 
 ---
 

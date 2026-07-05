@@ -739,9 +739,11 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i.AddParam("text");
 	i.AddParam("search");
 	i.set_Code(INTRINSIC_LAMBDA {
-		const char* text = context.GetVar(String("text")).ToString().c_str();
-		const char* search = context.GetVar(String("search")).ToString().c_str();
-		int result = TextFindIndex(text, search);
+		// Hold the Strings in named locals: ToString() returns a temporary whose
+		// c_str() would otherwise dangle before TextFindIndex reads it.
+		String text = context.GetVar(String("text")).ToString();
+		String search = context.GetVar(String("search")).ToString();
+		int result = TextFindIndex(text.c_str(), search.c_str());
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextFindIndex", i.GetFunc());
@@ -959,8 +961,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("text");
 	i.set_Code(INTRINSIC_LAMBDA {
-		const char* text = context.GetVar(String("text")).ToString().c_str();
-		int result = TextToInteger(text);
+		String text = context.GetVar(String("text")).ToString();
+		int result = TextToInteger(text.c_str());
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextToInteger", i.GetFunc());
@@ -968,8 +970,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("text");
 	i.set_Code(INTRINSIC_LAMBDA {
-		const char* text = context.GetVar(String("text")).ToString().c_str();
-		float result = TextToFloat(text);
+		String text = context.GetVar(String("text")).ToString();
+		float result = TextToFloat(text.c_str());
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextToFloat", i.GetFunc());
