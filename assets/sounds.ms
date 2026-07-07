@@ -92,6 +92,12 @@ boom = makeSound(samples)
 
 sounds = [null, wooble, boop, pew, white, hit, boom]
 
+unload = function
+	for sound in sounds
+		if sound!=null then raylib.UnloadSound sound
+	end for
+end function
+
 run = function
 	x = 100; y = 100
 	dx = 10; dy = 10
@@ -112,6 +118,7 @@ run = function
 		raylib.EndDrawing
 		yield
 	end while
+	unload
 end function
 
 if locals == globals then run
