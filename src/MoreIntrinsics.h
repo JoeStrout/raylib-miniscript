@@ -26,9 +26,8 @@ int ExitResultCode();
 /// the given file path.
 void UpdateScriptDir(const char* path);
 
-/// Load new source code into the interpreter and run it (resets the VM and
-/// recompiles).  NOTE: global preservation across the reset is pending an MS2
-/// globals snapshot/restore API (see RunScriptSource in the .cpp).
+/// Load new source code into the interpreter and run it: stops the current
+/// program, then recompiles, preserving the current global variables.
 void RunScriptSource(MiniScript::Interpreter interpreter, MiniScript::String source);
 
 #endif // MOREINTRINSICS_H

@@ -61,40 +61,53 @@ suspended outer `RunInner`'s cached frame pointers stay valid across the nested 
 
 ---
 
-## 2. `run` intrinsic — globals not preserved across reset
+## 2. `run` intrinsic — globals not preserved across reset ✅ DONE
 
-**Where:** `src/MoreIntrinsics.cpp`, `RunScriptSource()` (does `Reset(source)` +
-`Compile()` only). Affects the `run` intrinsic on all platforms.
+**Where:** `src/MoreIntrinsics.cpp`, `RunScriptSource()`. Affects the `run` intrinsic
+on all platforms.
 
-**Current behavior:** `run "otherScript"` chains to the new script but **discards the
-current global variables**. MS1 preserved them.
+**Old behavior:** `run "otherScript"` chained to the new script but **discarded the
+current global variables** (MS1 preserved them) — and, separately, **let the old script
+keep running**: the `run` intrinsic returns into the old VM's still-active `Run` loop,
+so the remainder of the old `@main` executed *before* the new script started.
 
-**Why:** MS1 globals were a plain `ValueDict` (`vm->GetGlobalContext()->variables`), so
-`run` snapshotted them, `Reset`+`Compile`d, and restored them. In MS2 globals live in
-`@main`'s **named registers**; `SetGlobalValue` is a no-op outside REPL mode, and the
-globals VarMap overflow path is still stubbed — so there is no working
-snapshot/restore. (The cached type maps that MS1 also saved/restored now live in
-`CoreIntrinsics` and persist across a reset, so those no longer need handling.)
+**Resolution:** MS2 already had the machinery, in the REPL rather than where a host
+could reach it. A VarMap over `@main`'s registers *is* the globals map, and
+`VM.Reset(functions, globalsMap)` rebinds it to the new program: `Rebind` gathers the
+old register values into the map's hash table, and as the new program runs,
+`NAME`/`ASSIGN` at base 0 call `MapToRegister`, which pulls each preserved value back
+out of the table into the new register. Globals the new script never names stay as
+hash entries and are found by `LookupVariable`'s globals fallback. So no codegen
+change and no `@main` name→register table are needed after all. MS2 additions:
 
-**Proposed MS2 fix (agreed approach — inject at reset):** because a reset happens
-*before* execution, `@main` is the only frame and its register block can be grown
-safely. So:
-1. `Value Interpreter::GetAllGlobals()` — snapshot the *old* program's globals by
-   scanning `@main`'s `names[]`/`stack[]` (already populated post-run) into a map.
-2. After `Reset(source)` + compile, **inject** the saved globals into the new `@main`:
-   for each `name→value`, update the matching `@main` register or **append** a new one
-   (bumping `@main.MaxRegs`). Pre-seed the name so pre-assignment reads see it; the new
-   script's own assignments still win.
+```csharp
+Value VM.GetGlobalsVarMap();                        // was private
+void Interpreter.ResetPreservingGlobals(String src); // capture + Reset + Compile
+```
+plus two supporting fixes in `cs/VM.cs`: `Reset` now builds the intrinsics table when
+the VM doesn't have one (it was keyed on "full reset", so a *fresh* VM given preserved
+globals got an empty table), and `MarkRoots` now marks `ReplGlobals` — the gathered
+entries live only in that map, and nothing else was keeping it alive (a latent GC bug
+in REPL mode too).
 
-The one prerequisite: the global **name→register map isn't available at inject time**
-(`FuncDef` stores only `ParamNames`; names are written to `names[]` at runtime by the
-`NAME_rA_kBC`/`ASSIGN_rA_rB_kC` opcodes). Cleanest fix: have the code generator emit a
-`@main` name→register table into its `FuncDef`. (Alternative: decode `@main`'s bytecode
-at reset — no codegen change, but fragile.) Appending preserved globals as *named
-registers* also means the register-backed globals VarMap will see them, sidestepping
-the stubbed overflow-dict path.
+A top-level function carried across the chain keeps working, and still sees the
+globals: its closure captured `callStack[0].LocalVarMap`, which is that same map.
 
-Then `RunScriptSource` collapses to: snapshot → `Reset` → compile-with-injected-globals.
+`ResetPreservingGlobals` also **stops the outgoing VM** — that's the second half of
+the old behavior. Replacing `interpreter.vm` does not stop the VM we're called from
+(we're inside its `Run` loop, in the `run` intrinsic), so the rest of the abandoned
+script used to execute before the new one started. It lives in MS2 rather than in
+`RunScriptSource` because every host chaining scripts needs it and the failure is
+silent. So `RunScriptSource` is now a single call.
+
+**Verified:** transpiled, rebuilt, and `assets/run_smoke.ms` (which chains to
+`run_smoke2.ms`) passes with all `ok:` lines — number/string/list globals preserved,
+a carried-over function still callable, its closure seeing both the old and the
+reassigned value, the `globals` map holding the carried-over entries, and the old
+script *not* continuing past the `run`. On the MS2 side,
+`TestResetPreservingGlobals` in `cs/UnitTests.cs` passes (it collects garbage between
+the two programs, so it also covers the `ReplGlobals` root), and the 684 integration
+tests still pass.
 
 ---
 

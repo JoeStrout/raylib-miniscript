@@ -403,21 +403,13 @@ void UpdateScriptDir(const char* path) {
 }
 
 void RunScriptSource(Interpreter interpreter, String source) {
-	// NOTE (MS2 `run` globals): MS1 preserved ALL globals across this reset by
-	// snapshotting the globals ValueDict (and re-installing the cached type
-	// maps).  In MS2 the type maps live in CoreIntrinsics and persist across a
-	// reset, so they no longer need saving.  Globals, however, now live in
-	// @main's named registers, and MS2 does not yet expose a working
-	// snapshot/restore (SetGlobalValue is a no-op outside REPL mode, and the
-	// globals VarMap overflow is still stubbed).
-	//
-	// The agreed fix is to inject a saved-globals map at reset time: after
-	// compiling the new source (when @main is the only frame), walk the saved
-	// globals and, for each, update the matching @main register or append a new
-	// one (bumping @main's MaxRegs).  Until that MS2 API lands, `run`
-	// recompiles WITHOUT preserving globals.
-	interpreter.Reset(source);
-	interpreter.Compile();
+	// Recompile, carrying the old program's globals over into the new one (as MS1
+	// did by snapshotting the globals ValueDict).  This also stops the outgoing
+	// VM, which matters because we're called from the `run` intrinsic, i.e. from
+	// inside that VM's own Run loop.  The cached type maps MS1 also had to save
+	// and restore now live in CoreIntrinsics and survive a reset on their own, so
+	// they need no handling here.
+	interpreter.ResetPreservingGlobals(source);
 }
 
 //--------------------------------------------------------------------------------
