@@ -9,7 +9,7 @@ Ordered roughly by impact.
 
 ---
 
-## 1. Raylib callback bridge — synchronous funcref invocation ✅ IMPLEMENTED (pending transpile + test)
+## 1. Raylib callback bridge — synchronous funcref invocation ✅ DONE
 
 **Where:** `src/RCore.cpp`, `InvokeMiniScriptCallback()`. Affects the intrinsics
 `SetLoadFileDataCallback`, `SetSaveFileDataCallback`, `SetLoadFileTextCallback`,
@@ -22,7 +22,8 @@ Value Interpreter::RunFunction(Value funcRef, ValueList args); // cs/Interpreter
 ```
 `InvokeMiniScriptCallback` is now a thin wrapper that calls
 `g_callbackBridgeState.interpreter.RunFunction(callback, args)` and returns the result.
-**Needs `cs/VM.cs` + `cs/Interpreter.cs` transpiled, then rebuild + test.**
+**Verified:** transpiled, rebuilt, and `assets/callback_smoke.ms` passes (exercises all
+five callbacks, including null/missing-file returns and callback unregistration).
 
 **Why it was hard:** These raylib callbacks are **synchronous C functions** — raylib
 calls them mid-operation and needs the result immediately, so the bridge must invoke a
@@ -51,7 +52,7 @@ the `import` path already uses to run a pushed frame to completion:
 Because the pre-sized register/`stack` array never reallocates during a run, the
 suspended outer `RunInner`'s cached frame pointers stay valid across the nested run.
 
-**Follow-ups / caveats to verify during testing:**
+**Remaining caveats (not exercised by the smoke test):**
 - Bound-method funcrefs: `RunFunction` does not inject `self` (callbacks are plain
   functions). Fine for the raylib hooks; revisit if a use case needs method callbacks.
 - If a callback function *yields*, it can't (there's no one to yield to inside a C

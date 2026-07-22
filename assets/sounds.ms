@@ -1,6 +1,6 @@
 // Demo of loaded and dynamically-created sounds
 
-if not rl.IsWindowReady then rl.InitWindow 
+if not raylib.IsWindowReady then raylib.InitWindow
 
 // Loading from a WAV file: easy!
 wooble = raylib.LoadSound("assets/wooble.wav")

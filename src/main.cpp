@@ -55,6 +55,15 @@ static void PrintErr(String s, Boolean lineBreak = true) {
 	if (!IsNull(interpreter.vm())) stackTrace = interpreter.vm().BuildStackTrace();
 	ResetRaylibCallbackBridge();
 	printf("%s%s", s.c_str(), lineBreak ? "\n" : "");
+
+	// Echo the stack trace to the console too.  The error screen can only show
+	// it when the script happened to have a window open; the console always can,
+	// and for a headless script it's the only place it would ever appear.
+	if (stackTrace.IsList()) {
+		for (int i = 0; i < stackTrace.ListCount(); i++) {
+			printf("\t%s\n", stackTrace.ListGet(i).ToString().c_str());
+		}
+	}
 }
 
 //--------------------------------------------------------------------------------
@@ -189,8 +198,11 @@ void MainLoop() {
 			scriptState = COMPLETE;
 			printf("Script finished\n");
 		}
-	} else {
-		// Show loading, error, or completion screen
+	} else if (IsWindowReady()) {
+		// Show loading, error, or completion screen.  Opening a window is the
+		// script's job, so there may not be one -- drawing regardless would
+		// crash in BeginDrawing.  Without a window these states are reported on
+		// the console only, and the main loop below exits.
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 
@@ -295,7 +307,13 @@ int main(int argc, char *argv[]) {
 #else
 	while (true) {
 		MainLoop();
-		if (ExitRequested() || (IsWindowReady() && WindowShouldClose())) break;
+		if (ExitRequested()) break;
+		if (IsWindowReady()) {
+			if (WindowShouldClose()) break;
+		} else if (scriptState == ERRORED || scriptState == COMPLETE) {
+			// Headless script: nothing to keep on screen, so we're done.
+			break;
+		}
 	}
 #endif
 
@@ -304,5 +322,8 @@ int main(int argc, char *argv[]) {
 	if (IsAudioDeviceReady()) CloseAudioDevice();
 	if (IsWindowReady()) CloseWindow();
 
+	// A script that failed should not report success, unless it chose its own
+	// result code by calling `exit`.
+	if (scriptState == ERRORED && !ExitRequested()) return 1;
 	return ExitResultCode();
 }
