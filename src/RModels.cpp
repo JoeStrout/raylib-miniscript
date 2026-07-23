@@ -287,9 +287,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("endPos");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 startPos = ValueToVector3(context.GetVar(String("startPos")));
-		Vector3 endPos = ValueToVector3(context.GetVar(String("endPos")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 startPos = ValueToVector3(context.GetArg(0));
+		Vector3 endPos = ValueToVector3(context.GetArg(1));
+		Color color = ValueToColor(context.GetArg(2));
 		DrawLine3D(startPos, endPos, color);
 		return IntrinsicResult::Null;
 	});
@@ -299,8 +299,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("position");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		Color color = ValueToColor(context.GetArg(1));
 		DrawPoint3D(position, color);
 		return IntrinsicResult::Null;
 	});
@@ -313,11 +313,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rotationAngle", Value::zero);
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 center = ValueToVector3(context.GetVar(String("center")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		Vector3 rotationAxis = ValueToVector3(context.GetVar(String("rotationAxis")));
-		float rotationAngle = context.GetVar(String("rotationAngle")).FloatValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 center = ValueToVector3(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		Vector3 rotationAxis = ValueToVector3(context.GetArg(2));
+		float rotationAngle = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
 		DrawCircle3D(center, radius, rotationAxis, rotationAngle, color);
 		return IntrinsicResult::Null;
 	});
@@ -329,10 +329,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("v3");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
-		Vector3 v3 = ValueToVector3(context.GetVar(String("v3")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
+		Vector3 v3 = ValueToVector3(context.GetArg(2));
+		Color color = ValueToColor(context.GetArg(3));
 		DrawTriangle3D(v1, v2, v3, color);
 		return IntrinsicResult::Null;
 	});
@@ -342,7 +342,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("points");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value pointsValue = context.GetVar(String("points"));
+		Value pointsValue = context.GetArg(0);
 		if (pointsValue.Type() != ValueType::List) return IntrinsicResult::Null;
 		ValueList pointsList = pointsValue.GetList();
 		int pointCount = pointsList.Count();
@@ -352,7 +352,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		points.reserve(pointCount);
 		for (int n = 0; n < pointCount; n++) points.push_back(ValueToVector3(pointsList[n]));
 
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Color color = ValueToColor(context.GetArg(1));
 		DrawTriangleStrip3D(points.data(), pointCount, color);
 		return IntrinsicResult::Null;
 	});
@@ -365,11 +365,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("length", Value(1.0));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float width = context.GetVar(String("width")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		float length = context.GetVar(String("length")).FloatValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		float width = context.GetArg(1).FloatValue();
+		float height = context.GetArg(2).FloatValue();
+		float length = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
 		DrawCube(position, width, height, length, color);
 		return IntrinsicResult::Null;
 	});
@@ -380,9 +380,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("size", Vector3ToValue(Vector3{1, 1, 1}));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector3 size = ValueToVector3(context.GetVar(String("size")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		Vector3 size = ValueToVector3(context.GetArg(1));
+		Color color = ValueToColor(context.GetArg(2));
 		DrawCubeV(position, size, color);
 		return IntrinsicResult::Null;
 	});
@@ -395,11 +395,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("length", Value(1.0));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float width = context.GetVar(String("width")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		float length = context.GetVar(String("length")).FloatValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		float width = context.GetArg(1).FloatValue();
+		float height = context.GetArg(2).FloatValue();
+		float length = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
 		DrawCubeWires(position, width, height, length, color);
 		return IntrinsicResult::Null;
 	});
@@ -410,9 +410,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("size", Vector3ToValue(Vector3{1, 1, 1}));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector3 size = ValueToVector3(context.GetVar(String("size")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		Vector3 size = ValueToVector3(context.GetArg(1));
+		Color color = ValueToColor(context.GetArg(2));
 		DrawCubeWiresV(position, size, color);
 		return IntrinsicResult::Null;
 	});
@@ -423,9 +423,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("radius", Value(1.0));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 centerPos = ValueToVector3(context.GetVar(String("centerPos")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 centerPos = ValueToVector3(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		Color color = ValueToColor(context.GetArg(2));
 		DrawSphere(centerPos, radius, color);
 		return IntrinsicResult::Null;
 	});
@@ -438,11 +438,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 centerPos = ValueToVector3(context.GetVar(String("centerPos")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 centerPos = ValueToVector3(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		int rings = context.GetArg(2).IntValue();
+		int slices = context.GetArg(3).IntValue();
+		Color color = ValueToColor(context.GetArg(4));
 		DrawSphereEx(centerPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
@@ -455,11 +455,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 centerPos = ValueToVector3(context.GetVar(String("centerPos")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 centerPos = ValueToVector3(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		int rings = context.GetArg(2).IntValue();
+		int slices = context.GetArg(3).IntValue();
+		Color color = ValueToColor(context.GetArg(4));
 		DrawSphereWires(centerPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
@@ -473,12 +473,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float radiusTop = context.GetVar(String("radiusTop")).FloatValue();
-		float radiusBottom = context.GetVar(String("radiusBottom")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		float radiusTop = context.GetArg(1).FloatValue();
+		float radiusBottom = context.GetArg(2).FloatValue();
+		float height = context.GetArg(3).FloatValue();
+		int slices = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCylinder(position, radiusTop, radiusBottom, height, slices, color);
 		return IntrinsicResult::Null;
 	});
@@ -492,12 +492,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("sides", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 startPos = ValueToVector3(context.GetVar(String("startPos")));
-		Vector3 endPos = ValueToVector3(context.GetVar(String("endPos")));
-		float startRadius = context.GetVar(String("startRadius")).FloatValue();
-		float endRadius = context.GetVar(String("endRadius")).FloatValue();
-		int sides = context.GetVar(String("sides")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 startPos = ValueToVector3(context.GetArg(0));
+		Vector3 endPos = ValueToVector3(context.GetArg(1));
+		float startRadius = context.GetArg(2).FloatValue();
+		float endRadius = context.GetArg(3).FloatValue();
+		int sides = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCylinderEx(startPos, endPos, startRadius, endRadius, sides, color);
 		return IntrinsicResult::Null;
 	});
@@ -511,12 +511,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float radiusTop = context.GetVar(String("radiusTop")).FloatValue();
-		float radiusBottom = context.GetVar(String("radiusBottom")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		float radiusTop = context.GetArg(1).FloatValue();
+		float radiusBottom = context.GetArg(2).FloatValue();
+		float height = context.GetArg(3).FloatValue();
+		int slices = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCylinderWires(position, radiusTop, radiusBottom, height, slices, color);
 		return IntrinsicResult::Null;
 	});
@@ -530,12 +530,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("sides", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 startPos = ValueToVector3(context.GetVar(String("startPos")));
-		Vector3 endPos = ValueToVector3(context.GetVar(String("endPos")));
-		float startRadius = context.GetVar(String("startRadius")).FloatValue();
-		float endRadius = context.GetVar(String("endRadius")).FloatValue();
-		int sides = context.GetVar(String("sides")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 startPos = ValueToVector3(context.GetArg(0));
+		Vector3 endPos = ValueToVector3(context.GetArg(1));
+		float startRadius = context.GetArg(2).FloatValue();
+		float endRadius = context.GetArg(3).FloatValue();
+		int sides = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCylinderWiresEx(startPos, endPos, startRadius, endRadius, sides, color);
 		return IntrinsicResult::Null;
 	});
@@ -549,12 +549,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rings", Value(8));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 startPos = ValueToVector3(context.GetVar(String("startPos")));
-		Vector3 endPos = ValueToVector3(context.GetVar(String("endPos")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 startPos = ValueToVector3(context.GetArg(0));
+		Vector3 endPos = ValueToVector3(context.GetArg(1));
+		float radius = context.GetArg(2).FloatValue();
+		int slices = context.GetArg(3).IntValue();
+		int rings = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCapsule(startPos, endPos, radius, slices, rings, color);
 		return IntrinsicResult::Null;
 	});
@@ -568,12 +568,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rings", Value(8));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 startPos = ValueToVector3(context.GetVar(String("startPos")));
-		Vector3 endPos = ValueToVector3(context.GetVar(String("endPos")));
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 startPos = ValueToVector3(context.GetArg(0));
+		Vector3 endPos = ValueToVector3(context.GetArg(1));
+		float radius = context.GetArg(2).FloatValue();
+		int slices = context.GetArg(3).IntValue();
+		int rings = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
 		DrawCapsuleWires(startPos, endPos, radius, slices, rings, color);
 		return IntrinsicResult::Null;
 	});
@@ -584,9 +584,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("size", Vector2ToValue(Vector2{1, 1}));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 centerPos = ValueToVector3(context.GetVar(String("centerPos")));
-		Vector2 size = ValueToVector2(context.GetVar(String("size")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Vector3 centerPos = ValueToVector3(context.GetArg(0));
+		Vector2 size = ValueToVector2(context.GetArg(1));
+		Color color = ValueToColor(context.GetArg(2));
 		DrawPlane(centerPos, size, color);
 		return IntrinsicResult::Null;
 	});
@@ -596,8 +596,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("ray");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		Ray ray = ValueToRay(context.GetArg(0));
+		Color color = ValueToColor(context.GetArg(1));
 		DrawRay(ray, color);
 		return IntrinsicResult::Null;
 	});
@@ -607,8 +607,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("slices", Value(10));
 	i.AddParam("spacing", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		int slices = context.GetVar(String("slices")).IntValue();
-		float spacing = context.GetVar(String("spacing")).FloatValue();
+		int slices = context.GetArg(0).IntValue();
+		float spacing = context.GetArg(1).FloatValue();
 		DrawGrid(slices, spacing);
 		return IntrinsicResult::Null;
 	});
@@ -623,11 +623,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("scale", Value(1.0));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Camera camera = ValueToCamera3D(context.GetVar(String("camera")));
-		Texture texture = ValueToTexture(context.GetVar(String("texture")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float scale = context.GetVar(String("scale")).FloatValue();
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Camera camera = ValueToCamera3D(context.GetArg(0));
+		Texture texture = ValueToTexture(context.GetArg(1));
+		Vector3 position = ValueToVector3(context.GetArg(2));
+		float scale = context.GetArg(3).FloatValue();
+		Color tint = ValueToColor(context.GetArg(4));
 		DrawBillboard(camera, texture, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
@@ -641,12 +641,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("size", Vector2ToValue(Vector2{1, 1}));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Camera camera = ValueToCamera3D(context.GetVar(String("camera")));
-		Texture texture = ValueToTexture(context.GetVar(String("texture")));
-		Rectangle source = ValueToRectangle(context.GetVar(String("source")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector2 size = ValueToVector2(context.GetVar(String("size")));
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Camera camera = ValueToCamera3D(context.GetArg(0));
+		Texture texture = ValueToTexture(context.GetArg(1));
+		Rectangle source = ValueToRectangle(context.GetArg(2));
+		Vector3 position = ValueToVector3(context.GetArg(3));
+		Vector2 size = ValueToVector2(context.GetArg(4));
+		Color tint = ValueToColor(context.GetArg(5));
 		DrawBillboardRec(camera, texture, source, position, size, tint);
 		return IntrinsicResult::Null;
 	});
@@ -663,15 +663,15 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rotation", Value::zero);
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Camera camera = ValueToCamera3D(context.GetVar(String("camera")));
-		Texture texture = ValueToTexture(context.GetVar(String("texture")));
-		Rectangle source = ValueToRectangle(context.GetVar(String("source")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector3 up = ValueToVector3(context.GetVar(String("up")));
-		Vector2 size = ValueToVector2(context.GetVar(String("size")));
-		Vector2 origin = ValueToVector2(context.GetVar(String("origin")));
-		float rotation = context.GetVar(String("rotation")).FloatValue();
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Camera camera = ValueToCamera3D(context.GetArg(0));
+		Texture texture = ValueToTexture(context.GetArg(1));
+		Rectangle source = ValueToRectangle(context.GetArg(2));
+		Vector3 position = ValueToVector3(context.GetArg(3));
+		Vector3 up = ValueToVector3(context.GetArg(4));
+		Vector2 size = ValueToVector2(context.GetArg(5));
+		Vector2 origin = ValueToVector2(context.GetArg(6));
+		float rotation = context.GetArg(7).FloatValue();
+		Color tint = ValueToColor(context.GetArg(8));
 		DrawBillboardPro(camera, texture, source, position, up, size, origin, rotation, tint);
 		return IntrinsicResult::Null;
 	});
@@ -682,7 +682,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		Model model = LoadModel(path.c_str());
 		if (!IsModelValid(model)) return IntrinsicResult::Null;
 		rcModel++;
@@ -693,7 +693,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
+		Mesh mesh = ValueToMesh(context.GetArg(0));
 		Model model = LoadModelFromMesh(mesh);
 		if (!IsModelValid(model)) return IntrinsicResult::Null;
 		rcModel++;
@@ -704,7 +704,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
+		Model model = ValueToModel(context.GetArg(0));
 		return IntrinsicResult(IsModelValid(model));
 	});
 	raylibModule.SetValue("IsModelValid", i.GetFunc());
@@ -712,7 +712,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value modelValue = context.GetVar(String("model"));
+		Value modelValue = context.GetArg(0);
 		Model model = ValueToModel(modelValue);
 		UnloadModel(model);
 
@@ -726,7 +726,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
+		Model model = ValueToModel(context.GetArg(0));
 		BoundingBox bounds = GetModelBoundingBox(model);
 		return IntrinsicResult(BoundingBoxToValue(bounds));
 	});
@@ -740,10 +740,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("scale", Value(1.0));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float scale = context.GetVar(String("scale")).FloatValue();
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Model model = ValueToModel(context.GetArg(0));
+		Vector3 position = ValueToVector3(context.GetArg(1));
+		float scale = context.GetArg(2).FloatValue();
+		Color tint = ValueToColor(context.GetArg(3));
 		DrawModel(model, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
@@ -757,12 +757,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("scale", Vector3ToValue(Vector3{1, 1, 1}));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector3 rotationAxis = ValueToVector3(context.GetVar(String("rotationAxis")));
-		float rotationAngle = context.GetVar(String("rotationAngle")).FloatValue();
-		Vector3 scale = ValueToVector3(context.GetVar(String("scale")));
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Model model = ValueToModel(context.GetArg(0));
+		Vector3 position = ValueToVector3(context.GetArg(1));
+		Vector3 rotationAxis = ValueToVector3(context.GetArg(2));
+		float rotationAngle = context.GetArg(3).FloatValue();
+		Vector3 scale = ValueToVector3(context.GetArg(4));
+		Color tint = ValueToColor(context.GetArg(5));
 		DrawModelEx(model, position, rotationAxis, rotationAngle, scale, tint);
 		return IntrinsicResult::Null;
 	});
@@ -774,10 +774,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("scale", Value(1.0));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		float scale = context.GetVar(String("scale")).FloatValue();
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Model model = ValueToModel(context.GetArg(0));
+		Vector3 position = ValueToVector3(context.GetArg(1));
+		float scale = context.GetArg(2).FloatValue();
+		Color tint = ValueToColor(context.GetArg(3));
 		DrawModelWires(model, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
@@ -791,12 +791,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("scale", Vector3ToValue(Vector3{1, 1, 1}));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Vector3 rotationAxis = ValueToVector3(context.GetVar(String("rotationAxis")));
-		float rotationAngle = context.GetVar(String("rotationAngle")).FloatValue();
-		Vector3 scale = ValueToVector3(context.GetVar(String("scale")));
-		Color tint = ValueToColor(context.GetVar(String("tint")));
+		Model model = ValueToModel(context.GetArg(0));
+		Vector3 position = ValueToVector3(context.GetArg(1));
+		Vector3 rotationAxis = ValueToVector3(context.GetArg(2));
+		float rotationAngle = context.GetArg(3).FloatValue();
+		Vector3 scale = ValueToVector3(context.GetArg(4));
+		Color tint = ValueToColor(context.GetArg(5));
 		DrawModelWiresEx(model, position, rotationAxis, rotationAngle, scale, tint);
 		return IntrinsicResult::Null;
 	});
@@ -806,8 +806,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("box");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
-		BoundingBox box = ValueToBoundingBox(context.GetVar(String("box")));
-		Color color = ValueToColor(context.GetVar(String("color")));
+		BoundingBox box = ValueToBoundingBox(context.GetArg(0));
+		Color color = ValueToColor(context.GetArg(1));
 		DrawBoundingBox(box, color);
 		return IntrinsicResult::Null;
 	});
@@ -819,9 +819,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("mesh");
 	i.AddParam("dynamic", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh* meshPtr = GetMeshPtr(context.GetVar(String("mesh")));
+		Mesh* meshPtr = GetMeshPtr(context.GetArg(0));
 		if (meshPtr == nullptr) return IntrinsicResult::Null;
-		bool dynamic = context.GetVar(String("dynamic")).IntValue() != 0;
+		bool dynamic = context.GetArg(1).IntValue() != 0;
 		UploadMesh(meshPtr, dynamic);
 		return IntrinsicResult::Null;
 	});
@@ -833,12 +833,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("offset", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh* meshPtr = GetMeshPtr(context.GetVar(String("mesh")));
+		Mesh* meshPtr = GetMeshPtr(context.GetArg(0));
 		if (meshPtr == nullptr) return IntrinsicResult::Null;
 
-		int index = context.GetVar(String("index")).IntValue();
-		int offset = context.GetVar(String("offset")).IntValue();
-		Value dataVal = context.GetVar(String("data"));
+		int index = context.GetArg(1).IntValue();
+		int offset = context.GetArg(3).IntValue();
+		Value dataVal = context.GetArg(2);
 
 		if (dataVal.Type() == ValueType::Map) {
 			BinaryData* rawData = ValueToRawData(dataVal);
@@ -866,7 +866,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value meshValue = context.GetVar(String("mesh"));
+		Value meshValue = context.GetArg(0);
 		Mesh mesh = ValueToMesh(meshValue);
 		UnloadMesh(mesh);
 
@@ -882,9 +882,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("material");
 	i.AddParam("transform", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
-		Material material = ValueToMaterial(context.GetVar(String("material")));
-		Matrix transform = ValueToMatrix(context.GetVar(String("transform")));
+		Mesh mesh = ValueToMesh(context.GetArg(0));
+		Material material = ValueToMaterial(context.GetArg(1));
+		Matrix transform = ValueToMatrix(context.GetArg(2));
 		DrawMesh(mesh, material, transform);
 		return IntrinsicResult::Null;
 	});
@@ -895,9 +895,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("material");
 	i.AddParam("transforms");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
-		Material material = ValueToMaterial(context.GetVar(String("material")));
-		Value transformsValue = context.GetVar(String("transforms"));
+		Mesh mesh = ValueToMesh(context.GetArg(0));
+		Material material = ValueToMaterial(context.GetArg(1));
+		Value transformsValue = context.GetArg(2);
 		if (transformsValue.Type() != ValueType::List) return IntrinsicResult::Null;
 
 		ValueList transformsList = transformsValue.GetList();
@@ -918,7 +918,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
+		Mesh mesh = ValueToMesh(context.GetArg(0));
 		BoundingBox bounds = GetMeshBoundingBox(mesh);
 		return IntrinsicResult(BoundingBoxToValue(bounds));
 	});
@@ -927,7 +927,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh* meshPtr = GetMeshPtr(context.GetVar(String("mesh")));
+		Mesh* meshPtr = GetMeshPtr(context.GetArg(0));
 		if (meshPtr == nullptr) return IntrinsicResult::Null;
 		GenMeshTangents(meshPtr);
 		return IntrinsicResult::Null;
@@ -938,8 +938,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("mesh");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
-		String path = context.GetVar(String("fileName")).ToString();
+		Mesh mesh = ValueToMesh(context.GetArg(0));
+		String path = context.GetArg(1).ToString();
 		return IntrinsicResult(ExportMesh(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMesh", i.GetFunc());
@@ -948,8 +948,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("mesh");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
-		String path = context.GetVar(String("fileName")).ToString();
+		Mesh mesh = ValueToMesh(context.GetArg(0));
+		String path = context.GetArg(1).ToString();
 		return IntrinsicResult(ExportMeshAsCode(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMeshAsCode", i.GetFunc());
@@ -960,8 +960,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("sides", Value(6));
 	i.AddParam("radius", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		int sides = context.GetVar(String("sides")).IntValue();
-		float radius = context.GetVar(String("radius")).FloatValue();
+		int sides = context.GetArg(0).IntValue();
+		float radius = context.GetArg(1).FloatValue();
 		Mesh mesh = GenMeshPoly(sides, radius);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -974,10 +974,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("resX", Value(1));
 	i.AddParam("resZ", Value(1));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float width = context.GetVar(String("width")).FloatValue();
-		float length = context.GetVar(String("length")).FloatValue();
-		int resX = context.GetVar(String("resX")).IntValue();
-		int resZ = context.GetVar(String("resZ")).IntValue();
+		float width = context.GetArg(0).FloatValue();
+		float length = context.GetArg(1).FloatValue();
+		int resX = context.GetArg(2).IntValue();
+		int resZ = context.GetArg(3).IntValue();
 		Mesh mesh = GenMeshPlane(width, length, resX, resZ);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -989,9 +989,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("height", Value(1.0));
 	i.AddParam("length", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float width = context.GetVar(String("width")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		float length = context.GetVar(String("length")).FloatValue();
+		float width = context.GetArg(0).FloatValue();
+		float height = context.GetArg(1).FloatValue();
+		float length = context.GetArg(2).FloatValue();
 		Mesh mesh = GenMeshCube(width, height, length);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1003,9 +1003,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rings", Value(16));
 	i.AddParam("slices", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		int slices = context.GetVar(String("slices")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		int rings = context.GetArg(1).IntValue();
+		int slices = context.GetArg(2).IntValue();
 		Mesh mesh = GenMeshSphere(radius, rings, slices);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1017,9 +1017,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("rings", Value(16));
 	i.AddParam("slices", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		int rings = context.GetVar(String("rings")).IntValue();
-		int slices = context.GetVar(String("slices")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		int rings = context.GetArg(1).IntValue();
+		int slices = context.GetArg(2).IntValue();
 		Mesh mesh = GenMeshHemiSphere(radius, rings, slices);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1031,9 +1031,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("height", Value(2.0));
 	i.AddParam("slices", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		float height = context.GetArg(1).FloatValue();
+		int slices = context.GetArg(2).IntValue();
 		Mesh mesh = GenMeshCylinder(radius, height, slices);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1045,9 +1045,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("height", Value(2.0));
 	i.AddParam("slices", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		float height = context.GetVar(String("height")).FloatValue();
-		int slices = context.GetVar(String("slices")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		float height = context.GetArg(1).FloatValue();
+		int slices = context.GetArg(2).IntValue();
 		Mesh mesh = GenMeshCone(radius, height, slices);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1060,10 +1060,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("radSeg", Value(16));
 	i.AddParam("sides", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		float size = context.GetVar(String("size")).FloatValue();
-		int radSeg = context.GetVar(String("radSeg")).IntValue();
-		int sides = context.GetVar(String("sides")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		float size = context.GetArg(1).FloatValue();
+		int radSeg = context.GetArg(2).IntValue();
+		int sides = context.GetArg(3).IntValue();
 		Mesh mesh = GenMeshTorus(radius, size, radSeg, sides);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1076,10 +1076,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("radSeg", Value(16));
 	i.AddParam("sides", Value(16));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float radius = context.GetVar(String("radius")).FloatValue();
-		float size = context.GetVar(String("size")).FloatValue();
-		int radSeg = context.GetVar(String("radSeg")).IntValue();
-		int sides = context.GetVar(String("sides")).IntValue();
+		float radius = context.GetArg(0).FloatValue();
+		float size = context.GetArg(1).FloatValue();
+		int radSeg = context.GetArg(2).IntValue();
+		int sides = context.GetArg(3).IntValue();
 		Mesh mesh = GenMeshKnot(radius, size, radSeg, sides);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1090,8 +1090,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("heightmap");
 	i.AddParam("size", Vector3ToValue(Vector3{1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Image image = ValueToImage(context.GetVar(String("heightmap")));
-		Vector3 size = ValueToVector3(context.GetVar(String("size")));
+		Image image = ValueToImage(context.GetArg(0));
+		Vector3 size = ValueToVector3(context.GetArg(1));
 		Mesh mesh = GenMeshHeightmap(image, size);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1102,8 +1102,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("cubicmap");
 	i.AddParam("cubeSize", Vector3ToValue(Vector3{1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Image image = ValueToImage(context.GetVar(String("cubicmap")));
-		Vector3 cubeSize = ValueToVector3(context.GetVar(String("cubeSize")));
+		Image image = ValueToImage(context.GetArg(0));
+		Vector3 cubeSize = ValueToVector3(context.GetArg(1));
 		Mesh mesh = GenMeshCubicmap(image, cubeSize);
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
@@ -1115,7 +1115,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		int count = 0;
 		Material* materials = LoadMaterials(path.c_str(), &count);
 		if (materials == nullptr || count <= 0) return IntrinsicResult::Null;
@@ -1142,7 +1142,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material material = ValueToMaterial(context.GetVar(String("material")));
+		Material material = ValueToMaterial(context.GetArg(0));
 		return IntrinsicResult(IsMaterialValid(material));
 	});
 	raylibModule.SetValue("IsMaterialValid", i.GetFunc());
@@ -1150,7 +1150,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value materialValue = context.GetVar(String("material"));
+		Value materialValue = context.GetArg(0);
 		Material material = ValueToMaterial(materialValue);
 		UnloadMaterial(material);
 
@@ -1166,11 +1166,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("mapType");
 	i.AddParam("texture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		int mapType = context.GetVar(String("mapType")).IntValue();
-		Texture texture = ValueToTexture(context.GetVar(String("texture")));
+		int mapType = context.GetArg(1).IntValue();
+		Texture texture = ValueToTexture(context.GetArg(2));
 		SetMaterialTexture(materialPtr, mapType, texture);
 		return IntrinsicResult::Null;
 	});
@@ -1179,7 +1179,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value materialValue = context.GetVar(String("material"));
+		Value materialValue = context.GetArg(0);
 		Material* materialPtr = GetMaterialPtr(materialValue);
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
@@ -1193,11 +1193,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("material");
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value materialValue = context.GetVar(String("material"));
+		Value materialValue = context.GetArg(0);
 		Material* materialPtr = GetMaterialPtr(materialValue);
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		Shader shader = ValueToShader(context.GetArg(1));
 		materialPtr->shader = shader;
 		SyncMaterialShaderMetadata(materialValue, shader);
 		return IntrinsicResult::Null;
@@ -1208,10 +1208,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("material");
 	i.AddParam("uniformName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult(-1);
 
-		String uniformName = context.GetVar(String("uniformName")).ToString();
+		String uniformName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocation(materialPtr->shader, uniformName.c_str()));
 	});
 	raylibModule.SetValue("GetMaterialShaderLocation", i.GetFunc());
@@ -1220,10 +1220,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("material");
 	i.AddParam("attribName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult(-1);
 
-		String attribName = context.GetVar(String("attribName")).ToString();
+		String attribName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocationAttrib(materialPtr->shader, attribName.c_str()));
 	});
 	raylibModule.SetValue("GetMaterialShaderLocationAttrib", i.GetFunc());
@@ -1234,12 +1234,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("value");
 	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Value value = context.GetVar(String("value"));
-		int uniformType = context.GetVar(String("uniformType")).IntValue();
+		int locIndex = context.GetArg(1).IntValue();
+		Value value = context.GetArg(2);
+		int uniformType = context.GetArg(3).IntValue();
 
 		BinaryData* rawData = nullptr;
 		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
@@ -1284,13 +1284,13 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
 	i.AddParam("count", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Value value = context.GetVar(String("value"));
-		int uniformType = context.GetVar(String("uniformType")).IntValue();
-		int count = context.GetVar(String("count")).IntValue();
+		int locIndex = context.GetArg(1).IntValue();
+		Value value = context.GetArg(2);
+		int uniformType = context.GetArg(3).IntValue();
+		int count = context.GetArg(4).IntValue();
 
 		BinaryData* rawData = nullptr;
 		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
@@ -1331,11 +1331,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("locIndex");
 	i.AddParam("mat");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		int locIndex = context.GetArg(1).IntValue();
+		Matrix mat = ValueToMatrix(context.GetArg(2));
 		SetShaderValueMatrix(materialPtr->shader, locIndex, mat);
 		return IntrinsicResult::Null;
 	});
@@ -1346,11 +1346,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("locIndex");
 	i.AddParam("texture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Material* materialPtr = GetMaterialPtr(context.GetVar(String("material")));
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Texture2D texture = ValueToTexture(context.GetVar(String("texture")));
+		int locIndex = context.GetArg(1).IntValue();
+		Texture2D texture = ValueToTexture(context.GetArg(2));
 		SetShaderValueTexture(materialPtr->shader, locIndex, texture);
 		return IntrinsicResult::Null;
 	});
@@ -1361,11 +1361,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("meshId");
 	i.AddParam("materialId");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model* modelPtr = GetModelPtr(context.GetVar(String("model")));
+		Model* modelPtr = GetModelPtr(context.GetArg(0));
 		if (modelPtr == nullptr) return IntrinsicResult::Null;
 
-		int meshId = context.GetVar(String("meshId")).IntValue();
-		int materialId = context.GetVar(String("materialId")).IntValue();
+		int meshId = context.GetArg(1).IntValue();
+		int materialId = context.GetArg(2).IntValue();
 		SetModelMeshMaterial(modelPtr, meshId, materialId);
 		return IntrinsicResult::Null;
 	});
@@ -1376,7 +1376,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		int animCount = 0;
 		ModelAnimation* animations = LoadModelAnimations(path.c_str(), &animCount);
 		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;
@@ -1395,9 +1395,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("animation");
 	i.AddParam("frame", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		ModelAnimation animation = ValueToModelAnimation(context.GetVar(String("animation")));
-		float frame = context.GetVar(String("frame")).FloatValue();
+		Model model = ValueToModel(context.GetArg(0));
+		ModelAnimation animation = ValueToModelAnimation(context.GetArg(1));
+		float frame = context.GetArg(2).FloatValue();
 		UpdateModelAnimation(model, animation, frame);
 		return IntrinsicResult::Null;
 	});
@@ -1412,12 +1412,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("frameB", Value::zero);
 	i.AddParam("blend", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		ModelAnimation animationA = ValueToModelAnimation(context.GetVar(String("animationA")));
-		float frameA = context.GetVar(String("frameA")).FloatValue();
-		ModelAnimation animationB = ValueToModelAnimation(context.GetVar(String("animationB")));
-		float frameB = context.GetVar(String("frameB")).FloatValue();
-		float blend = context.GetVar(String("blend")).FloatValue();
+		Model model = ValueToModel(context.GetArg(0));
+		ModelAnimation animationA = ValueToModelAnimation(context.GetArg(1));
+		float frameA = context.GetArg(2).FloatValue();
+		ModelAnimation animationB = ValueToModelAnimation(context.GetArg(3));
+		float frameB = context.GetArg(4).FloatValue();
+		float blend = context.GetArg(5).FloatValue();
 		UpdateModelAnimationEx(model, animationA, frameA, animationB, frameB, blend);
 		return IntrinsicResult::Null;
 	});
@@ -1427,7 +1427,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("animations");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value animationsValue = context.GetVar(String("animations"));
+		Value animationsValue = context.GetArg(0);
 		int animCount = 0;
 		ModelAnimation* animations = GetModelAnimationArray(animationsValue, &animCount);
 		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;
@@ -1442,8 +1442,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("model");
 	i.AddParam("animation");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Model model = ValueToModel(context.GetVar(String("model")));
-		ModelAnimation animation = ValueToModelAnimation(context.GetVar(String("animation")));
+		Model model = ValueToModel(context.GetArg(0));
+		ModelAnimation animation = ValueToModelAnimation(context.GetArg(1));
 		return IntrinsicResult(IsModelAnimationValid(model, animation));
 	});
 	raylibModule.SetValue("IsModelAnimationValid", i.GetFunc());
@@ -1456,10 +1456,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("center2");
 	i.AddParam("radius2");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 center1 = ValueToVector3(context.GetVar(String("center1")));
-		float radius1 = context.GetVar(String("radius1")).FloatValue();
-		Vector3 center2 = ValueToVector3(context.GetVar(String("center2")));
-		float radius2 = context.GetVar(String("radius2")).FloatValue();
+		Vector3 center1 = ValueToVector3(context.GetArg(0));
+		float radius1 = context.GetArg(1).FloatValue();
+		Vector3 center2 = ValueToVector3(context.GetArg(2));
+		float radius2 = context.GetArg(3).FloatValue();
 		return IntrinsicResult(CheckCollisionSpheres(center1, radius1, center2, radius2));
 	});
 	raylibModule.SetValue("CheckCollisionSpheres", i.GetFunc());
@@ -1468,8 +1468,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("box1");
 	i.AddParam("box2");
 	i.set_Code(INTRINSIC_LAMBDA {
-		BoundingBox box1 = ValueToBoundingBox(context.GetVar(String("box1")));
-		BoundingBox box2 = ValueToBoundingBox(context.GetVar(String("box2")));
+		BoundingBox box1 = ValueToBoundingBox(context.GetArg(0));
+		BoundingBox box2 = ValueToBoundingBox(context.GetArg(1));
 		return IntrinsicResult(CheckCollisionBoxes(box1, box2));
 	});
 	raylibModule.SetValue("CheckCollisionBoxes", i.GetFunc());
@@ -1479,9 +1479,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("center");
 	i.AddParam("radius");
 	i.set_Code(INTRINSIC_LAMBDA {
-		BoundingBox box = ValueToBoundingBox(context.GetVar(String("box")));
-		Vector3 center = ValueToVector3(context.GetVar(String("center")));
-		float radius = context.GetVar(String("radius")).FloatValue();
+		BoundingBox box = ValueToBoundingBox(context.GetArg(0));
+		Vector3 center = ValueToVector3(context.GetArg(1));
+		float radius = context.GetArg(2).FloatValue();
 		return IntrinsicResult(CheckCollisionBoxSphere(box, center, radius));
 	});
 	raylibModule.SetValue("CheckCollisionBoxSphere", i.GetFunc());
@@ -1491,9 +1491,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("center");
 	i.AddParam("radius");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		Vector3 center = ValueToVector3(context.GetVar(String("center")));
-		float radius = context.GetVar(String("radius")).FloatValue();
+		Ray ray = ValueToRay(context.GetArg(0));
+		Vector3 center = ValueToVector3(context.GetArg(1));
+		float radius = context.GetArg(2).FloatValue();
 		RayCollision result = GetRayCollisionSphere(ray, center, radius);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
@@ -1503,8 +1503,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("ray");
 	i.AddParam("box");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		BoundingBox box = ValueToBoundingBox(context.GetVar(String("box")));
+		Ray ray = ValueToRay(context.GetArg(0));
+		BoundingBox box = ValueToBoundingBox(context.GetArg(1));
 		RayCollision result = GetRayCollisionBox(ray, box);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
@@ -1515,9 +1515,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("mesh");
 	i.AddParam("transform", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		Mesh mesh = ValueToMesh(context.GetVar(String("mesh")));
-		Matrix transform = ValueToMatrix(context.GetVar(String("transform")));
+		Ray ray = ValueToRay(context.GetArg(0));
+		Mesh mesh = ValueToMesh(context.GetArg(1));
+		Matrix transform = ValueToMatrix(context.GetArg(2));
 		RayCollision result = GetRayCollisionMesh(ray, mesh, transform);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
@@ -1529,10 +1529,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("p2");
 	i.AddParam("p3");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		Vector3 p1 = ValueToVector3(context.GetVar(String("p1")));
-		Vector3 p2 = ValueToVector3(context.GetVar(String("p2")));
-		Vector3 p3 = ValueToVector3(context.GetVar(String("p3")));
+		Ray ray = ValueToRay(context.GetArg(0));
+		Vector3 p1 = ValueToVector3(context.GetArg(1));
+		Vector3 p2 = ValueToVector3(context.GetArg(2));
+		Vector3 p3 = ValueToVector3(context.GetArg(3));
 		RayCollision result = GetRayCollisionTriangle(ray, p1, p2, p3);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
@@ -1545,11 +1545,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("p3");
 	i.AddParam("p4");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Ray ray = ValueToRay(context.GetVar(String("ray")));
-		Vector3 p1 = ValueToVector3(context.GetVar(String("p1")));
-		Vector3 p2 = ValueToVector3(context.GetVar(String("p2")));
-		Vector3 p3 = ValueToVector3(context.GetVar(String("p3")));
-		Vector3 p4 = ValueToVector3(context.GetVar(String("p4")));
+		Ray ray = ValueToRay(context.GetArg(0));
+		Vector3 p1 = ValueToVector3(context.GetArg(1));
+		Vector3 p2 = ValueToVector3(context.GetArg(2));
+		Vector3 p3 = ValueToVector3(context.GetArg(3));
+		Vector3 p4 = ValueToVector3(context.GetArg(4));
 		RayCollision result = GetRayCollisionQuad(ray, p1, p2, p3, p4);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});

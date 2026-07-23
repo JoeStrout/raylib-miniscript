@@ -111,31 +111,45 @@ tests still pass.
 
 ---
 
-## 3. `env` map — script assignment no longer syncs to the OS environment
+## 3. `env` map — script assignment no longer syncs to the OS environment ✅ NOT APPLICABLE (no code change)
 
 **Where:** `src/MoreIntrinsics.cpp`, `intrinsic_env()` / `envMapRef()`.
 
-**Current behavior:** `env` returns a live map of environment variables, but assigning
+**Behavior difference:** `env` returns a live map of environment variables, but assigning
 to a member from script (`env.PATH = "..."`) updates only the in-memory map — it does
-**not** call `setenv()`. Host code that changes the OS env still works (via
-`setEnvVar()`); reads via `env` work. Only the script-driven write-through is lost.
+**not** call `setenv()`. MS1 installed a `ValueDict::SetAssignOverride(assignEnvVar)`
+hook so map assignment called `setenv`; MS2 dropped the map assign-override mechanism.
+(MS2's own ShellIntrinsics `env` has the same limitation.)
 
-**Why:** MS1 installed a `ValueDict::SetAssignOverride(assignEnvVar)` hook so map
-assignment called `setenv`. MS2 dropped the map assign-override mechanism. (MS2's own
-ShellIntrinsics `env` has the same limitation — it keeps a plain map and syncs to the
-OS env only through explicit host calls.)
+**Why it isn't observable in this host — investigated, no fix needed:**
 
-**Proposed fix / options:**
-- Accept the limitation (document that `env` is read-mostly; provide an explicit
-  `setEnv(name, value)` intrinsic for writes), **or**
-- reintroduce an assignment hook in MS2 (a per-map "on assign" callback), if the
-  write-through behavior is deemed important.
+1. **The in-memory world is self-consistent.** `StaticMap(envMapRef())` wraps the
+   host's `envMap` ValueDict via `GCManager::NewMapFromDict`, which *shares storage*
+   rather than copying ("later mutations to either are visible through the other").
+   So a script write to `env.FOO` lands in `envMapRef()` itself. And every read the
+   host does — notably `ExpandVariables`, which expands `$FOO`/`${FOO}`/`$(FOO)` in
+   paths — goes through `getEnvMap()` → `envMapRef()`, the *same* dict, never
+   `getenv()`. A script that sets `env.FOO` and later reads it, or uses it in a path,
+   sees its own write.
 
-Lowest impact of the three; a small explicit `setEnv` intrinsic likely suffices.
+2. **Nothing inherits the OS environment in a script-controllable way.** The lost
+   `setenv()` only matters to a *child process*. The sole process spawn in the host is
+   one hardcoded `system("cp -p …")` in `CopyFileHelper` (`src/FileModule.cpp`, Linux
+   fallback only; Apple/Windows use `fcopyfile`/`CopyFile`). That command consults no
+   script-set variable — `cp` is resolved via the OS PATH inherited at launch, which is
+   untouched. There is no `exec`/`system`/`popen`/shell intrinsic exposed to scripts.
+
+So the divergence between the in-memory map and the OS environment has no trigger here.
+Left as-is.
+
+**Reopen if:** an `exec`/`system`-style intrinsic is ever added that scripts can call
+with a script-populated environment. Then the write-through gap becomes real, and the
+fix is the one MS2's ShellIntrinsics already uses — apply the `env` map to the OS
+environment at the point of the `exec` call — not a per-assignment hook.
 
 ---
 
-## 4. Replace `GetVar(name)` with `GetArg(index)` throughout the intrinsics
+## 4. Replace `GetVar(name)` with `GetArg(index)` throughout the intrinsics ✅ DONE (Pattern A)
 
 **Where:** essentially every intrinsic in `src/R*.cpp`, `FileModule.cpp`,
 `HttpModule.cpp`, `MoreIntrinsics.cpp`, etc. — they read arguments with
@@ -152,9 +166,26 @@ caller, not the intrinsic — so every argument read back null.  That was fixed 
 MS2 by giving `Context` the intrinsic's own parameter names; `GetVar` is correct
 now, just slower than `GetArg`.)
 
-**Proposed fix:** migrate each intrinsic to `context.GetArg(0)`, `GetArg(1)`, …
-matching the order of its `AddParam` calls.  Mechanical but bulk; do it
-per-module and test.  New intrinsics should use `GetArg` from the start.
+**Resolution:** wrote a MiniScript code-updater, `scripts/update_code.ms`, that
+rewrites `context.GetVar(String("name"))` → `context.GetArg(index)`, where
+`index` is the name's position in that intrinsic's `AddParam` list (`self`, when
+present, is a normal `AddParam("self")` at index 0, so it maps to `GetArg(0)`
+naturally). Trailing/wrapping calls (`.IntValue()`, `ValueToColor(...)`, …) are
+preserved. It backs each changed file up to `<name>.bak` (once, never
+overwritten) and can `--revert` from those backups.
+
+It handles the **inline-lambda style (Pattern A)** only — `Intrinsic::Create` →
+`AddParam`s → `set_Code(INTRINSIC_LAMBDA { …GetVar… })` in one sequential block,
+which is the whole `src/R*.cpp` family. It deliberately leaves the **named-impl
+style (Pattern B)** alone: there the `GetVar` calls sit in a function defined
+*above* the registration, out of param-context reach, and a `set_Code(&func)`
+line switches conversion off. Those (`FileModule.cpp`, `MoreIntrinsics.cpp`,
+`HttpModule.cpp`, …) are still to be hand-converted. New intrinsics should use
+`GetArg` from the start.
+
+**Verified:** ran it across the Pattern A modules (e.g. `RShapes.cpp`: all 271
+`GetVar`s converted, indices matching `AddParam` order, zero left), rebuilt, and
+it works.
 
 ---
 

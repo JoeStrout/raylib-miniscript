@@ -42,7 +42,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("volume", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float volume = context.GetVar(String("volume")).FloatValue();
+		float volume = context.GetArg(0).FloatValue();
 		SetMasterVolume(volume);
 		return IntrinsicResult::Null;
 	});
@@ -60,7 +60,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		Wave wave = LoadWave(path.c_str());
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
 		rcWave++;
@@ -73,10 +73,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("fileData");
 	i.AddParam("dataSize");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileType = context.GetVar(String("fileType")).ToString();
-		BinaryData* data = ValueToRawData(context.GetVar(String("fileData")));
+		String fileType = context.GetArg(0).ToString();
+		BinaryData* data = ValueToRawData(context.GetArg(1));
 		if (!data) return IntrinsicResult::Null;
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		int dataSize = context.GetArg(2).IntValue();
 		if (dataSize <= 0 || dataSize > data->length) dataSize = data->length;
 		Wave wave = LoadWaveFromMemory(fileType.c_str(), data->bytes, dataSize);
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
@@ -92,11 +92,11 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("channels");
 	i.AddParam("samples");
 	i.set_Code(INTRINSIC_LAMBDA {
-		unsigned int frameCount = (unsigned int)context.GetVar(String("frameCount")).IntValue();
-		unsigned int sampleRate = (unsigned int)context.GetVar(String("sampleRate")).IntValue();
-		unsigned int sampleSize = (unsigned int)context.GetVar(String("sampleSize")).IntValue();
-		unsigned int channels = (unsigned int)context.GetVar(String("channels")).IntValue();
-		Value samplesVal = context.GetVar(String("samples"));
+		unsigned int frameCount = (unsigned int)context.GetArg(0).IntValue();
+		unsigned int sampleRate = (unsigned int)context.GetArg(1).IntValue();
+		unsigned int sampleSize = (unsigned int)context.GetArg(2).IntValue();
+		unsigned int channels = (unsigned int)context.GetArg(3).IntValue();
+		Value samplesVal = context.GetArg(4);
 
 		// Validate parameters
 		if (sampleSize != 8 && sampleSize != 16 && sampleSize != 32) {
@@ -169,7 +169,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
+		Wave wave = ValueToWave(context.GetArg(0));
 		return IntrinsicResult(IsWaveValid(wave));
 	});
 	raylibModule.SetValue("IsWaveValid", i.GetFunc());
@@ -177,10 +177,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
+		Wave wave = ValueToWave(context.GetArg(0));
 		UnloadWave(wave);
 		// Also delete the heap-allocated Wave
-		ValueDict map = context.GetVar(String("wave")).GetDict();
+		ValueDict map = context.GetArg(0).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Wave* wavePtr = (Wave*)ValueToPointer(handleVal);
 		if (wavePtr != nullptr) {
@@ -194,7 +194,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
+		Wave wave = ValueToWave(context.GetArg(0));
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
 
 		// Load the samples as a float array
@@ -215,7 +215,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("samples");
 	i.set_Code(INTRINSIC_LAMBDA {
-		BinaryData* data = ValueToRawData(context.GetVar(String("samples")));
+		BinaryData* data = ValueToRawData(context.GetArg(0));
 		if (data == nullptr) return IntrinsicResult::Null;
 
 		// Get the raw buffer and free it using raylib's UnloadWaveSamples
@@ -238,7 +238,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
+		Wave wave = ValueToWave(context.GetArg(0));
 		Wave copy = WaveCopy(wave);
 		rcWave++;
 		return IntrinsicResult(WaveToValue(copy));
@@ -250,9 +250,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("initFrame", Value::zero);
 	i.AddParam("finalFrame", Value(100));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
-		int initFrame = context.GetVar(String("initFrame")).IntValue();
-		int finalFrame = context.GetVar(String("finalFrame")).IntValue();
+		Wave wave = ValueToWave(context.GetArg(0));
+		int initFrame = context.GetArg(1).IntValue();
+		int finalFrame = context.GetArg(2).IntValue();
 		WaveCrop(&wave, initFrame, finalFrame);
 		return IntrinsicResult::Null;
 	});
@@ -264,10 +264,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sampleSize", Value(16));
 	i.AddParam("channels", Value(2));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
-		int sampleRate = context.GetVar(String("sampleRate")).IntValue();
-		int sampleSize = context.GetVar(String("sampleSize")).IntValue();
-		int channels = context.GetVar(String("channels")).IntValue();
+		Wave wave = ValueToWave(context.GetArg(0));
+		int sampleRate = context.GetArg(1).IntValue();
+		int sampleSize = context.GetArg(2).IntValue();
+		int channels = context.GetArg(3).IntValue();
 		WaveFormat(&wave, sampleRate, sampleSize, channels);
 		return IntrinsicResult::Null;
 	});
@@ -278,7 +278,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		Music music = LoadMusicStream(path.c_str());
 		if (!IsMusicValid(music)) return IntrinsicResult::Null;
 		rcMusic++;
@@ -291,7 +291,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileType = context.GetVar(String("fileType")).ToString();
+		String fileType = context.GetArg(0).ToString();
 		// Note: This would need a byte array type in MiniScript to be fully useful
 		// For now, we'll skip implementing this
 		return IntrinsicResult::Null;
@@ -301,7 +301,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		return IntrinsicResult(IsMusicValid(music));
 	});
 	raylibModule.SetValue("IsMusicValid", i.GetFunc());
@@ -309,10 +309,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		UnloadMusicStream(music);
 		// Also delete the heap-allocated Music
-		ValueDict map = context.GetVar(String("music")).GetDict();
+		ValueDict map = context.GetArg(0).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Music* musicPtr = (Music*)ValueToPointer(handleVal);
 		if (musicPtr != nullptr) {
@@ -326,7 +326,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		PlayMusicStream(music);
 		return IntrinsicResult::Null;
 	});
@@ -335,7 +335,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		return IntrinsicResult(IsMusicStreamPlaying(music));
 	});
 	raylibModule.SetValue("IsMusicStreamPlaying", i.GetFunc());
@@ -343,7 +343,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		UpdateMusicStream(music);
 		return IntrinsicResult::Null;
 	});
@@ -352,7 +352,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		StopMusicStream(music);
 		return IntrinsicResult::Null;
 	});
@@ -361,7 +361,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		PauseMusicStream(music);
 		return IntrinsicResult::Null;
 	});
@@ -370,7 +370,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		ResumeMusicStream(music);
 		return IntrinsicResult::Null;
 	});
@@ -380,8 +380,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("music");
 	i.AddParam("position", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
-		float position = context.GetVar(String("position")).FloatValue();
+		Music music = ValueToMusic(context.GetArg(0));
+		float position = context.GetArg(1).FloatValue();
 		SeekMusicStream(music, position);
 		return IntrinsicResult::Null;
 	});
@@ -391,8 +391,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("music");
 	i.AddParam("volume", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
-		float volume = context.GetVar(String("volume")).FloatValue();
+		Music music = ValueToMusic(context.GetArg(0));
+		float volume = context.GetArg(1).FloatValue();
 		SetMusicVolume(music, volume);
 		return IntrinsicResult::Null;
 	});
@@ -402,8 +402,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("music");
 	i.AddParam("pitch", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
-		float pitch = context.GetVar(String("pitch")).FloatValue();
+		Music music = ValueToMusic(context.GetArg(0));
+		float pitch = context.GetArg(1).FloatValue();
 		SetMusicPitch(music, pitch);
 		return IntrinsicResult::Null;
 	});
@@ -413,8 +413,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("music");
 	i.AddParam("pan", Value(0.5));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
-		float pan = context.GetVar(String("pan")).FloatValue();
+		Music music = ValueToMusic(context.GetArg(0));
+		float pan = context.GetArg(1).FloatValue();
 		SetMusicPan(music, pan);
 		return IntrinsicResult::Null;
 	});
@@ -423,7 +423,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		float length = GetMusicTimeLength(music);
 		return IntrinsicResult(Value(length));
 	});
@@ -432,7 +432,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetVar(String("music")));
+		Music music = ValueToMusic(context.GetArg(0));
 		float timePlayed = GetMusicTimePlayed(music);
 		return IntrinsicResult(Value(timePlayed));
 	});
@@ -443,7 +443,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetVar(String("fileName")).ToString();
+		String path = context.GetArg(0).ToString();
 		Sound sound = LoadSound(path.c_str());
 		if (!IsSoundValid(sound)) return IntrinsicResult::Null;
 		rcSound++;
@@ -454,7 +454,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetVar(String("wave")));
+		Wave wave = ValueToWave(context.GetArg(0));
 		Sound sound = LoadSoundFromWave(wave);
 		rcSound++;
 		return IntrinsicResult(SoundToValue(sound));
@@ -464,7 +464,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("source");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound source = ValueToSound(context.GetVar(String("source")));
+		Sound source = ValueToSound(context.GetArg(0));
 		Sound alias = LoadSoundAlias(source);
 		rcSound++;
 		return IntrinsicResult(SoundToValue(alias));
@@ -474,7 +474,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		return IntrinsicResult(IsSoundValid(sound));
 	});
 	raylibModule.SetValue("IsSoundValid", i.GetFunc());
@@ -482,10 +482,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		UnloadSound(sound);
 		// Also delete the heap-allocated Sound
-		ValueDict map = context.GetVar(String("sound")).GetDict();
+		ValueDict map = context.GetArg(0).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
 		if (soundPtr != nullptr) {
@@ -499,10 +499,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("alias");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound alias = ValueToSound(context.GetVar(String("alias")));
+		Sound alias = ValueToSound(context.GetArg(0));
 		UnloadSoundAlias(alias);
 		// Also delete the heap-allocated Sound
-		ValueDict map = context.GetVar(String("alias")).GetDict();
+		ValueDict map = context.GetArg(0).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
 		if (soundPtr != nullptr) {
@@ -516,7 +516,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		PlaySound(sound);
 		return IntrinsicResult::Null;
 	});
@@ -525,7 +525,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		StopSound(sound);
 		return IntrinsicResult::Null;
 	});
@@ -534,7 +534,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		PauseSound(sound);
 		return IntrinsicResult::Null;
 	});
@@ -543,7 +543,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		ResumeSound(sound);
 		return IntrinsicResult::Null;
 	});
@@ -552,7 +552,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
+		Sound sound = ValueToSound(context.GetArg(0));
 		return IntrinsicResult(IsSoundPlaying(sound));
 	});
 	raylibModule.SetValue("IsSoundPlaying", i.GetFunc());
@@ -562,9 +562,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("sampleCount");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
-		BinaryData* data = ValueToRawData(context.GetVar(String("data")));
-		int sampleCount = context.GetVar(String("sampleCount")).IntValue();
+		Sound sound = ValueToSound(context.GetArg(0));
+		BinaryData* data = ValueToRawData(context.GetArg(1));
+		int sampleCount = context.GetArg(2).IntValue();
 
 		if (data == nullptr || data->bytes == nullptr) {
 			context.vm.RaiseRuntimeError("UpdateSound: RawData required for data parameter"); return IntrinsicResult::Null;
@@ -585,8 +585,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sound");
 	i.AddParam("volume", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
-		float volume = context.GetVar(String("volume")).FloatValue();
+		Sound sound = ValueToSound(context.GetArg(0));
+		float volume = context.GetArg(1).FloatValue();
 		SetSoundVolume(sound, volume);
 		return IntrinsicResult::Null;
 	});
@@ -596,8 +596,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sound");
 	i.AddParam("pitch", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
-		float pitch = context.GetVar(String("pitch")).FloatValue();
+		Sound sound = ValueToSound(context.GetArg(0));
+		float pitch = context.GetArg(1).FloatValue();
 		SetSoundPitch(sound, pitch);
 		return IntrinsicResult::Null;
 	});
@@ -607,8 +607,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sound");
 	i.AddParam("pan", Value(0.5));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetVar(String("sound")));
-		float pan = context.GetVar(String("pan")).FloatValue();
+		Sound sound = ValueToSound(context.GetArg(0));
+		float pan = context.GetArg(1).FloatValue();
 		SetSoundPan(sound, pan);
 		return IntrinsicResult::Null;
 	});
@@ -621,7 +621,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sampleSize", Value(32));
 	i.AddParam("channels", Value(1));
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = LoadAudioStream(context.GetVar(String("sampleRate")).IntValue(), context.GetVar(String("sampleSize")).IntValue(), context.GetVar(String("channels")).IntValue());
+		AudioStream stream = LoadAudioStream(context.GetArg(0).IntValue(), context.GetArg(1).IntValue(), context.GetArg(2).IntValue());
 		rcAudioStream++;
 		return IntrinsicResult(AudioStreamToValue(stream));
 	});
@@ -630,7 +630,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamValid(stream));
 	});
 	raylibModule.SetValue("IsAudioStreamValid", i.GetFunc());
@@ -638,10 +638,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		UnloadAudioStream(stream);
 		// Also delete the heap-allocated AudioStream
-		ValueDict map = context.GetVar(String("stream")).GetDict();
+		ValueDict map = context.GetArg(0).GetDict();
 		Value handleVal = map.Lookup(String("_handle"), Value::zero);
 		AudioStream* streamPtr = (AudioStream*)ValueToPointer(handleVal);
 		if (streamPtr != nullptr) {
@@ -656,8 +656,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("stream");
 	i.AddParam("data");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
-		ValueList data = context.GetVar(String("data")).GetList();
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		ValueList data = context.GetArg(1).GetList();
 
 #define PROCESS_DATA(TYPE, VALUE) \
 		TYPE *buffer = new TYPE[data.Count()]; \
@@ -683,7 +683,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamProcessed(stream));
 	});
 	raylibModule.SetValue("IsAudioStreamProcessed", i.GetFunc());
@@ -691,7 +691,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		PlayAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
@@ -700,7 +700,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		PauseAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
@@ -709,7 +709,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		ResumeAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
@@ -718,7 +718,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamPlaying(stream));
 	});
 	raylibModule.SetValue("IsAudioStreamPlaying", i.GetFunc());
@@ -726,7 +726,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		StopAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
@@ -736,8 +736,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("stream");
 	i.AddParam("volume", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
-		float volume = context.GetVar(String("volume")).FloatValue();
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		float volume = context.GetArg(1).FloatValue();
 		SetAudioStreamVolume(stream, volume);
 		return IntrinsicResult::Null;
 	});
@@ -747,8 +747,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("stream");
 	i.AddParam("pitch", Value(1.0));
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
-		float pitch = context.GetVar(String("pitch")).FloatValue();
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		float pitch = context.GetArg(1).FloatValue();
 		SetAudioStreamPitch(stream, pitch);
 		return IntrinsicResult::Null;
 	});
@@ -758,8 +758,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("stream");
 	i.AddParam("pan", Value(0.5));
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetVar(String("stream")));
-		float pan = context.GetVar(String("pan")).FloatValue();
+		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		float pan = context.GetArg(1).FloatValue();
 		SetAudioStreamPan(stream, pan);
 		return IntrinsicResult::Null;
 	});
@@ -768,7 +768,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("size", Value(4096));
 	i.set_Code(INTRINSIC_LAMBDA {
-		int size = context.GetVar(String("size")).IntValue();
+		int size = context.GetArg(0).IntValue();
 		SetAudioStreamBufferSizeDefault(size);
 		return IntrinsicResult::Null;
 	});

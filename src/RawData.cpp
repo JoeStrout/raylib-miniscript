@@ -304,12 +304,12 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("bytes", 32);
     f.set_Code(INTRINSIC_LAMBDA {
-        int newSize = context.GetVar(String("bytes")).IntValue();
+        int newSize = context.GetArg(1).IntValue();
         if (newSize < 0) {
             return raiseError(context, "bytes parameter must be >= 0");
         }
 
-        Value self = context.GetVar(String("self"));
+        Value self = context.GetArg(0);
         ValueDict map = self.GetDict();
         BinaryData* oldData = GetBinaryData(context);
 
@@ -342,7 +342,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -359,8 +359,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int value = context.GetVar(String("value")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int value = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -377,7 +377,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -394,8 +394,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int value = context.GetVar(String("value")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int value = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -412,7 +412,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -429,8 +429,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int value = context.GetVar(String("value")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int value = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -447,7 +447,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -464,8 +464,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int value = context.GetVar(String("value")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int value = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -482,7 +482,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -499,8 +499,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        double value = context.GetVar(String("value")).DoubleValue();
+        int offset = context.GetArg(1).IntValue();
+        double value = context.GetArg(2).DoubleValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -517,7 +517,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -534,8 +534,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int value = context.GetVar(String("value")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int value = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -552,7 +552,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -569,8 +569,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        float value = context.GetVar(String("value")).FloatValue();
+        int offset = context.GetArg(1).IntValue();
+        float value = context.GetArg(2).FloatValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -587,7 +587,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.AddParam("offset", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
+        int offset = context.GetArg(1).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -604,8 +604,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", 0);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        double value = context.GetVar(String("value")).DoubleValue();
+        int offset = context.GetArg(1).IntValue();
+        double value = context.GetArg(2).DoubleValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -623,8 +623,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("bytes", -1);
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        int byteCount = context.GetVar(String("bytes")).IntValue();
+        int offset = context.GetArg(1).IntValue();
+        int byteCount = context.GetArg(2).IntValue();
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");
 
@@ -642,8 +642,8 @@ ValueDict& RawDataClass() {
     f.AddParam("offset", 0);
     f.AddParam("value", "");
     f.set_Code(INTRINSIC_LAMBDA {
-        int offset = context.GetVar(String("offset")).IntValue();
-        String value = context.GetVar(String("value")).ToString();
+        int offset = context.GetArg(1).IntValue();
+        String value = context.GetArg(2).ToString();
         if (value.empty()) return IntrinsicResult(Value::zero);
 
         BinaryData* data = GetBinaryData(context);

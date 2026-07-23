@@ -23,9 +23,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Value::zero);
 	i.AddParam("max", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float value = context.GetVar(String("value")).FloatValue();
-		float min = context.GetVar(String("min")).FloatValue();
-		float max = context.GetVar(String("max")).FloatValue();
+		float value = context.GetArg(0).FloatValue();
+		float min = context.GetArg(1).FloatValue();
+		float max = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Clamp(value, min, max));
 	});
 	raylibModule.SetValue("Clamp", i.GetFunc());
@@ -35,9 +35,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("end", Value::one);
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float start = context.GetVar(String("start")).FloatValue();
-		float end = context.GetVar(String("end")).FloatValue();
-		float amount = context.GetVar(String("amount")).FloatValue();
+		float start = context.GetArg(0).FloatValue();
+		float end = context.GetArg(1).FloatValue();
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Lerp(start, end, amount));
 	});
 	raylibModule.SetValue("Lerp", i.GetFunc());
@@ -47,9 +47,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("start", Value::zero);
 	i.AddParam("end", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float value = context.GetVar(String("value")).FloatValue();
-		float start = context.GetVar(String("start")).FloatValue();
-		float end = context.GetVar(String("end")).FloatValue();
+		float value = context.GetArg(0).FloatValue();
+		float start = context.GetArg(1).FloatValue();
+		float end = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Normalize(value, start, end));
 	});
 	raylibModule.SetValue("Normalize", i.GetFunc());
@@ -61,11 +61,11 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("outputStart", Value::zero);
 	i.AddParam("outputEnd", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float value = context.GetVar(String("value")).FloatValue();
-		float inputStart = context.GetVar(String("inputStart")).FloatValue();
-		float inputEnd = context.GetVar(String("inputEnd")).FloatValue();
-		float outputStart = context.GetVar(String("outputStart")).FloatValue();
-		float outputEnd = context.GetVar(String("outputEnd")).FloatValue();
+		float value = context.GetArg(0).FloatValue();
+		float inputStart = context.GetArg(1).FloatValue();
+		float inputEnd = context.GetArg(2).FloatValue();
+		float outputStart = context.GetArg(3).FloatValue();
+		float outputEnd = context.GetArg(4).FloatValue();
 		return IntrinsicResult(Remap(value, inputStart, inputEnd, outputStart, outputEnd));
 	});
 	raylibModule.SetValue("Remap", i.GetFunc());
@@ -75,9 +75,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Value::zero);
 	i.AddParam("max", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float value = context.GetVar(String("value")).FloatValue();
-		float min = context.GetVar(String("min")).FloatValue();
-		float max = context.GetVar(String("max")).FloatValue();
+		float value = context.GetArg(0).FloatValue();
+		float min = context.GetArg(1).FloatValue();
+		float max = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Wrap(value, min, max));
 	});
 	raylibModule.SetValue("Wrap", i.GetFunc());
@@ -86,8 +86,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("x", Value::zero);
 	i.AddParam("y", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
+		float x = context.GetArg(0).FloatValue();
+		float y = context.GetArg(1).FloatValue();
 		return IntrinsicResult(FloatEquals(x, y));
 	});
 	raylibModule.SetValue("FloatEquals", i.GetFunc());
@@ -109,8 +109,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Add(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Add", i.GetFunc());
@@ -119,8 +119,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("add", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		float add = context.GetVar(String("add")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		float add = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector2AddValue", i.GetFunc());
@@ -129,8 +129,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Subtract(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Subtract", i.GetFunc());
@@ -139,8 +139,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("sub", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		float sub = context.GetVar(String("sub")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		float sub = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector2SubtractValue", i.GetFunc());
@@ -148,7 +148,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
 		return IntrinsicResult(Vector2Length(v));
 	});
 	raylibModule.SetValue("Vector2Length", i.GetFunc());
@@ -156,7 +156,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
 		return IntrinsicResult(Vector2LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector2LengthSqr", i.GetFunc());
@@ -165,8 +165,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector2DotProduct", i.GetFunc());
@@ -175,8 +175,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2CrossProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector2CrossProduct", i.GetFunc());
@@ -185,8 +185,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2Distance(v1, v2));
 	});
 	raylibModule.SetValue("Vector2Distance", i.GetFunc());
@@ -195,8 +195,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector2DistanceSqr", i.GetFunc());
@@ -205,8 +205,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2Angle(v1, v2));
 	});
 	raylibModule.SetValue("Vector2Angle", i.GetFunc());
@@ -215,8 +215,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("start", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("end", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 start = ValueToVector2(context.GetVar(String("start")));
-		Vector2 end = ValueToVector2(context.GetVar(String("end")));
+		Vector2 start = ValueToVector2(context.GetArg(0));
+		Vector2 end = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2LineAngle(start, end));
 	});
 	raylibModule.SetValue("Vector2LineAngle", i.GetFunc());
@@ -225,8 +225,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("scale", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		float scale = context.GetVar(String("scale")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		float scale = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2Scale(v, scale)));
 	});
 	raylibModule.SetValue("Vector2Scale", i.GetFunc());
@@ -235,8 +235,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Multiply", i.GetFunc());
@@ -244,7 +244,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
 		return IntrinsicResult(Vector2ToValue(Vector2Negate(v)));
 	});
 	raylibModule.SetValue("Vector2Negate", i.GetFunc());
@@ -253,8 +253,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Divide", i.GetFunc());
@@ -262,7 +262,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
 		return IntrinsicResult(Vector2ToValue(Vector2Normalize(v)));
 	});
 	raylibModule.SetValue("Vector2Normalize", i.GetFunc());
@@ -271,8 +271,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		Matrix mat = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Transform(v, mat)));
 	});
 	raylibModule.SetValue("Vector2Transform", i.GetFunc());
@@ -282,9 +282,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2Lerp(v1, v2, amount)));
 	});
 	raylibModule.SetValue("Vector2Lerp", i.GetFunc());
@@ -293,8 +293,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("normal", Vector2ToValue(Vector2{0, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		Vector2 normal = ValueToVector2(context.GetVar(String("normal")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		Vector2 normal = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Reflect(v, normal)));
 	});
 	raylibModule.SetValue("Vector2Reflect", i.GetFunc());
@@ -303,8 +303,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Min(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Min", i.GetFunc());
@@ -313,8 +313,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("v2", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v1 = ValueToVector2(context.GetVar(String("v1")));
-		Vector2 v2 = ValueToVector2(context.GetVar(String("v2")));
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2ToValue(Vector2Max(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Max", i.GetFunc());
@@ -323,8 +323,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		float angle = context.GetVar(String("angle")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		float angle = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2Rotate(v, angle)));
 	});
 	raylibModule.SetValue("Vector2Rotate", i.GetFunc());
@@ -334,9 +334,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("target", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("maxDistance", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		Vector2 target = ValueToVector2(context.GetVar(String("target")));
-		float maxDistance = context.GetVar(String("maxDistance")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		Vector2 target = ValueToVector2(context.GetArg(1));
+		float maxDistance = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector2MoveTowards", i.GetFunc());
@@ -344,7 +344,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
 		return IntrinsicResult(Vector2ToValue(Vector2Invert(v)));
 	});
 	raylibModule.SetValue("Vector2Invert", i.GetFunc());
@@ -354,9 +354,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Vector2ToValue(Vector2{-1, -1}));
 	i.AddParam("max", Vector2ToValue(Vector2{1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		Vector2 min = ValueToVector2(context.GetVar(String("min")));
-		Vector2 max = ValueToVector2(context.GetVar(String("max")));
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		Vector2 min = ValueToVector2(context.GetArg(1));
+		Vector2 max = ValueToVector2(context.GetArg(2));
 		return IntrinsicResult(Vector2ToValue(Vector2Clamp(v, min, max)));
 	});
 	raylibModule.SetValue("Vector2Clamp", i.GetFunc());
@@ -366,9 +366,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Value::zero);
 	i.AddParam("max", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		float min = context.GetVar(String("min")).FloatValue();
-		float max = context.GetVar(String("max")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		float min = context.GetArg(1).FloatValue();
+		float max = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2ClampValue(v, min, max)));
 	});
 	raylibModule.SetValue("Vector2ClampValue", i.GetFunc());
@@ -377,8 +377,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("p", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("q", Vector2ToValue(Vector2{0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 p = ValueToVector2(context.GetVar(String("p")));
-		Vector2 q = ValueToVector2(context.GetVar(String("q")));
+		Vector2 p = ValueToVector2(context.GetArg(0));
+		Vector2 q = ValueToVector2(context.GetArg(1));
 		return IntrinsicResult(Vector2Equals(p, q));
 	});
 	raylibModule.SetValue("Vector2Equals", i.GetFunc());
@@ -388,9 +388,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("n", Vector2ToValue(Vector2{0, 1}));
 	i.AddParam("r", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 v = ValueToVector2(context.GetVar(String("v")));
-		Vector2 n = ValueToVector2(context.GetVar(String("n")));
-		float r = context.GetVar(String("r")).FloatValue();
+		Vector2 v = ValueToVector2(context.GetArg(0));
+		Vector2 n = ValueToVector2(context.GetArg(1));
+		float r = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector2ToValue(Vector2Refract(v, n, r)));
 	});
 	raylibModule.SetValue("Vector2Refract", i.GetFunc());
@@ -412,8 +412,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Add(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Add", i.GetFunc());
@@ -422,8 +422,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("add", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		float add = context.GetVar(String("add")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		float add = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector3AddValue", i.GetFunc());
@@ -432,8 +432,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Subtract(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Subtract", i.GetFunc());
@@ -442,8 +442,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("sub", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		float sub = context.GetVar(String("sub")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		float sub = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector3SubtractValue", i.GetFunc());
@@ -452,8 +452,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("scalar", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		float scalar = context.GetVar(String("scalar")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		float scalar = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3Scale(v, scalar)));
 	});
 	raylibModule.SetValue("Vector3Scale", i.GetFunc());
@@ -462,8 +462,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Multiply", i.GetFunc());
@@ -472,8 +472,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3CrossProduct(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3CrossProduct", i.GetFunc());
@@ -481,7 +481,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3ToValue(Vector3Perpendicular(v)));
 	});
 	raylibModule.SetValue("Vector3Perpendicular", i.GetFunc());
@@ -489,7 +489,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3Length(v));
 	});
 	raylibModule.SetValue("Vector3Length", i.GetFunc());
@@ -497,7 +497,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector3LengthSqr", i.GetFunc());
@@ -506,8 +506,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector3DotProduct", i.GetFunc());
@@ -516,8 +516,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3Distance(v1, v2));
 	});
 	raylibModule.SetValue("Vector3Distance", i.GetFunc());
@@ -526,8 +526,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector3DistanceSqr", i.GetFunc());
@@ -536,8 +536,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3Angle(v1, v2));
 	});
 	raylibModule.SetValue("Vector3Angle", i.GetFunc());
@@ -545,7 +545,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3ToValue(Vector3Negate(v)));
 	});
 	raylibModule.SetValue("Vector3Negate", i.GetFunc());
@@ -554,8 +554,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Divide", i.GetFunc());
@@ -563,7 +563,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3ToValue(Vector3Normalize(v)));
 	});
 	raylibModule.SetValue("Vector3Normalize", i.GetFunc());
@@ -572,8 +572,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Project(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Project", i.GetFunc());
@@ -582,8 +582,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Reject(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Reject", i.GetFunc());
@@ -592,8 +592,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{1, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		Vector3OrthoNormalize(&v1, &v2);
 		ValueDict result;
 		result.SetValue(String("v1"), Vector3ToValue(v1));
@@ -606,8 +606,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Matrix mat = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Transform(v, mat)));
 	});
 	raylibModule.SetValue("Vector3Transform", i.GetFunc());
@@ -616,8 +616,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Quaternion q = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3RotateByQuaternion(v, q)));
 	});
 	raylibModule.SetValue("Vector3RotateByQuaternion", i.GetFunc());
@@ -627,9 +627,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("axis", Vector3ToValue(Vector3{0, 1, 0}));
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Vector3 axis = ValueToVector3(context.GetVar(String("axis")));
-		float angle = context.GetVar(String("angle")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Vector3 axis = ValueToVector3(context.GetArg(1));
+		float angle = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3RotateByAxisAngle(v, axis, angle)));
 	});
 	raylibModule.SetValue("Vector3RotateByAxisAngle", i.GetFunc());
@@ -639,9 +639,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("target", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("maxDistance", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Vector3 target = ValueToVector3(context.GetVar(String("target")));
-		float maxDistance = context.GetVar(String("maxDistance")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Vector3 target = ValueToVector3(context.GetArg(1));
+		float maxDistance = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector3MoveTowards", i.GetFunc());
@@ -651,9 +651,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3Lerp(v1, v2, amount)));
 	});
 	raylibModule.SetValue("Vector3Lerp", i.GetFunc());
@@ -665,11 +665,11 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("tangent2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 tangent1 = ValueToVector3(context.GetVar(String("tangent1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
-		Vector3 tangent2 = ValueToVector3(context.GetVar(String("tangent2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 tangent1 = ValueToVector3(context.GetArg(1));
+		Vector3 v2 = ValueToVector3(context.GetArg(2));
+		Vector3 tangent2 = ValueToVector3(context.GetArg(3));
+		float amount = context.GetArg(4).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3CubicHermite(v1, tangent1, v2, tangent2, amount)));
 	});
 	raylibModule.SetValue("Vector3CubicHermite", i.GetFunc());
@@ -678,8 +678,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("normal", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Vector3 normal = ValueToVector3(context.GetVar(String("normal")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Vector3 normal = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Reflect(v, normal)));
 	});
 	raylibModule.SetValue("Vector3Reflect", i.GetFunc());
@@ -688,8 +688,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Min(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Min", i.GetFunc());
@@ -698,8 +698,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("v2", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v1 = ValueToVector3(context.GetVar(String("v1")));
-		Vector3 v2 = ValueToVector3(context.GetVar(String("v2")));
+		Vector3 v1 = ValueToVector3(context.GetArg(0));
+		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3ToValue(Vector3Max(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Max", i.GetFunc());
@@ -710,10 +710,10 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("b", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("c", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 p = ValueToVector3(context.GetVar(String("p")));
-		Vector3 a = ValueToVector3(context.GetVar(String("a")));
-		Vector3 b = ValueToVector3(context.GetVar(String("b")));
-		Vector3 c = ValueToVector3(context.GetVar(String("c")));
+		Vector3 p = ValueToVector3(context.GetArg(0));
+		Vector3 a = ValueToVector3(context.GetArg(1));
+		Vector3 b = ValueToVector3(context.GetArg(2));
+		Vector3 c = ValueToVector3(context.GetArg(3));
 		return IntrinsicResult(Vector3ToValue(Vector3Barycenter(p, a, b, c)));
 	});
 	raylibModule.SetValue("Vector3Barycenter", i.GetFunc());
@@ -723,9 +723,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("projection", MatrixToValue(MatrixIdentity()));
 	i.AddParam("view", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 source = ValueToVector3(context.GetVar(String("source")));
-		Matrix projection = ValueToMatrix(context.GetVar(String("projection")));
-		Matrix view = ValueToMatrix(context.GetVar(String("view")));
+		Vector3 source = ValueToVector3(context.GetArg(0));
+		Matrix projection = ValueToMatrix(context.GetArg(1));
+		Matrix view = ValueToMatrix(context.GetArg(2));
 		return IntrinsicResult(Vector3ToValue(Vector3Unproject(source, projection, view)));
 	});
 	raylibModule.SetValue("Vector3Unproject", i.GetFunc());
@@ -733,7 +733,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		float3 out = Vector3ToFloatV(v);
 		ValueList result;
 		result.Add(Value(out.v[0]));
@@ -746,7 +746,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(Vector3ToValue(Vector3Invert(v)));
 	});
 	raylibModule.SetValue("Vector3Invert", i.GetFunc());
@@ -756,9 +756,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Vector3ToValue(Vector3{-1, -1, -1}));
 	i.AddParam("max", Vector3ToValue(Vector3{1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Vector3 min = ValueToVector3(context.GetVar(String("min")));
-		Vector3 max = ValueToVector3(context.GetVar(String("max")));
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Vector3 min = ValueToVector3(context.GetArg(1));
+		Vector3 max = ValueToVector3(context.GetArg(2));
 		return IntrinsicResult(Vector3ToValue(Vector3Clamp(v, min, max)));
 	});
 	raylibModule.SetValue("Vector3Clamp", i.GetFunc());
@@ -768,9 +768,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("min", Value::zero);
 	i.AddParam("max", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		float min = context.GetVar(String("min")).FloatValue();
-		float max = context.GetVar(String("max")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		float min = context.GetArg(1).FloatValue();
+		float max = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3ClampValue(v, min, max)));
 	});
 	raylibModule.SetValue("Vector3ClampValue", i.GetFunc());
@@ -779,8 +779,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("p", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("q", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 p = ValueToVector3(context.GetVar(String("p")));
-		Vector3 q = ValueToVector3(context.GetVar(String("q")));
+		Vector3 p = ValueToVector3(context.GetArg(0));
+		Vector3 q = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(Vector3Equals(p, q));
 	});
 	raylibModule.SetValue("Vector3Equals", i.GetFunc());
@@ -790,9 +790,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("n", Vector3ToValue(Vector3{0, 1, 0}));
 	i.AddParam("r", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 v = ValueToVector3(context.GetVar(String("v")));
-		Vector3 n = ValueToVector3(context.GetVar(String("n")));
-		float r = context.GetVar(String("r")).FloatValue();
+		Vector3 v = ValueToVector3(context.GetArg(0));
+		Vector3 n = ValueToVector3(context.GetArg(1));
+		float r = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector3ToValue(Vector3Refract(v, n, r)));
 	});
 	raylibModule.SetValue("Vector3Refract", i.GetFunc());
@@ -814,8 +814,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Add(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Add", i.GetFunc());
@@ -824,8 +824,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("add", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
-		float add = context.GetVar(String("add")).FloatValue();
+		Vector4 v = ValueToVector4(context.GetArg(0));
+		float add = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector4ToValue(Vector4AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector4AddValue", i.GetFunc());
@@ -834,8 +834,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Subtract(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Subtract", i.GetFunc());
@@ -844,8 +844,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("sub", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
-		float sub = context.GetVar(String("sub")).FloatValue();
+		Vector4 v = ValueToVector4(context.GetArg(0));
+		float sub = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector4ToValue(Vector4SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector4SubtractValue", i.GetFunc());
@@ -853,7 +853,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
+		Vector4 v = ValueToVector4(context.GetArg(0));
 		return IntrinsicResult(Vector4Length(v));
 	});
 	raylibModule.SetValue("Vector4Length", i.GetFunc());
@@ -861,7 +861,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
+		Vector4 v = ValueToVector4(context.GetArg(0));
 		return IntrinsicResult(Vector4LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector4LengthSqr", i.GetFunc());
@@ -870,8 +870,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector4DotProduct", i.GetFunc());
@@ -880,8 +880,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4Distance(v1, v2));
 	});
 	raylibModule.SetValue("Vector4Distance", i.GetFunc());
@@ -890,8 +890,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector4DistanceSqr", i.GetFunc());
@@ -900,8 +900,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("scale", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
-		float scale = context.GetVar(String("scale")).FloatValue();
+		Vector4 v = ValueToVector4(context.GetArg(0));
+		float scale = context.GetArg(1).FloatValue();
 		return IntrinsicResult(Vector4ToValue(Vector4Scale(v, scale)));
 	});
 	raylibModule.SetValue("Vector4Scale", i.GetFunc());
@@ -910,8 +910,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Multiply", i.GetFunc());
@@ -919,7 +919,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
+		Vector4 v = ValueToVector4(context.GetArg(0));
 		return IntrinsicResult(Vector4ToValue(Vector4Negate(v)));
 	});
 	raylibModule.SetValue("Vector4Negate", i.GetFunc());
@@ -928,8 +928,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{1, 1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Divide", i.GetFunc());
@@ -937,7 +937,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
+		Vector4 v = ValueToVector4(context.GetArg(0));
 		return IntrinsicResult(Vector4ToValue(Vector4Normalize(v)));
 	});
 	raylibModule.SetValue("Vector4Normalize", i.GetFunc());
@@ -946,8 +946,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Min(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Min", i.GetFunc());
@@ -956,8 +956,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4ToValue(Vector4Max(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Max", i.GetFunc());
@@ -967,9 +967,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("v2", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v1 = ValueToVector4(context.GetVar(String("v1")));
-		Vector4 v2 = ValueToVector4(context.GetVar(String("v2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Vector4 v1 = ValueToVector4(context.GetArg(0));
+		Vector4 v2 = ValueToVector4(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector4ToValue(Vector4Lerp(v1, v2, amount)));
 	});
 	raylibModule.SetValue("Vector4Lerp", i.GetFunc());
@@ -979,9 +979,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("target", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("maxDistance", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
-		Vector4 target = ValueToVector4(context.GetVar(String("target")));
-		float maxDistance = context.GetVar(String("maxDistance")).FloatValue();
+		Vector4 v = ValueToVector4(context.GetArg(0));
+		Vector4 target = ValueToVector4(context.GetArg(1));
+		float maxDistance = context.GetArg(2).FloatValue();
 		return IntrinsicResult(Vector4ToValue(Vector4MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector4MoveTowards", i.GetFunc());
@@ -989,7 +989,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{1, 1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 v = ValueToVector4(context.GetVar(String("v")));
+		Vector4 v = ValueToVector4(context.GetArg(0));
 		return IntrinsicResult(Vector4ToValue(Vector4Invert(v)));
 	});
 	raylibModule.SetValue("Vector4Invert", i.GetFunc());
@@ -998,8 +998,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("p", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.AddParam("q", Vector4ToValue(Vector4{0, 0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector4 p = ValueToVector4(context.GetVar(String("p")));
-		Vector4 q = ValueToVector4(context.GetVar(String("q")));
+		Vector4 p = ValueToVector4(context.GetArg(0));
+		Vector4 q = ValueToVector4(context.GetArg(1));
 		return IntrinsicResult(Vector4Equals(p, q));
 	});
 	raylibModule.SetValue("Vector4Equals", i.GetFunc());
@@ -1008,7 +1008,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		return IntrinsicResult(MatrixDeterminant(mat));
 	});
 	raylibModule.SetValue("MatrixDeterminant", i.GetFunc());
@@ -1016,7 +1016,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		return IntrinsicResult(MatrixTrace(mat));
 	});
 	raylibModule.SetValue("MatrixTrace", i.GetFunc());
@@ -1024,7 +1024,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(MatrixTranspose(mat)));
 	});
 	raylibModule.SetValue("MatrixTranspose", i.GetFunc());
@@ -1032,7 +1032,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(MatrixInvert(mat)));
 	});
 	raylibModule.SetValue("MatrixInvert", i.GetFunc());
@@ -1047,8 +1047,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("left", MatrixToValue(MatrixIdentity()));
 	i.AddParam("right", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix left = ValueToMatrix(context.GetVar(String("left")));
-		Matrix right = ValueToMatrix(context.GetVar(String("right")));
+		Matrix left = ValueToMatrix(context.GetArg(0));
+		Matrix right = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(MatrixToValue(MatrixAdd(left, right)));
 	});
 	raylibModule.SetValue("MatrixAdd", i.GetFunc());
@@ -1057,8 +1057,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("left", MatrixToValue(MatrixIdentity()));
 	i.AddParam("right", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix left = ValueToMatrix(context.GetVar(String("left")));
-		Matrix right = ValueToMatrix(context.GetVar(String("right")));
+		Matrix left = ValueToMatrix(context.GetArg(0));
+		Matrix right = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(MatrixToValue(MatrixSubtract(left, right)));
 	});
 	raylibModule.SetValue("MatrixSubtract", i.GetFunc());
@@ -1067,8 +1067,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("left", MatrixToValue(MatrixIdentity()));
 	i.AddParam("right", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix left = ValueToMatrix(context.GetVar(String("left")));
-		Matrix right = ValueToMatrix(context.GetVar(String("right")));
+		Matrix left = ValueToMatrix(context.GetArg(0));
+		Matrix right = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(MatrixToValue(MatrixMultiply(left, right)));
 	});
 	raylibModule.SetValue("MatrixMultiply", i.GetFunc());
@@ -1077,8 +1077,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("left", MatrixToValue(MatrixIdentity()));
 	i.AddParam("value", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix left = ValueToMatrix(context.GetVar(String("left")));
-		float value = context.GetVar(String("value")).FloatValue();
+		Matrix left = ValueToMatrix(context.GetArg(0));
+		float value = context.GetArg(1).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixMultiplyValue(left, value)));
 	});
 	raylibModule.SetValue("MatrixMultiplyValue", i.GetFunc());
@@ -1088,9 +1088,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("y", Value::zero);
 	i.AddParam("z", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
-		float z = context.GetVar(String("z")).FloatValue();
+		float x = context.GetArg(0).FloatValue();
+		float y = context.GetArg(1).FloatValue();
+		float z = context.GetArg(2).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixTranslate(x, y, z)));
 	});
 	raylibModule.SetValue("MatrixTranslate", i.GetFunc());
@@ -1099,8 +1099,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("axis", Vector3ToValue(Vector3{0, 1, 0}));
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 axis = ValueToVector3(context.GetVar(String("axis")));
-		float angle = context.GetVar(String("angle")).FloatValue();
+		Vector3 axis = ValueToVector3(context.GetArg(0));
+		float angle = context.GetArg(1).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixRotate(axis, angle)));
 	});
 	raylibModule.SetValue("MatrixRotate", i.GetFunc());
@@ -1108,7 +1108,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float angle = context.GetVar(String("angle")).FloatValue();
+		float angle = context.GetArg(0).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixRotateX(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateX", i.GetFunc());
@@ -1116,7 +1116,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float angle = context.GetVar(String("angle")).FloatValue();
+		float angle = context.GetArg(0).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixRotateY(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateY", i.GetFunc());
@@ -1124,7 +1124,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float angle = context.GetVar(String("angle")).FloatValue();
+		float angle = context.GetArg(0).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixRotateZ(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateZ", i.GetFunc());
@@ -1132,7 +1132,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 angle = ValueToVector3(context.GetVar(String("angle")));
+		Vector3 angle = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(MatrixRotateXYZ(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateXYZ", i.GetFunc());
@@ -1140,7 +1140,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Vector3ToValue(Vector3{0, 0, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 angle = ValueToVector3(context.GetVar(String("angle")));
+		Vector3 angle = ValueToVector3(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(MatrixRotateZYX(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateZYX", i.GetFunc());
@@ -1150,9 +1150,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("y", Value::one);
 	i.AddParam("z", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
-		float z = context.GetVar(String("z")).FloatValue();
+		float x = context.GetArg(0).FloatValue();
+		float y = context.GetArg(1).FloatValue();
+		float z = context.GetArg(2).FloatValue();
 		return IntrinsicResult(MatrixToValue(MatrixScale(x, y, z)));
 	});
 	raylibModule.SetValue("MatrixScale", i.GetFunc());
@@ -1165,12 +1165,12 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("nearPlane", Value(0.01));
 	i.AddParam("farPlane", Value(1000));
 	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetVar(String("left")).DoubleValue();
-		double right = context.GetVar(String("right")).DoubleValue();
-		double bottom = context.GetVar(String("bottom")).DoubleValue();
-		double top = context.GetVar(String("top")).DoubleValue();
-		double nearPlane = context.GetVar(String("nearPlane")).DoubleValue();
-		double farPlane = context.GetVar(String("farPlane")).DoubleValue();
+		double left = context.GetArg(0).DoubleValue();
+		double right = context.GetArg(1).DoubleValue();
+		double bottom = context.GetArg(2).DoubleValue();
+		double top = context.GetArg(3).DoubleValue();
+		double nearPlane = context.GetArg(4).DoubleValue();
+		double farPlane = context.GetArg(5).DoubleValue();
 		return IntrinsicResult(MatrixToValue(MatrixFrustum(left, right, bottom, top, nearPlane, farPlane)));
 	});
 	raylibModule.SetValue("MatrixFrustum", i.GetFunc());
@@ -1181,10 +1181,10 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("nearPlane", Value(0.01));
 	i.AddParam("farPlane", Value(1000));
 	i.set_Code(INTRINSIC_LAMBDA {
-		double fovY = context.GetVar(String("fovY")).DoubleValue();
-		double aspect = context.GetVar(String("aspect")).DoubleValue();
-		double nearPlane = context.GetVar(String("nearPlane")).DoubleValue();
-		double farPlane = context.GetVar(String("farPlane")).DoubleValue();
+		double fovY = context.GetArg(0).DoubleValue();
+		double aspect = context.GetArg(1).DoubleValue();
+		double nearPlane = context.GetArg(2).DoubleValue();
+		double farPlane = context.GetArg(3).DoubleValue();
 		return IntrinsicResult(MatrixToValue(MatrixPerspective(fovY, aspect, nearPlane, farPlane)));
 	});
 	raylibModule.SetValue("MatrixPerspective", i.GetFunc());
@@ -1197,12 +1197,12 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("nearPlane", Value(0.01));
 	i.AddParam("farPlane", Value(1000));
 	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetVar(String("left")).DoubleValue();
-		double right = context.GetVar(String("right")).DoubleValue();
-		double bottom = context.GetVar(String("bottom")).DoubleValue();
-		double top = context.GetVar(String("top")).DoubleValue();
-		double nearPlane = context.GetVar(String("nearPlane")).DoubleValue();
-		double farPlane = context.GetVar(String("farPlane")).DoubleValue();
+		double left = context.GetArg(0).DoubleValue();
+		double right = context.GetArg(1).DoubleValue();
+		double bottom = context.GetArg(2).DoubleValue();
+		double top = context.GetArg(3).DoubleValue();
+		double nearPlane = context.GetArg(4).DoubleValue();
+		double farPlane = context.GetArg(5).DoubleValue();
 		return IntrinsicResult(MatrixToValue(MatrixOrtho(left, right, bottom, top, nearPlane, farPlane)));
 	});
 	raylibModule.SetValue("MatrixOrtho", i.GetFunc());
@@ -1212,9 +1212,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("target", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("up", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 eye = ValueToVector3(context.GetVar(String("eye")));
-		Vector3 target = ValueToVector3(context.GetVar(String("target")));
-		Vector3 up = ValueToVector3(context.GetVar(String("up")));
+		Vector3 eye = ValueToVector3(context.GetArg(0));
+		Vector3 target = ValueToVector3(context.GetArg(1));
+		Vector3 up = ValueToVector3(context.GetArg(2));
 		return IntrinsicResult(MatrixToValue(MatrixLookAt(eye, target, up)));
 	});
 	raylibModule.SetValue("MatrixLookAt", i.GetFunc());
@@ -1222,7 +1222,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		float16 values = MatrixToFloatV(mat);
 		ValueList result;
 		for (int n = 0; n < 16; n++) result.Add(Value(values.v[n]));
@@ -1235,9 +1235,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("rotation", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("scale", Vector3ToValue(Vector3{1, 1, 1}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 translation = ValueToVector3(context.GetVar(String("translation")));
-		Quaternion rotation = ValueToQuaternion(context.GetVar(String("rotation")));
-		Vector3 scale = ValueToVector3(context.GetVar(String("scale")));
+		Vector3 translation = ValueToVector3(context.GetArg(0));
+		Quaternion rotation = ValueToQuaternion(context.GetArg(1));
+		Vector3 scale = ValueToVector3(context.GetArg(2));
 		return IntrinsicResult(MatrixToValue(MatrixCompose(translation, rotation, scale)));
 	});
 	raylibModule.SetValue("MatrixCompose", i.GetFunc());
@@ -1245,7 +1245,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		Vector3 translation;
 		Quaternion rotation;
 		Vector3 scale;
@@ -1264,8 +1264,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionAdd(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionAdd", i.GetFunc());
@@ -1274,8 +1274,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("add", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
-		float add = context.GetVar(String("add")).FloatValue();
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
+		float add = context.GetArg(1).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionAddValue(q, add)));
 	});
 	raylibModule.SetValue("QuaternionAddValue", i.GetFunc());
@@ -1284,8 +1284,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionSubtract(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionSubtract", i.GetFunc());
@@ -1294,8 +1294,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("sub", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
-		float sub = context.GetVar(String("sub")).FloatValue();
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
+		float sub = context.GetArg(1).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionSubtractValue(q, sub)));
 	});
 	raylibModule.SetValue("QuaternionSubtractValue", i.GetFunc());
@@ -1309,7 +1309,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		return IntrinsicResult(QuaternionLength(q));
 	});
 	raylibModule.SetValue("QuaternionLength", i.GetFunc());
@@ -1317,7 +1317,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		return IntrinsicResult(QuaternionToValue(QuaternionNormalize(q)));
 	});
 	raylibModule.SetValue("QuaternionNormalize", i.GetFunc());
@@ -1325,7 +1325,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		return IntrinsicResult(QuaternionToValue(QuaternionInvert(q)));
 	});
 	raylibModule.SetValue("QuaternionInvert", i.GetFunc());
@@ -1334,8 +1334,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionMultiply(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionMultiply", i.GetFunc());
@@ -1344,8 +1344,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("mul", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
-		float mul = context.GetVar(String("mul")).FloatValue();
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
+		float mul = context.GetArg(1).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionScale(q, mul)));
 	});
 	raylibModule.SetValue("QuaternionScale", i.GetFunc());
@@ -1354,8 +1354,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionDivide(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionDivide", i.GetFunc());
@@ -1365,9 +1365,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionLerp(q1, q2, amount)));
 	});
 	raylibModule.SetValue("QuaternionLerp", i.GetFunc());
@@ -1377,9 +1377,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionNlerp(q1, q2, amount)));
 	});
 	raylibModule.SetValue("QuaternionNlerp", i.GetFunc());
@@ -1389,9 +1389,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q2", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("amount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
-		float amount = context.GetVar(String("amount")).FloatValue();
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(1));
+		float amount = context.GetArg(2).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionSlerp(q1, q2, amount)));
 	});
 	raylibModule.SetValue("QuaternionSlerp", i.GetFunc());
@@ -1403,11 +1403,11 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("inTangent2", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("t", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q1 = ValueToQuaternion(context.GetVar(String("q1")));
-		Quaternion outTangent1 = ValueToQuaternion(context.GetVar(String("outTangent1")));
-		Quaternion q2 = ValueToQuaternion(context.GetVar(String("q2")));
-		Quaternion inTangent2 = ValueToQuaternion(context.GetVar(String("inTangent2")));
-		float t = context.GetVar(String("t")).FloatValue();
+		Quaternion q1 = ValueToQuaternion(context.GetArg(0));
+		Quaternion outTangent1 = ValueToQuaternion(context.GetArg(1));
+		Quaternion q2 = ValueToQuaternion(context.GetArg(2));
+		Quaternion inTangent2 = ValueToQuaternion(context.GetArg(3));
+		float t = context.GetArg(4).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionCubicHermiteSpline(q1, outTangent1, q2, inTangent2, t)));
 	});
 	raylibModule.SetValue("QuaternionCubicHermiteSpline", i.GetFunc());
@@ -1416,8 +1416,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("from", Vector3ToValue(Vector3{1, 0, 0}));
 	i.AddParam("to", Vector3ToValue(Vector3{0, 1, 0}));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 from = ValueToVector3(context.GetVar(String("from")));
-		Vector3 to = ValueToVector3(context.GetVar(String("to")));
+		Vector3 from = ValueToVector3(context.GetArg(0));
+		Vector3 to = ValueToVector3(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionFromVector3ToVector3(from, to)));
 	});
 	raylibModule.SetValue("QuaternionFromVector3ToVector3", i.GetFunc());
@@ -1425,7 +1425,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Matrix mat = ValueToMatrix(context.GetArg(0));
 		return IntrinsicResult(QuaternionToValue(QuaternionFromMatrix(mat)));
 	});
 	raylibModule.SetValue("QuaternionFromMatrix", i.GetFunc());
@@ -1433,7 +1433,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(QuaternionToMatrix(q)));
 	});
 	raylibModule.SetValue("QuaternionToMatrix", i.GetFunc());
@@ -1442,8 +1442,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("axis", Vector3ToValue(Vector3{0, 1, 0}));
 	i.AddParam("angle", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 axis = ValueToVector3(context.GetVar(String("axis")));
-		float angle = context.GetVar(String("angle")).FloatValue();
+		Vector3 axis = ValueToVector3(context.GetArg(0));
+		float angle = context.GetArg(1).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionFromAxisAngle(axis, angle)));
 	});
 	raylibModule.SetValue("QuaternionFromAxisAngle", i.GetFunc());
@@ -1451,7 +1451,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		Vector3 outAxis;
 		float outAngle = 0;
 		QuaternionToAxisAngle(q, &outAxis, &outAngle);
@@ -1467,9 +1467,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("yaw", Value::zero);
 	i.AddParam("roll", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float pitch = context.GetVar(String("pitch")).FloatValue();
-		float yaw = context.GetVar(String("yaw")).FloatValue();
-		float roll = context.GetVar(String("roll")).FloatValue();
+		float pitch = context.GetArg(0).FloatValue();
+		float yaw = context.GetArg(1).FloatValue();
+		float roll = context.GetArg(2).FloatValue();
 		return IntrinsicResult(QuaternionToValue(QuaternionFromEuler(pitch, yaw, roll)));
 	});
 	raylibModule.SetValue("QuaternionFromEuler", i.GetFunc());
@@ -1477,7 +1477,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
 		return IntrinsicResult(Vector3ToValue(QuaternionToEuler(q)));
 	});
 	raylibModule.SetValue("QuaternionToEuler", i.GetFunc());
@@ -1486,8 +1486,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Quaternion q = ValueToQuaternion(context.GetArg(0));
+		Matrix mat = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult(QuaternionToValue(QuaternionTransform(q, mat)));
 	});
 	raylibModule.SetValue("QuaternionTransform", i.GetFunc());
@@ -1496,8 +1496,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 	i.AddParam("p", QuaternionToValue(QuaternionIdentity()));
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Quaternion p = ValueToQuaternion(context.GetVar(String("p")));
-		Quaternion q = ValueToQuaternion(context.GetVar(String("q")));
+		Quaternion p = ValueToQuaternion(context.GetArg(0));
+		Quaternion q = ValueToQuaternion(context.GetArg(1));
 		return IntrinsicResult(QuaternionEquals(p, q));
 	});
 	raylibModule.SetValue("QuaternionEquals", i.GetFunc());

@@ -705,7 +705,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("color", ColorToValue(BLACK));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value colorVal = context.GetVar(String("color"));
+		Value colorVal = context.GetArg(0);
 		Color color = ValueToColor(colorVal);
 		ClearBackground(color);
 		return IntrinsicResult::Null;
@@ -717,7 +717,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
 		BeginMode3D(camera);
 		return IntrinsicResult::Null;
 	});
@@ -734,8 +734,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("position");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context.GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		Vector2 position = ValueToVector2(context.GetArg(0));
+		Camera3D camera = ValueToCamera3D(context.GetArg(1));
 		Ray ray = GetScreenToWorldRay(position, camera);
 		return IntrinsicResult(RayToValue(ray));
 	});
@@ -747,10 +747,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("width", Value::zero);
 	i.AddParam("height", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context.GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		Vector2 position = ValueToVector2(context.GetArg(0));
+		Camera3D camera = ValueToCamera3D(context.GetArg(1));
+		int width = context.GetArg(2).IntValue();
+		int height = context.GetArg(3).IntValue();
 		if (width <= 0) width = GetScreenWidth();
 		if (height <= 0) height = GetScreenHeight();
 		Ray ray = GetScreenToWorldRayEx(position, camera, width, height);
@@ -762,8 +762,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("position");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		Camera3D camera = ValueToCamera3D(context.GetArg(1));
 		Vector2 result = GetWorldToScreen(position, camera);
 		return IntrinsicResult(Vector2ToValue(result));
 	});
@@ -775,10 +775,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("width", Value::zero);
 	i.AddParam("height", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector3 position = ValueToVector3(context.GetVar(String("position")));
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		Vector3 position = ValueToVector3(context.GetArg(0));
+		Camera3D camera = ValueToCamera3D(context.GetArg(1));
+		int width = context.GetArg(2).IntValue();
+		int height = context.GetArg(3).IntValue();
 		if (width <= 0) width = GetScreenWidth();
 		if (height <= 0) height = GetScreenHeight();
 		Vector2 result = GetWorldToScreenEx(position, camera, width, height);
@@ -789,7 +789,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Camera3D camera = ValueToCamera3D(context.GetVar(String("camera")));
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
 		return IntrinsicResult(MatrixToValue(GetCameraMatrix(camera)));
 	});
 	raylibModule.SetValue("GetCameraMatrix", i.GetFunc());
@@ -798,9 +798,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("camera");
 	i.AddParam("mode", Value(CAMERA_CUSTOM));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value cameraValue = context.GetVar(String("camera"));
+		Value cameraValue = context.GetArg(0);
 		Camera3D camera = ValueToCamera3D(cameraValue);
-		int mode = context.GetVar(String("mode")).IntValue();
+		int mode = context.GetArg(1).IntValue();
 		UpdateCamera((Camera*)&camera, mode);
 		SyncCamera3DValue(cameraValue, camera);
 		return IntrinsicResult::Null;
@@ -813,11 +813,11 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("rotation", Vector3ToValue(Vector3{0, 0, 0}));
 	i.AddParam("zoom", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value cameraValue = context.GetVar(String("camera"));
+		Value cameraValue = context.GetArg(0);
 		Camera3D camera = ValueToCamera3D(cameraValue);
-		Vector3 movement = ValueToVector3(context.GetVar(String("movement")));
-		Vector3 rotation = ValueToVector3(context.GetVar(String("rotation")));
-		float zoom = context.GetVar(String("zoom")).FloatValue();
+		Vector3 movement = ValueToVector3(context.GetArg(1));
+		Vector3 rotation = ValueToVector3(context.GetArg(2));
+		float zoom = context.GetArg(3).FloatValue();
 		UpdateCameraPro((Camera*)&camera, movement, rotation, zoom);
 		SyncCamera3DValue(cameraValue, camera);
 		return IntrinsicResult::Null;
@@ -830,8 +830,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("vsFileName", String());
 	i.AddParam("fsFileName", String());
 	i.set_Code(INTRINSIC_LAMBDA {
-		String vsFileName = context.GetVar(String("vsFileName")).ToString();
-		String fsFileName = context.GetVar(String("fsFileName")).ToString();
+		String vsFileName = context.GetArg(0).ToString();
+		String fsFileName = context.GetArg(1).ToString();
 		const char* vsPtr = vsFileName.LengthB() > 0 ? vsFileName.c_str() : nullptr;
 		const char* fsPtr = fsFileName.LengthB() > 0 ? fsFileName.c_str() : nullptr;
 		Shader shader = LoadShader(vsPtr, fsPtr);
@@ -845,8 +845,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("vsCode", String());
 	i.AddParam("fsCode", String());
 	i.set_Code(INTRINSIC_LAMBDA {
-		String vsCode = context.GetVar(String("vsCode")).ToString();
-		String fsCode = context.GetVar(String("fsCode")).ToString();
+		String vsCode = context.GetArg(0).ToString();
+		String fsCode = context.GetArg(1).ToString();
 		const char* vsPtr = vsCode.LengthB() > 0 ? vsCode.c_str() : nullptr;
 		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
 		Shader shader = LoadShaderFromMemory(vsPtr, fsPtr);
@@ -859,7 +859,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		Shader shader = ValueToShader(context.GetArg(0));
 		return IntrinsicResult(IsShaderValid(shader));
 	});
 	raylibModule.SetValue("IsShaderValid", i.GetFunc());
@@ -867,7 +867,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
+		Shader shader = ValueToShader(context.GetArg(0));
 		BeginShaderMode(shader);
 		return IntrinsicResult::Null;
 	});
@@ -884,8 +884,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("shader");
 	i.AddParam("uniformName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		String uniformName = context.GetVar(String("uniformName")).ToString();
+		Shader shader = ValueToShader(context.GetArg(0));
+		String uniformName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocation(shader, uniformName.c_str()));
 	});
 	raylibModule.SetValue("GetShaderLocation", i.GetFunc());
@@ -894,8 +894,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("shader");
 	i.AddParam("attribName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		String attribName = context.GetVar(String("attribName")).ToString();
+		Shader shader = ValueToShader(context.GetArg(0));
+		String attribName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocationAttrib(shader, attribName.c_str()));
 	});
 	raylibModule.SetValue("GetShaderLocationAttrib", i.GetFunc());
@@ -905,9 +905,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("locIndex");
 	i.AddParam("mat");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Matrix mat = ValueToMatrix(context.GetVar(String("mat")));
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		Matrix mat = ValueToMatrix(context.GetArg(2));
 		SetShaderValueMatrix(shader, locIndex, mat);
 		return IntrinsicResult::Null;
 	});
@@ -918,9 +918,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("locIndex");
 	i.AddParam("texture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Texture2D texture = ValueToTexture(context.GetVar(String("texture")));
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		Texture2D texture = ValueToTexture(context.GetArg(2));
 		SetShaderValueTexture(shader, locIndex, texture);
 		return IntrinsicResult::Null;
 	});
@@ -932,10 +932,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("value");
 	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Value value = context.GetVar(String("value"));
-		int uniformType = context.GetVar(String("uniformType")).IntValue();
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		Value value = context.GetArg(2);
+		int uniformType = context.GetArg(3).IntValue();
 
 		BinaryData* rawData = nullptr;
 		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
@@ -980,11 +980,11 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("uniformType", Value(SHADER_UNIFORM_FLOAT));
 	i.AddParam("count", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Shader shader = ValueToShader(context.GetVar(String("shader")));
-		int locIndex = context.GetVar(String("locIndex")).IntValue();
-		Value value = context.GetVar(String("value"));
-		int uniformType = context.GetVar(String("uniformType")).IntValue();
-		int count = context.GetVar(String("count")).IntValue();
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		Value value = context.GetArg(2);
+		int uniformType = context.GetArg(3).IntValue();
+		int count = context.GetArg(4).IntValue();
 
 		BinaryData* rawData = nullptr;
 		if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
@@ -1023,7 +1023,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value shaderValue = context.GetVar(String("shader"));
+		Value shaderValue = context.GetArg(0);
 		Shader shader = ValueToShader(shaderValue);
 		UnloadShader(shader);
 
@@ -1045,7 +1045,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fps");
 	i.set_Code(INTRINSIC_LAMBDA {
-		SetTargetFPS(context.GetVar(String("fps")).IntValue());
+		SetTargetFPS(context.GetArg(0).IntValue());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetTargetFPS", i.GetFunc());
@@ -1073,35 +1073,35 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyPressed(context.GetVar(String("key")).IntValue()));
+		return IntrinsicResult(IsKeyPressed(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyPressedRepeat(context.GetVar(String("key")).IntValue()));
+		return IntrinsicResult(IsKeyPressedRepeat(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyPressedRepeat", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyDown(context.GetVar(String("key")).IntValue()));
+		return IntrinsicResult(IsKeyDown(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyDown", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyReleased(context.GetVar(String("key")).IntValue()));
+		return IntrinsicResult(IsKeyReleased(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyReleased", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsKeyUp(context.GetVar(String("key")).IntValue()));
+		return IntrinsicResult(IsKeyUp(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyUp", i.GetFunc());
 
@@ -1120,7 +1120,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		const char* keyName = GetKeyName(context.GetVar(String("key")).IntValue());
+		const char* keyName = GetKeyName(context.GetArg(0).IntValue());
 		if (keyName == nullptr) return IntrinsicResult(String());
 		return IntrinsicResult(String(keyName));
 	});
@@ -1129,7 +1129,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("key");
 	i.set_Code(INTRINSIC_LAMBDA {
-		SetExitKey(context.GetVar(String("key")).IntValue());
+		SetExitKey(context.GetArg(0).IntValue());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetExitKey", i.GetFunc());
@@ -1139,14 +1139,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsGamepadAvailable(context.GetVar(String("gamepad")).IntValue()));
+		return IntrinsicResult(IsGamepadAvailable(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadAvailable", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(GetGamepadName(context.GetVar(String("gamepad")).IntValue()));
+		return IntrinsicResult(GetGamepadName(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("GetGamepadName", i.GetFunc());
 
@@ -1155,8 +1155,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonPressed(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("button")).IntValue()));
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadButtonPressed", i.GetFunc());
 
@@ -1165,8 +1165,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonDown(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("button")).IntValue()));
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadButtonDown", i.GetFunc());
 
@@ -1175,8 +1175,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonReleased(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("button")).IntValue()));
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadButtonReleased", i.GetFunc());
 
@@ -1185,8 +1185,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsGamepadButtonUp(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("button")).IntValue()));
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadButtonUp", i.GetFunc());
 
@@ -1199,7 +1199,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(GetGamepadAxisCount(context.GetVar(String("gamepad")).IntValue()));
+		return IntrinsicResult(GetGamepadAxisCount(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("GetGamepadAxisCount", i.GetFunc());
 
@@ -1208,15 +1208,15 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("axis");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGamepadAxisMovement(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("axis")).IntValue()));
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("GetGamepadAxisMovement", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("mappings");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(SetGamepadMappings(context.GetVar(String("mappings")).ToString().c_str()));
+		return IntrinsicResult(SetGamepadMappings(context.GetArg(0).ToString().c_str()));
 	});
 	raylibModule.SetValue("SetGamepadMappings", i.GetFunc());
 
@@ -1227,10 +1227,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("duration", 0.0);
 	i.set_Code(INTRINSIC_LAMBDA {
 		SetGamepadVibration(
-			context.GetVar(String("gamepad")).IntValue(),
-			context.GetVar(String("leftMotor")).FloatValue(),
-			context.GetVar(String("rightMotor")).FloatValue(),
-			context.GetVar(String("duration")).FloatValue());
+			context.GetArg(0).IntValue(),
+			context.GetArg(1).FloatValue(),
+			context.GetArg(2).FloatValue(),
+			context.GetArg(3).FloatValue());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetGamepadVibration", i.GetFunc());
@@ -1240,28 +1240,28 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonPressed(context.GetVar(String("button")).IntValue()));
+		return IntrinsicResult(IsMouseButtonPressed(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsMouseButtonPressed", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonDown(context.GetVar(String("button")).IntValue()));
+		return IntrinsicResult(IsMouseButtonDown(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsMouseButtonDown", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonReleased(context.GetVar(String("button")).IntValue()));
+		return IntrinsicResult(IsMouseButtonReleased(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsMouseButtonReleased", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("button");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(IsMouseButtonUp(context.GetVar(String("button")).IntValue()));
+		return IntrinsicResult(IsMouseButtonUp(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsMouseButtonUp", i.GetFunc());
 
@@ -1306,7 +1306,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("cursor");
 	i.set_Code(INTRINSIC_LAMBDA {
-		SetMouseCursor(context.GetVar(String("cursor")).IntValue());
+		SetMouseCursor(context.GetArg(0).IntValue());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetMouseCursor", i.GetFunc());
@@ -1341,7 +1341,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("caption", "raylib-miniscript");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String caption = context.GetVar(String("caption")).ToString();
+		String caption = context.GetArg(0).ToString();
 #ifdef PLATFORM_WEB
 		_SetWindowTitle_Web(caption.c_str());
 #else
@@ -1354,7 +1354,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("image");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Image image = ValueToImage(context.GetVar(String("image")));
+		Image image = ValueToImage(context.GetArg(0));
 #ifdef PLATFORM_WEB
 		int size;
 		unsigned char *data = ExportImageToMemory(image, ".png", &size);
@@ -1375,8 +1375,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowIcons");
 		return IntrinsicResult::Null;
 	#endif
-		Value imagesValue = context.GetVar(String("images"));
-		int count = context.GetVar(String("count")).IntValue();
+		Value imagesValue = context.GetArg(0);
+		int count = context.GetArg(1).IntValue();
 
 		if (imagesValue.Type() != ValueType::List) {
 			Image image = ValueToImage(imagesValue);
@@ -1428,9 +1428,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("height", Value(640));
 	i.AddParam("title", Value("raylib-miniscript"));
 	i.set_Code(INTRINSIC_LAMBDA {
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
-		String title = context.GetVar(String("title")).ToString();
+		int width = context.GetArg(0).IntValue();
+		int height = context.GetArg(1).IntValue();
+		String title = context.GetArg(2).ToString();
 		InitWindow(width, height, title.c_str());
 		return IntrinsicResult::Null;
 	});
@@ -1504,7 +1504,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("IsWindowState");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		return IntrinsicResult(IsWindowState(flags));
 	});
 	raylibModule.SetValue("IsWindowState", i.GetFunc());
@@ -1516,7 +1516,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowState");
 		return IntrinsicResult::Null;
 	#endif
-		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		SetWindowState(flags);
 		return IntrinsicResult::Null;
 	});
@@ -1529,7 +1529,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("ClearWindowState");
 		return IntrinsicResult::Null;
 	#endif
-		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		ClearWindowState(flags);
 		return IntrinsicResult::Null;
 	});
@@ -1594,8 +1594,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowPosition");
 		return IntrinsicResult::Null;
 	#endif
-		int x = context.GetVar(String("x")).IntValue();
-		int y = context.GetVar(String("y")).IntValue();
+		int x = context.GetArg(0).IntValue();
+		int y = context.GetArg(1).IntValue();
 		SetWindowPosition(x, y);
 		return IntrinsicResult::Null;
 	});
@@ -1608,7 +1608,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowMonitor");
 		return IntrinsicResult::Null;
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		SetWindowMonitor(monitor);
 		return IntrinsicResult::Null;
 	});
@@ -1622,8 +1622,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowMinSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		int width = context.GetArg(0).IntValue();
+		int height = context.GetArg(1).IntValue();
 		SetWindowMinSize(width, height);
 		return IntrinsicResult::Null;
 	});
@@ -1637,8 +1637,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowMaxSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		int width = context.GetArg(0).IntValue();
+		int height = context.GetArg(1).IntValue();
 		SetWindowMaxSize(width, height);
 		return IntrinsicResult::Null;
 	});
@@ -1652,8 +1652,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowSize");
 		return IntrinsicResult::Null;
 	#endif
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		int width = context.GetArg(0).IntValue();
+		int height = context.GetArg(1).IntValue();
 		SetWindowSize(width, height);
 		return IntrinsicResult::Null;
 	});
@@ -1666,7 +1666,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetWindowOpacity");
 		return IntrinsicResult::Null;
 	#endif
-		float opacity = context.GetVar(String("opacity")).FloatValue();
+		float opacity = context.GetArg(0).FloatValue();
 		SetWindowOpacity(opacity);
 		return IntrinsicResult::Null;
 	});
@@ -1720,7 +1720,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorPosition");
 		return IntrinsicResult(Vector2ToValue(Vector2{0, 0}));
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(Vector2ToValue(GetMonitorPosition(monitor)));
 	});
 	raylibModule.SetValue("GetMonitorPosition", i.GetFunc());
@@ -1732,7 +1732,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorWidth");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorWidth(monitor));
 	});
 	raylibModule.SetValue("GetMonitorWidth", i.GetFunc());
@@ -1744,7 +1744,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorHeight");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorHeight(monitor));
 	});
 	raylibModule.SetValue("GetMonitorHeight", i.GetFunc());
@@ -1756,7 +1756,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorPhysicalWidth");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalWidth(monitor));
 	});
 	raylibModule.SetValue("GetMonitorPhysicalWidth", i.GetFunc());
@@ -1768,7 +1768,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorPhysicalHeight");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalHeight(monitor));
 	});
 	raylibModule.SetValue("GetMonitorPhysicalHeight", i.GetFunc());
@@ -1780,7 +1780,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorRefreshRate");
 		return IntrinsicResult(Value::zero);
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorRefreshRate(monitor));
 	});
 	raylibModule.SetValue("GetMonitorRefreshRate", i.GetFunc());
@@ -1792,7 +1792,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetMonitorName");
 		return IntrinsicResult(String());
 	#endif
-		int monitor = context.GetVar(String("monitor")).IntValue();
+		int monitor = context.GetArg(0).IntValue();
 		String name = GetMonitorName(monitor);
 		return IntrinsicResult(name);
 	});
@@ -1846,8 +1846,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("x");
 	i.AddParam("y");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int x = context.GetVar(String("x")).IntValue();
-		int y = context.GetVar(String("y")).IntValue();
+		int x = context.GetArg(0).IntValue();
+		int y = context.GetArg(1).IntValue();
 		SetMousePosition(x, y);
 		return IntrinsicResult::Null;
 	});
@@ -1857,8 +1857,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("offsetX");
 	i.AddParam("offsetY");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int offsetX = context.GetVar(String("offsetX")).IntValue();
-		int offsetY = context.GetVar(String("offsetY")).IntValue();
+		int offsetX = context.GetArg(0).IntValue();
+		int offsetY = context.GetArg(1).IntValue();
 		SetMouseOffset(offsetX, offsetY);
 		return IntrinsicResult::Null;
 	});
@@ -1868,8 +1868,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("scaleX");
 	i.AddParam("scaleY");
 	i.set_Code(INTRINSIC_LAMBDA {
-		float scaleX = context.GetVar(String("scaleX")).FloatValue();
-		float scaleY = context.GetVar(String("scaleY")).FloatValue();
+		float scaleX = context.GetArg(0).FloatValue();
+		float scaleY = context.GetArg(1).FloatValue();
 		SetMouseScale(scaleX, scaleY);
 		return IntrinsicResult::Null;
 	});
@@ -1906,7 +1906,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("index", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		int index = context.GetVar(String("index")).IntValue();
+		int index = context.GetArg(0).IntValue();
 		Vector2 pos = GetTouchPosition(index);
 		ValueDict posMap;
 		posMap.SetValue(String("x"), Value(pos.x));
@@ -1918,7 +1918,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("index", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		int index = context.GetVar(String("index")).IntValue();
+		int index = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetTouchPointId(index));
 	});
 	raylibModule.SetValue("GetTouchPointId", i.GetFunc());
@@ -1934,7 +1934,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
 	i.set_Code(INTRINSIC_LAMBDA {
-		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		SetGesturesEnabled(flags);
 		return IntrinsicResult::Null;
 	});
@@ -1943,7 +1943,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("gesture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int gesture = context.GetVar(String("gesture")).IntValue();
+		int gesture = context.GetArg(0).IntValue();
 		return IntrinsicResult(IsGestureDetected(gesture));
 	});
 	raylibModule.SetValue("IsGestureDetected", i.GetFunc());
@@ -1997,7 +1997,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
+		ValueDict cameraMap = context.GetArg(0).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2020,7 +2020,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
+		ValueDict cameraMap = context.GetArg(0).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2037,8 +2037,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("position");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context.GetVar(String("position")));
-		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
+		Vector2 position = ValueToVector2(context.GetArg(0));
+		ValueDict cameraMap = context.GetArg(1).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2059,8 +2059,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("position");
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Vector2 position = ValueToVector2(context.GetVar(String("position")));
-		ValueDict cameraMap = context.GetVar(String("camera")).GetDict();
+		Vector2 position = ValueToVector2(context.GetArg(0));
+		ValueDict cameraMap = context.GetArg(1).GetDict();
 		Camera2D camera;
 		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
 		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
@@ -2082,7 +2082,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mode");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int mode = context.GetVar(String("mode")).IntValue();
+		int mode = context.GetArg(0).IntValue();
 		BeginBlendMode(mode);
 		return IntrinsicResult::Null;
 	});
@@ -2100,9 +2100,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("glDstFactor");
 	i.AddParam("glEquation");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int glSrcFactor = context.GetVar(String("glSrcFactor")).IntValue();
-		int glDstFactor = context.GetVar(String("glDstFactor")).IntValue();
-		int glEquation = context.GetVar(String("glEquation")).IntValue();
+		int glSrcFactor = context.GetArg(0).IntValue();
+		int glDstFactor = context.GetArg(1).IntValue();
+		int glEquation = context.GetArg(2).IntValue();
 		rlSetBlendFactors(glSrcFactor, glDstFactor, glEquation);
 		return IntrinsicResult::Null;
 	});
@@ -2116,12 +2116,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("glEqRGB");
 	i.AddParam("glEqAlpha");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int glSrcRGB = context.GetVar(String("glSrcRGB")).IntValue();
-		int glDstRGB = context.GetVar(String("glDstRGB")).IntValue();
-		int glSrcAlpha = context.GetVar(String("glSrcAlpha")).IntValue();
-		int glDstAlpha = context.GetVar(String("glDstAlpha")).IntValue();
-		int glEqRGB = context.GetVar(String("glEqRGB")).IntValue();
-		int glEqAlpha = context.GetVar(String("glEqAlpha")).IntValue();
+		int glSrcRGB = context.GetArg(0).IntValue();
+		int glDstRGB = context.GetArg(1).IntValue();
+		int glSrcAlpha = context.GetArg(2).IntValue();
+		int glDstAlpha = context.GetArg(3).IntValue();
+		int glEqRGB = context.GetArg(4).IntValue();
+		int glEqAlpha = context.GetArg(5).IntValue();
 		rlSetBlendFactorsSeparate(glSrcRGB, glDstRGB, glSrcAlpha, glDstAlpha, glEqRGB, glEqAlpha);
 		return IntrinsicResult::Null;
 	});
@@ -2132,7 +2132,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mode");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int mode = context.GetVar(String("mode")).IntValue();
+		int mode = context.GetArg(0).IntValue();
 		rlMatrixMode(mode);
 		return IntrinsicResult::Null;
 	});
@@ -2164,9 +2164,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("y", Value::zero);
 	i.AddParam("z", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
-		float z = context.GetVar(String("z")).FloatValue();
+		float x = context.GetArg(0).FloatValue();
+		float y = context.GetArg(1).FloatValue();
+		float z = context.GetArg(2).FloatValue();
 		rlTranslatef(x, y, z);
 		return IntrinsicResult::Null;
 	});
@@ -2178,10 +2178,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("y", Value::zero);
 	i.AddParam("z", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		float angle = context.GetVar(String("angle")).FloatValue();
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
-		float z = context.GetVar(String("z")).FloatValue();
+		float angle = context.GetArg(0).FloatValue();
+		float x = context.GetArg(1).FloatValue();
+		float y = context.GetArg(2).FloatValue();
+		float z = context.GetArg(3).FloatValue();
 		rlRotatef(angle, x, y, z);
 		return IntrinsicResult::Null;
 	});
@@ -2192,9 +2192,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("y", Value(1));
 	i.AddParam("z", Value(1));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetVar(String("x")).FloatValue();
-		float y = context.GetVar(String("y")).FloatValue();
-		float z = context.GetVar(String("z")).FloatValue();
+		float x = context.GetArg(0).FloatValue();
+		float y = context.GetArg(1).FloatValue();
+		float z = context.GetArg(2).FloatValue();
 		rlScalef(x, y, z);
 		return IntrinsicResult::Null;
 	});
@@ -2203,7 +2203,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("matf");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value listVal = context.GetVar(String("matf"));
+		Value listVal = context.GetArg(0);
 		ValueList list = listVal.GetList();
 		float matf[16];
 		for (int j = 0; j < 16; j++) {
@@ -2222,12 +2222,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("znear");
 	i.AddParam("zfar");
 	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetVar(String("left")).FloatValue();
-		double right = context.GetVar(String("right")).FloatValue();
-		double bottom = context.GetVar(String("bottom")).FloatValue();
-		double top = context.GetVar(String("top")).FloatValue();
-		double znear = context.GetVar(String("znear")).FloatValue();
-		double zfar = context.GetVar(String("zfar")).FloatValue();
+		double left = context.GetArg(0).FloatValue();
+		double right = context.GetArg(1).FloatValue();
+		double bottom = context.GetArg(2).FloatValue();
+		double top = context.GetArg(3).FloatValue();
+		double znear = context.GetArg(4).FloatValue();
+		double zfar = context.GetArg(5).FloatValue();
 		rlFrustum(left, right, bottom, top, znear, zfar);
 		return IntrinsicResult::Null;
 	});
@@ -2241,12 +2241,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("znear");
 	i.AddParam("zfar");
 	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetVar(String("left")).FloatValue();
-		double right = context.GetVar(String("right")).FloatValue();
-		double bottom = context.GetVar(String("bottom")).FloatValue();
-		double top = context.GetVar(String("top")).FloatValue();
-		double znear = context.GetVar(String("znear")).FloatValue();
-		double zfar = context.GetVar(String("zfar")).FloatValue();
+		double left = context.GetArg(0).FloatValue();
+		double right = context.GetArg(1).FloatValue();
+		double bottom = context.GetArg(2).FloatValue();
+		double top = context.GetArg(3).FloatValue();
+		double znear = context.GetArg(4).FloatValue();
+		double zfar = context.GetArg(5).FloatValue();
 		rlOrtho(left, right, bottom, top, znear, zfar);
 		return IntrinsicResult::Null;
 	});
@@ -2258,10 +2258,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("width");
 	i.AddParam("height");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int x = context.GetVar(String("x")).IntValue();
-		int y = context.GetVar(String("y")).IntValue();
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		int x = context.GetArg(0).IntValue();
+		int y = context.GetArg(1).IntValue();
+		int width = context.GetArg(2).IntValue();
+		int height = context.GetArg(3).IntValue();
 		rlViewport(x, y, width, height);
 		return IntrinsicResult::Null;
 	});
@@ -2271,8 +2271,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("nearPlane");
 	i.AddParam("farPlane");
 	i.set_Code(INTRINSIC_LAMBDA {
-		double nearPlane = context.GetVar(String("nearPlane")).FloatValue();
-		double farPlane = context.GetVar(String("farPlane")).FloatValue();
+		double nearPlane = context.GetArg(0).FloatValue();
+		double farPlane = context.GetArg(1).FloatValue();
 		rlSetClipPlanes(nearPlane, farPlane);
 		return IntrinsicResult::Null;
 	});
@@ -2365,7 +2365,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(1));
 	i.set_Code(INTRINSIC_LAMBDA {
-		float width = context.GetVar(String("width")).FloatValue();
+		float width = context.GetArg(0).FloatValue();
 		rlSetLineWidth(width);
 		return IntrinsicResult::Null;
 	});
@@ -2403,7 +2403,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("proj");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix proj = ValueToMatrix(context.GetVar(String("proj")));
+		Matrix proj = ValueToMatrix(context.GetArg(0));
 		rlSetMatrixProjection(proj);
 		return IntrinsicResult::Null;
 	});
@@ -2412,7 +2412,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("view");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix view = ValueToMatrix(context.GetVar(String("view")));
+		Matrix view = ValueToMatrix(context.GetArg(0));
 		rlSetMatrixModelview(view);
 		return IntrinsicResult::Null;
 	});
@@ -2426,10 +2426,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("width");
 	i.AddParam("height");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int x = context.GetVar(String("x")).IntValue();
-		int y = context.GetVar(String("y")).IntValue();
-		int width = context.GetVar(String("width")).IntValue();
-		int height = context.GetVar(String("height")).IntValue();
+		int x = context.GetArg(0).IntValue();
+		int y = context.GetArg(1).IntValue();
+		int width = context.GetArg(2).IntValue();
+		int height = context.GetArg(3).IntValue();
 		BeginScissorMode(x, y, width, height);
 		return IntrinsicResult::Null;
 	});
@@ -2451,7 +2451,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("BeginVrStereoMode");
 		return IntrinsicResult::Null;
 	#endif
-		VrStereoConfig config = ValueToVrStereoConfig(context.GetVar(String("config")));
+		VrStereoConfig config = ValueToVrStereoConfig(context.GetArg(0));
 		BeginVrStereoMode(config);
 		return IntrinsicResult::Null;
 	});
@@ -2475,7 +2475,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadVrStereoConfig");
 		return IntrinsicResult::Null;
 	#endif
-		VrDeviceInfo device = ValueToVrDeviceInfo(context.GetVar(String("device")));
+		VrDeviceInfo device = ValueToVrDeviceInfo(context.GetArg(0));
 		VrStereoConfig config = LoadVrStereoConfig(device);
 		return IntrinsicResult(VrStereoConfigToValue(config));
 	});
@@ -2488,7 +2488,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("UnloadVrStereoConfig");
 		return IntrinsicResult::Null;
 	#endif
-		VrStereoConfig config = ValueToVrStereoConfig(context.GetVar(String("config")));
+		VrStereoConfig config = ValueToVrStereoConfig(context.GetArg(0));
 		UnloadVrStereoConfig(config);
 		return IntrinsicResult::Null;
 	});
@@ -2499,7 +2499,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("url");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String url = context.GetVar(String("url")).ToString();
+		String url = context.GetArg(0).ToString();
 		OpenURL(url.c_str());
 		return IntrinsicResult::Null;
 	});
@@ -2508,7 +2508,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("text");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String text = context.GetVar(String("text")).ToString();
+		String text = context.GetArg(0).ToString();
 		SetClipboardText(text.c_str());
 		return IntrinsicResult::Null;
 	});
@@ -2556,8 +2556,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.AddParam("ext");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileName = context.GetVar(String("fileName")).ToString();
-		String ext = context.GetVar(String("ext")).ToString();
+		String fileName = context.GetArg(0).ToString();
+		String ext = context.GetArg(1).ToString();
 		return IntrinsicResult(IsFileExtension(fileName.c_str(), ext.c_str()));
 	});
 	raylibModule.SetValue("IsFileExtension", i.GetFunc());
@@ -2565,7 +2565,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		TakeScreenshot(fileName.c_str());
 		return IntrinsicResult::Null;
 	});
@@ -2574,7 +2574,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
 	i.set_Code(INTRINSIC_LAMBDA {
-		unsigned int flags = (unsigned int)context.GetVar(String("flags")).IntValue();
+		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		SetConfigFlags(flags);
 		return IntrinsicResult::Null;
 	});
@@ -2584,8 +2584,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataVal = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataVal = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		const unsigned char* bytes = nullptr;
 		String tempStr;
@@ -2617,7 +2617,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("seconds", 1.0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		double seconds = context.GetVar(String("seconds")).DoubleValue();
+		double seconds = context.GetArg(0).DoubleValue();
 		WaitTime(seconds);
 		return IntrinsicResult::Null;
 	});
@@ -2651,7 +2651,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		// Hold the String in a named local: ToString() returns a temporary whose
 		// c_str() would otherwise dangle before LoadFileText reads it.
-		String fileName = context.GetVar("fileName").ToString();
+		String fileName = context.GetArg(0).ToString();
 		char *text = LoadFileText(fileName.c_str());
 		if (text == nullptr) return IntrinsicResult::Null;
 		String ret(text);
@@ -2669,7 +2669,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadFileData");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		int dataSize = 0;
 		unsigned char* data = LoadFileData(fileName.c_str(), &dataSize);
 		if (data == nullptr || dataSize <= 0) return IntrinsicResult::Null;
@@ -2687,7 +2687,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("UnloadFileData");
 		return IntrinsicResult::Null;
 	#endif
-		Value dataValue = context.GetVar(String("data"));
+		Value dataValue = context.GetArg(0);
 		BinaryData* rawData = ValueToRawData(dataValue);
 		if (rawData == nullptr || rawData->bytes == nullptr) return IntrinsicResult::Null;
 
@@ -2714,9 +2714,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SaveFileData");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		String fileName = context.GetArg(0).ToString();
+		Value dataValue = context.GetArg(1);
+		int dataSize = context.GetArg(2).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2736,9 +2736,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("ExportDataAsCode");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
-		String fileName = context.GetVar(String("fileName")).ToString();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
+		String fileName = context.GetArg(2).ToString();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2765,8 +2765,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SaveFileText");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
-		String text = context.GetVar(String("text")).ToString();
+		String fileName = context.GetArg(0).ToString();
+		String text = context.GetArg(1).ToString();
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
 	});
 	raylibModule.SetValue("SaveFileText", i.GetFunc());
@@ -2778,7 +2778,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetLoadFileDataCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context.GetVar(String("callback"));
+		Value callback = context.GetArg(0);
 		if (callback.IsNull()) {
 			g_callbackBridgeState.loadFileDataCallback = Value::Null;
 			SetLoadFileDataCallback(nullptr);
@@ -2808,7 +2808,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetSaveFileDataCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context.GetVar(String("callback"));
+		Value callback = context.GetArg(0);
 		if (callback.IsNull()) {
 			g_callbackBridgeState.saveFileDataCallback = Value::Null;
 			SetSaveFileDataCallback(nullptr);
@@ -2838,7 +2838,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetLoadFileTextCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context.GetVar(String("callback"));
+		Value callback = context.GetArg(0);
 		if (callback.IsNull()) {
 			g_callbackBridgeState.loadFileTextCallback = Value::Null;
 			SetLoadFileTextCallback(nullptr);
@@ -2868,7 +2868,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetSaveFileTextCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context.GetVar(String("callback"));
+		Value callback = context.GetArg(0);
 		if (callback.IsNull()) {
 			g_callbackBridgeState.saveFileTextCallback = Value::Null;
 			SetSaveFileTextCallback(nullptr);
@@ -2899,8 +2899,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileRename");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
-		String fileRename = context.GetVar(String("fileRename")).ToString();
+		String fileName = context.GetArg(0).ToString();
+		String fileRename = context.GetArg(1).ToString();
 		return IntrinsicResult(FileRename(fileName.c_str(), fileRename.c_str()));
 	});
 	raylibModule.SetValue("FileRename", i.GetFunc());
@@ -2912,7 +2912,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileRemove");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult(FileRemove(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileRemove", i.GetFunc());
@@ -2925,8 +2925,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileCopy");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context.GetVar(String("srcPath")).ToString();
-		String dstPath = context.GetVar(String("dstPath")).ToString();
+		String srcPath = context.GetArg(0).ToString();
+		String dstPath = context.GetArg(1).ToString();
 		return IntrinsicResult(FileCopy(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileCopy", i.GetFunc());
@@ -2939,8 +2939,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileMove");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context.GetVar(String("srcPath")).ToString();
-		String dstPath = context.GetVar(String("dstPath")).ToString();
+		String srcPath = context.GetArg(0).ToString();
+		String dstPath = context.GetArg(1).ToString();
 		return IntrinsicResult(FileMove(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileMove", i.GetFunc());
@@ -2954,9 +2954,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileTextReplace");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
-		String search = context.GetVar(String("search")).ToString();
-		String replacement = context.GetVar(String("replacement")).ToString();
+		String fileName = context.GetArg(0).ToString();
+		String search = context.GetArg(1).ToString();
+		String replacement = context.GetArg(2).ToString();
 		return IntrinsicResult(FileTextReplace(fileName.c_str(), search.c_str(), replacement.c_str()));
 	});
 	raylibModule.SetValue("FileTextReplace", i.GetFunc());
@@ -2969,8 +2969,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileTextFindIndex");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
-		String search = context.GetVar(String("search")).ToString();
+		String fileName = context.GetArg(0).ToString();
+		String search = context.GetArg(1).ToString();
 		return IntrinsicResult(FileTextFindIndex(fileName.c_str(), search.c_str()));
 	});
 	raylibModule.SetValue("FileTextFindIndex", i.GetFunc());
@@ -2982,7 +2982,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult(FileExists(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileExists", i.GetFunc());
@@ -2994,7 +2994,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("DirectoryExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));
 	});
 	raylibModule.SetValue("DirectoryExists", i.GetFunc());
@@ -3006,7 +3006,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetFileLength");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult(GetFileLength(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileLength", i.GetFunc());
@@ -3018,7 +3018,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetFileModTime");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult((double)GetFileModTime(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileModTime", i.GetFunc());
@@ -3026,7 +3026,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult(String(GetFileExtension(fileName.c_str())));
 	});
 	raylibModule.SetValue("GetFileExtension", i.GetFunc());
@@ -3034,7 +3034,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("filePath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String filePath = context.GetVar(String("filePath")).ToString();
+		String filePath = context.GetArg(0).ToString();
 		return IntrinsicResult(String(GetFileName(filePath.c_str())));
 	});
 	raylibModule.SetValue("GetFileName", i.GetFunc());
@@ -3042,7 +3042,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("filePath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String filePath = context.GetVar(String("filePath")).ToString();
+		String filePath = context.GetArg(0).ToString();
 		return IntrinsicResult(String(GetFileNameWithoutExt(filePath.c_str())));
 	});
 	raylibModule.SetValue("GetFileNameWithoutExt", i.GetFunc());
@@ -3050,7 +3050,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("filePath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String filePath = context.GetVar(String("filePath")).ToString();
+		String filePath = context.GetArg(0).ToString();
 		return IntrinsicResult(String(GetDirectoryPath(filePath.c_str())));
 	});
 	raylibModule.SetValue("GetDirectoryPath", i.GetFunc());
@@ -3058,7 +3058,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(String(GetPrevDirectoryPath(dirPath.c_str())));
 	});
 	raylibModule.SetValue("GetPrevDirectoryPath", i.GetFunc());
@@ -3090,7 +3090,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("MakeDirectory");
 		return IntrinsicResult(-1);
 	#endif
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(MakeDirectory(dirPath.c_str()));
 	});
 	raylibModule.SetValue("MakeDirectory", i.GetFunc());
@@ -3102,7 +3102,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("ChangeDirectory");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
 	});
 	raylibModule.SetValue("ChangeDirectory", i.GetFunc());
@@ -3114,7 +3114,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("IsPathFile");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String path = context.GetVar(String("path")).ToString();
+		String path = context.GetArg(0).ToString();
 		return IntrinsicResult(IsPathFile(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathFile", i.GetFunc());
@@ -3122,7 +3122,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		return IntrinsicResult(IsFileNameValid(fileName.c_str()));
 	});
 	raylibModule.SetValue("IsFileNameValid", i.GetFunc());
@@ -3134,7 +3134,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadDirectoryFiles");
 		return IntrinsicResult(Value(ValueList()));
 	#endif
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		FilePathList files = LoadDirectoryFiles(dirPath.c_str());
 
 		ValueList result;
@@ -3153,9 +3153,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadDirectoryFilesEx");
 		return IntrinsicResult(Value(ValueList()));
 	#endif
-		String basePath = context.GetVar(String("basePath")).ToString();
-		String filter = context.GetVar(String("filter")).ToString();
-		bool scanSubdirs = context.GetVar(String("scanSubdirs")).IntValue() != 0;
+		String basePath = context.GetArg(0).ToString();
+		String filter = context.GetArg(1).ToString();
+		bool scanSubdirs = context.GetArg(2).IntValue() != 0;
 
 		FilePathList files = LoadDirectoryFilesEx(basePath.c_str(), filter.c_str(), scanSubdirs);
 		ValueList result;
@@ -3212,7 +3212,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetDirectoryFileCount");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String dirPath = context.GetVar(String("dirPath")).ToString();
+		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult((int)GetDirectoryFileCount(dirPath.c_str()));
 	});
 	raylibModule.SetValue("GetDirectoryFileCount", i.GetFunc());
@@ -3226,9 +3226,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetDirectoryFileCountEx");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String basePath = context.GetVar(String("basePath")).ToString();
-		String filter = context.GetVar(String("filter")).ToString();
-		bool scanSubdirs = context.GetVar(String("scanSubdirs")).IntValue() != 0;
+		String basePath = context.GetArg(0).ToString();
+		String filter = context.GetArg(1).ToString();
+		bool scanSubdirs = context.GetArg(2).IntValue() != 0;
 		return IntrinsicResult((int)GetDirectoryFileCountEx(basePath.c_str(), filter.c_str(), scanSubdirs));
 	});
 	raylibModule.SetValue("GetDirectoryFileCountEx", i.GetFunc());
@@ -3239,8 +3239,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3261,8 +3261,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("compData");
 	i.AddParam("compDataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value compDataValue = context.GetVar(String("compData"));
-		int compDataSize = context.GetVar(String("compDataSize")).IntValue();
+		Value compDataValue = context.GetArg(0);
+		int compDataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3282,7 +3282,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("text");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String text = context.GetVar(String("text")).ToString();
+		String text = context.GetArg(0).ToString();
 		int outputSize = 0;
 		unsigned char* decoded = DecodeDataBase64(text.c_str(), &outputSize);
 		if (decoded == nullptr || outputSize <= 0) return IntrinsicResult::Null;
@@ -3297,8 +3297,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3313,8 +3313,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3334,8 +3334,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3355,8 +3355,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.AddParam("dataSize", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value dataValue = context.GetVar(String("data"));
-		int dataSize = context.GetVar(String("dataSize")).IntValue();
+		Value dataValue = context.GetArg(0);
+		int dataSize = context.GetArg(1).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -3381,7 +3381,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context.GetVar(String("fileName")).ToString();
+		String fileName = context.GetArg(0).ToString();
 		const char* fileNamePtr = fileName.LengthB() > 0 ? fileName.c_str() : nullptr;
 		AutomationEventList list = LoadAutomationEventList(fileNamePtr);
 		return IntrinsicResult(AutomationEventListToValue(list));
@@ -3395,7 +3395,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("UnloadAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		Value listValue = context.GetVar(String("list"));
+		Value listValue = context.GetArg(0);
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
 
@@ -3422,8 +3422,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("ExportAutomationEventList");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		Value listValue = context.GetVar(String("list"));
-		String fileName = context.GetVar(String("fileName")).ToString();
+		Value listValue = context.GetArg(0);
+		String fileName = context.GetArg(1).ToString();
 
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr != nullptr) return IntrinsicResult(ExportAutomationEventList(*listPtr, fileName.c_str()));
@@ -3454,7 +3454,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		Value listValue = context.GetVar(String("list"));
+		Value listValue = context.GetArg(0);
 		if (listValue.IsNull()) {
 			SetAutomationEventList(nullptr);
 			return IntrinsicResult::Null;
@@ -3475,7 +3475,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetAutomationEventBaseFrame");
 		return IntrinsicResult::Null;
 	#endif
-		int frame = context.GetVar(String("frame")).IntValue();
+		int frame = context.GetArg(0).IntValue();
 		SetAutomationEventBaseFrame(frame);
 		return IntrinsicResult::Null;
 	});
@@ -3510,7 +3510,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("PlayAutomationEvent");
 		return IntrinsicResult::Null;
 	#endif
-		AutomationEvent event = ValueToAutomationEvent(context.GetVar(String("event")));
+		AutomationEvent event = ValueToAutomationEvent(context.GetArg(0));
 		PlayAutomationEvent(event);
 		return IntrinsicResult::Null;
 	});
@@ -3520,7 +3520,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("seed");
 	i.set_Code(INTRINSIC_LAMBDA {
-		unsigned int seed = (unsigned int)context.GetVar(String("seed")).IntValue();
+		unsigned int seed = (unsigned int)context.GetArg(0).IntValue();
 		SetRandomSeed(seed);
 		return IntrinsicResult::Null;
 	});
@@ -3530,8 +3530,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("min");
 	i.AddParam("max");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int min = context.GetVar(String("min")).IntValue();
-		int max = context.GetVar(String("max")).IntValue();
+		int min = context.GetArg(0).IntValue();
+		int max = context.GetArg(1).IntValue();
 		return IntrinsicResult(GetRandomValue(min, max));
 	});
 	raylibModule.SetValue("GetRandomValue", i.GetFunc());
@@ -3541,9 +3541,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("min");
 	i.AddParam("max");
 	i.set_Code(INTRINSIC_LAMBDA {
-		unsigned int count = (unsigned int)context.GetVar(String("count")).IntValue();
-		int min = context.GetVar(String("min")).IntValue();
-		int max = context.GetVar(String("max")).IntValue();
+		unsigned int count = (unsigned int)context.GetArg(0).IntValue();
+		int min = context.GetArg(1).IntValue();
+		int max = context.GetArg(2).IntValue();
 
 		int* sequence = LoadRandomSequence(count, min, max);
 		if (sequence == nullptr) return IntrinsicResult(Value::Null);
@@ -3569,7 +3569,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("logLevel");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int logLevel = context.GetVar(String("logLevel")).IntValue();
+		int logLevel = context.GetArg(0).IntValue();
 		SetTraceLogLevel(logLevel);
 		return IntrinsicResult::Null;
 	});
@@ -3582,7 +3582,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SetTraceLogCallback");
 		return IntrinsicResult::Null;
 	#endif
-		Value callback = context.GetVar(String("callback"));
+		Value callback = context.GetArg(0);
 		if (callback.IsNull()) {
 			g_callbackBridgeState.traceLogCallback = Value::Null;
 			g_callbackBridgeState.invokingTraceLogCallback = false;
@@ -3611,8 +3611,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("logLevel");
 	i.AddParam("text");
 	i.set_Code(INTRINSIC_LAMBDA {
-		int logLevel = context.GetVar(String("logLevel")).IntValue();
-		String text = context.GetVar(String("text")).ToString();
+		int logLevel = context.GetArg(0).IntValue();
+		String text = context.GetArg(1).ToString();
 		TraceLog(logLevel, "%s", text.c_str());
 		return IntrinsicResult::Null;
 	});
