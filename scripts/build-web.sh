@@ -47,16 +47,39 @@ if ! command -v emcmake &> /dev/null; then
         echo -e "${GREEN}Emscripten activated successfully!${NC}"
     else
         echo -e "${RED}Error: emcmake (Emscripten) not found!${NC}"
-        echo "Please install Emscripten or update the path in this script"
+        echo ""
+        echo "This script expects the Emscripten SDK at '$EMSDK_DIR' (project root)."
+        echo "If you already have emsdk installed elsewhere, create a symlink to it:"
+        echo ""
+        echo "    ln -s /path/to/your/emsdk \"$(cd "$(dirname "$0")/.." && pwd)/emsdk\""
+        echo ""
+        echo "Otherwise, install it into the project root:"
+        echo ""
+        echo "    git clone https://github.com/emscripten-core/emsdk.git"
+        echo "    cd emsdk && ./emsdk install latest && ./emsdk activate latest"
+        echo ""
         exit 1
     fi
 fi
 
-# Check if raylib web library exists
+# Check if raylib web library exists; build it if not.
 RAYLIB_LIB="raylib/src/libraylib.web.a"
 if [ ! -f "$RAYLIB_LIB" ]; then
-    echo -e "${YELLOW}Warning: Raylib web library not found at $RAYLIB_LIB${NC}"
-    echo "You may need to build raylib for web first."
+    echo -e "${YELLOW}Raylib web library not found; building raylib for web...${NC}"
+    # Desktop and web builds share the raylib/src object directory, and their
+    # .o files are not interchangeable. Remove any stray objects before building
+    # (forcing a fresh web compile) and again afterward (so a later desktop build
+    # can't pick up these web objects). We don't expect raylib sources to change
+    # often, so the cost of a full rebuild is worth avoiding a bad link.
+    rm -f raylib/src/*.o
+    make -C raylib/src PLATFORM=PLATFORM_WEB
+    rc=$?
+    rm -f raylib/src/*.o
+    if [ $rc -ne 0 ] || [ ! -f "$RAYLIB_LIB" ]; then
+        echo -e "${RED}Failed to build raylib for web!${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}Raylib web library built!${NC}"
 fi
 
 mkdir -p build-web

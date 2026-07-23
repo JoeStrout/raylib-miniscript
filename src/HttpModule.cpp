@@ -309,7 +309,7 @@ static void http_fetch_done(emscripten_fetch_t* fetch) {
 static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult partialResult) {
 	// State 2: fetch has completed — collect the response.
 	if (!partialResult.Done()) {
-		long fetchId = (long)partialResult.Result().DoubleValue();
+		long fetchId = (long)partialResult.result.DoubleValue();
 		auto it = activeHttpFetches.find(fetchId);
 		if (it == activeHttpFetches.end()) {
 			return IntrinsicResult(String("http.post: internal error (fetch not found)"));
@@ -350,11 +350,9 @@ static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult part
 	}
 	if (headersVal.Type() == ValueType::Map) {
 		ValueDict hmap = headersVal.GetDict();
-		ValueDictIterator iter = hmap.GetIterator();
-		while (!iter.Done()) {
-			state.headerStrings.push_back(iter.Key().ToString().c_str());
-			state.headerStrings.push_back(iter.Value().ToString().c_str());
-			iter.Next();
+		for (Value key : hmap.Keys()) {
+			state.headerStrings.push_back(key.ToString().c_str());
+			state.headerStrings.push_back(hmap.Lookup(key, Value::Null).ToString().c_str());
 		}
 	}
 	for (const auto& s : state.headerStrings) state.headerPtrs.push_back(s.c_str());

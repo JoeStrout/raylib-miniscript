@@ -441,8 +441,8 @@ static void run_fetch_completed(emscripten_fetch_t *fetch) {
 
 static IntrinsicResult intrinsic_run(Context context, IntrinsicResult partialResult) {
 	// State 2: File has been fetched, run it
-	if (!partialResult.Done() && partialResult.Result().Type() == ValueType::Number) {
-		long fetchId = (long)partialResult.Result().DoubleValue();
+	if (!partialResult.Done() && partialResult.result.Type() == ValueType::Number) {
+		long fetchId = (long)partialResult.result.DoubleValue();
 		auto it = activeRunFetches.find(fetchId);
 		if (it == activeRunFetches.end()) {
 			context.vm.RaiseRuntimeError("run: internal error (fetch not found)");

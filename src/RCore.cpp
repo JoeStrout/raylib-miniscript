@@ -3132,7 +3132,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDirectoryFiles");
-		return IntrinsicResult(Value(ValueList()));
+		return IntrinsicResult(Value::make_list(0));
 	#endif
 		String dirPath = context.GetArg(0).ToString();
 		FilePathList files = LoadDirectoryFiles(dirPath.c_str());
@@ -3151,7 +3151,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDirectoryFilesEx");
-		return IntrinsicResult(Value(ValueList()));
+		return IntrinsicResult(Value::make_list(0));
 	#endif
 		String basePath = context.GetArg(0).ToString();
 		String filter = context.GetArg(1).ToString();
@@ -3187,7 +3187,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDroppedFiles");
-		return IntrinsicResult(Value(ValueList()));
+		return IntrinsicResult(Value::make_list(0));
 	#endif
 		FilePathList files = LoadDroppedFiles();
 		ValueList result;

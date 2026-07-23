@@ -44,8 +44,17 @@ fi
 
 if [ ! -f "raylib/src/libraylib.a" ] || [ "raylib/.git" -nt "raylib/src/libraylib.a" ]; then
     echo -e "${YELLOW}Building raylib...${NC}"
+    # Desktop and web builds share the raylib/src object directory, and their
+    # .o files are not interchangeable. Remove any stray objects before building
+    # (forcing a fresh desktop compile) and again afterward (so a later web build
+    # can't pick up these desktop objects). We only delete the .o files here, not
+    # the resulting libraylib.a. We don't expect raylib sources to change often,
+    # so the cost of a full rebuild is worth avoiding a bad link.
+    rm -f raylib/src/*.o
     make -C raylib/src
-    if [ $? -ne 0 ]; then
+    rc=$?
+    rm -f raylib/src/*.o
+    if [ $rc -ne 0 ]; then
         echo -e "${RED}Failed to build raylib!${NC}"
         exit 1
     fi
