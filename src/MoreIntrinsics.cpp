@@ -167,6 +167,16 @@ static String GetImportDir(int index) {
 // Import intrinsic
 //--------------------------------------------------------------------------------
 
+// Wrap a compiler error from an imported module so it names the module (the
+// parser's own message carries only a line number), keeping the original as the
+// inner error and attaching the stack trace of the import call site.  Returned
+// as import's result value: discarded by a bare `import "foo"` statement, ERRCHK
+// then halts the program, while `x = import("foo")` lets the caller inspect it.
+static Value ImportCompileError(String libname, Value compileErr) {
+	String msg = String("in ") + libname + ".ms: " + compileErr.Message().ToString();
+	return ErrorTypes::CompilerError(msg, compileErr);
+}
+
 #ifdef PLATFORM_WEB
 
 // Track import fetches
@@ -240,7 +250,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 			Value compileErr;
 			FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
 			if (IsNull(moduleMain)) {
-				if (!compileErr.IsNull()) return IntrinsicResult(compileErr);
+				if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
 				return IntrinsicResult::Null;
 			}
 			context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
@@ -362,7 +372,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 	Value compileErr;
 	FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
 	if (IsNull(moduleMain)) {
-		if (!compileErr.IsNull()) return IntrinsicResult(compileErr);
+		if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
 		return IntrinsicResult::Null;
 	}
 	context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
