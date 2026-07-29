@@ -407,6 +407,12 @@ render = function
 	raylib.DrawFPS
 end function
 
+unload = function
+	raylib.UnloadTexture spriteSheetTex
+	raylib.UnloadFont scoreFont
+	sounds.unload
+end function
+
 run = function
 	init
 	while true
@@ -417,7 +423,8 @@ run = function
 		raylib.EndDrawing
 		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) or raylib.IsKeyPressed(raylib.KEY_Q) then break
 		yield
-	end while	
+	end while
+	unload
 end function
 
 if locals == globals then run
