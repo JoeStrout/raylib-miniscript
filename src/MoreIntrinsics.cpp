@@ -23,13 +23,10 @@ extern "C" {
 }
 #endif
 
-#if defined(_WIN32)
-#define PATH_SEP ';'
-#define PATH_SEP_STR ";"
-#else
-#define PATH_SEP ':'
+// Separator between entries in MS_IMPORT_PATH.  We write ':' on all platforms,
+// matching MiniScript 1.x and command-line MiniScript 2; ';' is also accepted
+// when parsing (see FindPathSep).
 #define PATH_SEP_STR ":"
-#endif
 
 using namespace MiniScript;
 
@@ -144,6 +141,26 @@ static IntrinsicResult intrinsic_env(Context context, IntrinsicResult partialRes
 	return IntrinsicResult(StaticMap(envMapRef()));
 }
 
+static bool IsAlpha(char c) {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+// Find the separator ending the MS_IMPORT_PATH entry that starts at `entry`,
+// or null if that entry runs to the end of the string.  Both ';' and ':'
+// separate entries on all platforms, except that a ':' forming a Windows drive
+// letter (the second character of an entry, as in "C:\lib") is part of the
+// path rather than a separator.
+static const char* FindPathSep(const char* entry) {
+	for (const char* p = entry; *p; p++) {
+		if (*p == ';') return p;
+		if (*p != ':') continue;
+		bool driveLetter = (p == entry + 1) && IsAlpha(entry[0])
+			&& (p[1] == '/' || p[1] == '\\');
+		if (!driveLetter) return p;
+	}
+	return nullptr;
+}
+
 // Get the import search directory at the given index from MS_IMPORT_PATH.
 // Returns empty string if index is out of range.
 static String GetImportDir(int index) {
@@ -151,7 +168,7 @@ static String GetImportDir(int index) {
 	const char* start = importPath.c_str();
 	int current = 0;
 	while (true) {
-		const char* sep = strchr(start, PATH_SEP);
+		const char* sep = FindPathSep(start);
 		long dirLen = sep ? (long)(sep - start) : (long)strlen(start);
 		if (dirLen > 0) {
 			if (current == index) return String(start, dirLen);
