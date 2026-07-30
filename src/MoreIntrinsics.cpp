@@ -599,11 +599,14 @@ void AddMoreIntrinsics() {
 		return IntrinsicResult(DynamicMap(map));
 	});
 
-	// Set the default import search path (variables are expanded at import time)
-	setEnvVar("MS_IMPORT_PATH",
-		"$MS_SCRIPT_DIR" PATH_SEP_STR
-		"$MS_SCRIPT_DIR/lib" PATH_SEP_STR
-		"$MS_EXE_DIR/assets/lib");
+	// Set the default import search path (variables are expanded at import time),
+	// unless the user already set MS_IMPORT_PATH in the environment.
+	if (envMapRef().Lookup(String("MS_IMPORT_PATH"), Value::emptyString).ToString().empty()) {
+		setEnvVar("MS_IMPORT_PATH",
+			"$MS_SCRIPT_DIR" PATH_SEP_STR
+			"$MS_SCRIPT_DIR/lib" PATH_SEP_STR
+			"$MS_EXE_DIR/assets/lib");
+	}
 }
 
 bool ExitRequested() {
