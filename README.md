@@ -18,6 +18,8 @@ ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 5. Build raylib-miniscript with `scripts/build-desktop.sh` (this will also build raylib if needed).
 6. Run with `build/raylib-miniscript`.  This will look for `assets/main.ms`, unless you specify some other script file for it to launch.
 
+When run with no script argument, it looks for `assets/main.ms` in the current working directory first, and failing that, next to the executable itself.  The second case is what lets a packaged app (where the payload ships beside the binary) work when launched from the Finder or a desktop shortcut, since the working directory is then something unrelated.
+
 ## Documentation
 
 Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.

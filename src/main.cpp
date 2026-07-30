@@ -272,8 +272,6 @@ int main(int argc, char *argv[]) {
 
 	// Set up path environment variables (desktop only)
 #ifndef PLATFORM_WEB
-	const char* scriptPath = (argc > 1) ? argv[1] : "assets/main.ms";
-
 	// MS_EXE_DIR: directory containing the executable
 	const char* appDir = GetApplicationDirectory();
 	String exeDir(appDir);
@@ -286,6 +284,16 @@ int main(int argc, char *argv[]) {
 #else
 	setenv("MS_EXE_DIR", exeDir.c_str(), 1);
 #endif
+
+	// With no script argument, run assets/main.ms -- from the working directory
+	// if it's there (the development case: `./build/raylib-miniscript` run from
+	// a repo whose assets/ are live, not the post-build copy), otherwise from
+	// beside the executable.  That second path is what a packaged app needs: its
+	// payload ships next to the binary, and launched from the Finder or a
+	// desktop shortcut the working directory is somewhere else entirely.
+	String defaultScript = "assets/main.ms";
+	if (!FileExists(defaultScript.c_str())) defaultScript = exeDir + "/assets/main.ms";
+	const char* scriptPath = (argc > 1) ? argv[1] : defaultScript.c_str();
 
 	// MS_SCRIPT_DIR: directory containing the script being run
 	UpdateScriptDir(scriptPath);
