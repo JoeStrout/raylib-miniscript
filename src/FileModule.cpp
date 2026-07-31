@@ -26,6 +26,7 @@
 #include "miniscript.h"
 #include "RawData.h"
 #include "FileSystem.h"
+#include "UserDisks.h"
 #include "MoreIntrinsics.h"
 #include "macros.h"
 
@@ -441,6 +442,75 @@ static IntrinsicResult intrinsic_enterSandbox(Context context, IntrinsicResult p
 }
 
 //--------------------------------------------------------------------------------
+// Mounting
+//--------------------------------------------------------------------------------
+//
+// Everything here obeys one rule: script may ask for a mount, but never names
+// the host target.  file.mountAppData names a subfolder of a root the *host*
+// chose; file.mountDropped names an index into files the *user* dropped on the
+// window.  Neither takes a host path, and none of these will touch /sys or /hw
+// -- userdisks::IsUserMountName is what enforces that, not the callers here.
+//
+// A path is never returned either: a dropped file is described by its base name
+// only, which is exactly what a file picker would show.
+
+static IntrinsicResult intrinsic_mountAppData(Context context, IntrinsicResult partialResult) {
+	String mountName = context.GetVar("mountName").ToString();
+	String folderName = context.GetVar("folderName").ToString();
+	return IntrinsicResult(Value::Truth(userdisks::MountAppData(mountName, folderName)));
+}
+
+static IntrinsicResult intrinsic_unmount(Context context, IntrinsicResult partialResult) {
+	String mountName = context.GetVar("mountName").ToString();
+	return IntrinsicResult(Value::Truth(userdisks::UnmountUserDisk(mountName)));
+}
+
+// Files the user has dropped on the window, as maps of {name, isDirectory}.
+// Deliberately generic: Mini Micro reads every entry as a disk to mount, but
+// another application may want dropped files for something else entirely, so
+// the name says "files" rather than "disks".
+static IntrinsicResult intrinsic_droppedFiles(Context context, IntrinsicResult partialResult) {
+	// Poll here as well as in the main loop, so a script that checks this
+	// between frames sees a drop without waiting for the next host tick.
+	userdisks::PollDroppedFiles();
+	const std::vector<userdisks::DroppedFile>& files = userdisks::DroppedFiles();
+	ValueList result;
+	for (size_t i = 0; i < files.size(); i++) {
+		ValueDict entry;
+		entry.SetValue("name", files[i].name);
+		entry.SetValue("isDirectory", Value::Truth(files[i].isDirectory));
+		result.Add(DynamicMap(entry));
+	}
+	return IntrinsicResult(DynamicList(result));
+}
+
+// Where in the window the last drop landed, as {x, y}.  An application with
+// more than one place to put a dropped file has to route on this: a drag comes
+// from another application, so no key events have reached us and modifier keys
+// read stale at drop time.  Position is the one piece of context every platform
+// actually delivers.
+static IntrinsicResult intrinsic_dropPosition(Context context, IntrinsicResult partialResult) {
+	float x = 0.0f, y = 0.0f;
+	userdisks::DropPosition(x, y);
+	ValueDict pos;
+	pos.SetValue("x", Value(x));
+	pos.SetValue("y", Value(y));
+	return IntrinsicResult(DynamicMap(pos));
+}
+
+static IntrinsicResult intrinsic_mountDropped(Context context, IntrinsicResult partialResult) {
+	userdisks::PollDroppedFiles();
+	Value index = context.GetVar("index");
+	String mountName = context.GetVar("mountName").ToString();
+	return IntrinsicResult(Value::Truth(userdisks::MountDropped(index.IntValue(), mountName)));
+}
+
+static IntrinsicResult intrinsic_clearDroppedFiles(Context context, IntrinsicResult partialResult) {
+	userdisks::ClearDroppedFiles();
+	return IntrinsicResult::Null;
+}
+
+//--------------------------------------------------------------------------------
 // Registration
 //--------------------------------------------------------------------------------
 
@@ -568,6 +638,41 @@ void AddFileModuleIntrinsics() {
 	i = Intrinsic::Create("");
 	i.set_Code(&intrinsic_enterSandbox);
 	fileModule.SetValue("enterSandbox", i.GetFunc());
+
+	// Mount a folder of this application's own data as /usr or /usr2
+	i = Intrinsic::Create("");
+	i.AddParam("mountName", "usr");
+	i.AddParam("folderName");
+	i.set_Code(&intrinsic_mountAppData);
+	fileModule.SetValue("mountAppData", i.GetFunc());
+
+	// Unmount /usr or /usr2
+	i = Intrinsic::Create("");
+	i.AddParam("mountName", "usr");
+	i.set_Code(&intrinsic_unmount);
+	fileModule.SetValue("unmount", i.GetFunc());
+
+	// Files the user has dropped on the window: [{name, isDirectory}]
+	i = Intrinsic::Create("");
+	i.set_Code(&intrinsic_droppedFiles);
+	fileModule.SetValue("droppedFiles", i.GetFunc());
+
+	// Where in the window the last drop landed: {x, y}
+	i = Intrinsic::Create("");
+	i.set_Code(&intrinsic_dropPosition);
+	fileModule.SetValue("dropPosition", i.GetFunc());
+
+	// Mount one of those dropped files as /usr or /usr2
+	i = Intrinsic::Create("");
+	i.AddParam("index", 0);
+	i.AddParam("mountName", "usr");
+	i.set_Code(&intrinsic_mountDropped);
+	fileModule.SetValue("mountDropped", i.GetFunc());
+
+	// Forget the dropped files (the next drop clears them anyway)
+	i = Intrinsic::Create("");
+	i.set_Code(&intrinsic_clearDroppedFiles);
+	fileModule.SetValue("clearDroppedFiles", i.GetFunc());
 
 	// FileHandle methods
 

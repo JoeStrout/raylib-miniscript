@@ -79,6 +79,13 @@ public:
 	virtual bool Delete(const String& path, String& outErr);
 	virtual bool Rename(const String& oldPath, const String& newPath, String& outErr);
 
+	// Where this mount came from, in host terms -- the directory or archive
+	// behind it.  Host-only, and for exactly two purposes: remembering the
+	// mount in preferences, and naming it in a host-drawn UI.  It must never
+	// reach script; that is the whole point of rule 5 in notes/SANDBOXING.md.
+	// Backends with no host path (IndexedDB) return an empty String.
+	virtual String SourcePath() const { return String(); }
+
 	// Optional fast path for raylib's loaders, which want a real file on disk.
 	// A real-directory backend answers with a host path; zip and IndexedDB
 	// backends decline, and the caller falls back to a *FromMemory loader over
@@ -109,6 +116,7 @@ public:
 	virtual bool Delete(const String& path, String& outErr) override;
 	virtual bool Rename(const String& oldPath, const String& newPath, String& outErr) override;
 	virtual bool RealPath(const String& path, String& outRealPath) override;
+	virtual String SourcePath() const override { return contained ? base : String(); }
 
 	const String& BasePath() const { return base; }
 

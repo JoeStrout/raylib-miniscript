@@ -131,8 +131,8 @@ The current working directory is virtual too, owned by the `file` module.
 
 ## Mount points
 
-`/sys` and `/hw` are mounted at boot, before the latch. `/usr` and `/usr2`
-start unmounted.
+`/sys` and `/hw` are mounted at boot, before the latch. `/usr` and `/usr2` are
+whatever the user last had mounted (remembered in a prefs file), or nothing.
 
 ### `/hw` — the hardware disk
 
@@ -171,15 +171,24 @@ break after lockdown in a path nobody tests.
 
 A `mount(name, realPath)` intrinsic would give the whole thing away — malicious
 code just mounts `/`. The rule that preserves the guarantee is that **script may
-request a mount but never names the target**: an intrinsic that opens a
-*native* directory/file picker and mounts whatever the user chooses. Code can
-pester the user with a dialog; it cannot pick a directory.
+request a mount but never names the target**. Three things satisfy that rule:
 
-This is the same guarantee Mini Micro 1 gets from its Unity file dialog. Raylib
-has no picker, so it means vendoring one — tinyfiledialogs is a single
-public-domain C file and the usual choice.
+- **A file picker**: an intrinsic that opens a *native* directory/file picker
+  and mounts whatever the user chooses. Code can pester the user with a dialog;
+  it cannot pick a directory. This is the same guarantee Mini Micro 1 gets from
+  its Unity file dialog.
+- **Drag and drop**: a drop *is* the user naming a target, exactly as a picker
+  is. Script mounts a dropped file by index and sees only its base name.
+- **An app-data mount**: script names a subfolder of a root the *host* chose
+  (this application's own data directory), never the root and never a path. The
+  worst a runaway program can do with it is store data in a folder of the
+  application's own.
 
-Unmounting is safe to expose directly.
+Mount targets are restricted to `/usr` and `/usr2` throughout. `/sys` and `/hw`
+are the host's, established at boot from the app payload, and nothing
+script-reachable may replace or unmount them.
+
+Unmounting is safe to expose directly, for user disks.
 
 ## Entry points
 
@@ -245,8 +254,10 @@ Worth a comment there so it stays that way.
    enforcement; make sure no real path escapes in a return value or an error.
 4. **Route the raylib loaders**, and reject the entry points listed above.
    `import` and `http` hardening lands here too.
-5. **The mount dialog**: vendor a native picker; `/usr` and `/usr2` become
-   mountable (to real directories) by the user.
+5. **User disks**: `/usr` and `/usr2` become mountable (to real directories) —
+   remembered across runs in a prefs file, mountable by drag and drop, and
+   mountable by script into this application's own data directory. A native
+   picker last, since the other three cover the real cases.
 6. **Zip backend**, read and write, so a `.minidisk` can be mounted as `/usr`
    or `/usr2`.
 7. **Web**: `/usr` from a `.minidisk` prepared next to the web build; `/usr2`
@@ -257,9 +268,13 @@ are still cheap to fix.
 
 ### Status
 
-Steps 1 through 4 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`,
+Steps 1 through 5 are done, except the file picker (see "Step 5 notes"), which
+is deliberately last.
+
+Steps 1 through 4 (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`,
 `src/FileModule.cpp`, the raylib binding files, `src/MoreIntrinsics.cpp`,
-`src/HttpModule.cpp`).
+`src/HttpModule.cpp`); step 5 (`src/HostPaths.{h,cpp}`, `src/UserDisks.{h,cpp}`,
+`src/main.cpp`, `assets/diskdrop.ms`).
 
 Step 2 had to pull the *routing* half of step 4 forward: moving Mini Micro's
 resource paths to `/hw/...` is impossible unless the raylib loaders understand
@@ -278,6 +293,116 @@ only after it.** They have to — a host application loads its own resources fro
 `/hw` during boot, before it latches. So the latch's only effect is to remove
 the fallback to the host file system for paths that name no mount. That is a
 smaller and much easier thing to reason about than two resolution modes.
+
+### Step 5 notes
+
+The mechanism (mount table, backends, resolver) stayed in `fs`; everything about
+*which* disk is in the drive and *why* went into a new `userdisks` module, with
+`hostpaths` under it for the platform conventions raylib does not provide.
+
+**Preferences** live in `<app data dir>/prefs.txt`, a key=value file with two
+keys, `usr` and `usr2`, each the canonical host path of what is mounted there.
+Written when the user mounts something, removed when they unmount it — Mini
+Micro 1's behavior from `DiskManager.cs`, and what makes "unmount, quit,
+relaunch" mean what a user expects. A remembered path that fails to mount is
+*kept*: an ejected USB drive should come back next time.
+
+The app data directory is per-*application*, not per-engine, so Mini Micro 2 and
+a Soda game never share preferences. That means the engine has to be told who it
+is, which is what **`hostopts.txt`** in the app payload is for:
+
+```
+appId=Mini Micro
+defaultDisk=Mini Micro
+```
+
+`appId` names the app data directory; `defaultDisk` names a folder to create
+under `~/Documents` and mount as `/usr` on first run. It ships beside `hw/` and
+`sys/`, is read once at boot before any script runs, and is absent for stock
+raylib-miniscript and Soda — which therefore get no app identity and no disk.
+
+One deliberate divergence from Mini Micro 1: when the remembered `/usr` is gone,
+MS1 creates a fresh disk at that path. We fall back to the default disk instead.
+Recreating in place either fails confusingly or leaves a stray disk on a drive
+the user is about to remount.
+
+`-usr <path>`, `-usr2 <path>`, and `--ignore-prefs` are parsed by `main`; the
+first argument that is not one of those is the script path, as before. Command
+line mounts are **not** written to preferences: they are a testing affordance,
+not a change to what the user chose.
+
+**Drag and drop** turned out to be the cheapest of the three mounting routes and
+the most useful, so it landed before the picker. The host drains raylib's
+dropped-file state each tick into a queue; script sees base names and an
+`isDirectory` flag through `file.droppedFiles`, and mounts by index with
+`file.mountDropped`. A new drop replaces the queue, and `file.clearDroppedFiles`
+empties it, so a path dropped ten minutes ago cannot still be mounted by a
+program that has only just looked.
+
+The name is `droppedFiles`, not `droppedDisks`: Mini Micro reads every entry as
+a disk, but another raylib-miniscript game may want dropped files for importing
+a model or a texture, and that will want a different handler over the same
+queue.
+
+There is **no drag-time accept/reject callback, and cannot be one** without
+going below raylib. GLFW exposes only `glfwSetDropCallback`, which fires after
+the drop completes, and its platform code accepts every drop unconditionally:
+`NSDragOperationGeneric` on macOS, `DragAcceptFiles` + `WM_DROPFILES` on Windows
+(the refusable path is `IDropTarget`, which GLFW does not implement), and XDND
+on X11 answered internally without consulting the app. A file that turns out not
+to be mountable is therefore reported *after* the drop, which is what Mini Micro
+1 does anyway (`ShowFeedback("Not a mountable disk")`).
+
+**Modifier keys are not available at drop time either**, which is worth knowing
+before designing any UI around a drop. The first cut of `diskdrop.ms` used
+shift-drop to choose `/usr2` and it silently always chose `/usr`: the drag comes
+from another application, so this window has received no key events and GLFW's
+key state is whatever it last saw. There is no portable fix — Win32's
+`WM_DROPFILES` carries no modifiers at all, and X11's XDND modifier state is not
+forwarded by GLFW.
+
+**Drop position is available**, and is the thing to route on. Every GLFW backend
+sets the cursor position from the drop before delivering the file list:
+`performDragOperation` on macOS, `DragQueryPoint` on Windows, `XdndPosition` on
+X11. `userdisks` captures it when it drains the queue and `file.dropPosition`
+reports it as `{x, y}`, so `diskdrop.ms` now routes by which half of the window
+received the drop. Mini Micro 2 will want the same thing against its disk-slot
+UI.
+
+**`file.mountAppData(mountName, folderName)`** is the third route, and the one
+for a Soda game keeping save data. `folderName` must be a single path component
+— the check in `MountAppData`, not the caller's good intentions, is what keeps
+the mount inside our own app data directory. It is allowed after the latch:
+it cannot escape the sandbox, and a program that swaps the user's disk out from
+under them is obnoxious rather than dangerous — it could already just call
+`file.unmount`.
+
+`userdisks::IsUserMountName` gates every script-reachable mount and unmount to
+`usr`/`usr2`. Without it, `file.mountAppData("sys", ...)` would let a program
+replace the system disk with a folder it controls, and `file.unmount("hw")`
+would take Mini Micro's own resources away mid-run.
+
+`Backend::SourcePath()` was added so preferences can record what a mount came
+from. It is host-only and must stay that way: it returns a real host path, and
+rule 5 says none of those reach script.
+
+**Writing through the file module while sandboxed is now exercised** — it was
+the outstanding item from steps 3 and 4, and it works: `writeLines`,
+`readLines`, `file.open`/`write`/`close`, `makedir`, `delete`, and `children`
+all round-trip against a mounted `/usr`, with `/usr/../../etc/passwd` still
+rejected.
+
+`assets/diskdrop.ms` is the manual test: drop a folder on the left half of the
+window to mount it as `/usr`, on the right half for `/usr2`; `U` and `I`
+unmount.
+
+Still to do here: the native picker. tinyfiledialogs is still the plan, and the
+reason it is tolerable despite Mini Micro 1's Linux crash history is that it
+shells out — `osascript` on macOS, `zenity`/`kdialog` on Linux — so a toolkit
+crash kills a helper process, not us. Windows uses in-process `comdlg32`. It
+blocks the main loop while open (so did MS1), and on a machine with no dialog
+helper installed there is simply no dialog, which is why drag and drop needs to
+remain a first-class route rather than a convenience.
 
 ### Step 4 notes
 
@@ -324,8 +449,9 @@ protocol, and there was never a reason for it to open a `file:` URL.
   step 6 deliberately: every backend today is a real directory, so there is
   nothing to exercise it against, and it is needed exactly when the zip backend
   lands. Until then a zip mount would simply fail to load through raylib.
-- Writing through the `file` module *while sandboxed* is still unexercised, for
-  the same reason — no writable mount exists until step 5.
+- The native file picker (step 5); see the step 5 notes.
+- Drag and drop is verified to compile and run, but the drop itself has only
+  been exercised by hand — `assets/diskdrop.ms` is the way to do that.
 
 ### Step 3 notes
 

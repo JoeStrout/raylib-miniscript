@@ -59,6 +59,8 @@ set(APP_SOURCES
     src/MoreIntrinsics.cpp
     src/HttpModule.cpp
     src/FileSystem.cpp
+    src/HostPaths.cpp
+    src/UserDisks.cpp
 )
 
 # Create executable

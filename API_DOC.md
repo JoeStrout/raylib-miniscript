@@ -840,6 +840,12 @@
 |loadRaw |**path** |Load a binary file, returning a RawData object |
 |saveRaw |**path**, **data** |Save a RawData object to a binary file |
 |enterSandbox | |Enter sandbox mode (one-way; there is no way back) |
+|mountAppData |**mountName**="usr", **folderName** |Mount a folder of this application's own data as /usr or /usr2 |
+|unmount |**mountName**="usr" |Unmount /usr or /usr2 |
+|droppedFiles | |Files the user has dropped on the window: [{name, isDirectory}] |
+|dropPosition | |Where in the window the last drop landed: {x, y} |
+|mountDropped |**index**=0, **mountName**="usr" |Mount one of those dropped files as /usr or /usr2 |
+|clearDroppedFiles | |Forget the dropped files (the next drop clears them anyway) |
 
 ## FileHandle
 

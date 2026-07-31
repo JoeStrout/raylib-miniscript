@@ -10,6 +10,7 @@
 #include "MoreIntrinsics.h"
 #include "HttpModule.h"
 #include "FileSystem.h"
+#include "UserDisks.h"
 #include "loadfile.h"
 #include <stdio.h>
 
@@ -136,13 +137,19 @@ void loadScriptFromFile(const char *path) {
 
 #ifndef PLATFORM_WEB
 
-static void MountAppPayload(const char* scriptPath) {
+// The boot script's directory: the app payload, holding hw/, sys/, and the
+// optional hostopts.txt that names the application.
+static String PayloadDir(const char* scriptPath) {
 	const char* lastSlash = strrchr(scriptPath, '/');
 #ifdef _WIN32
 	const char* lastBackslash = strrchr(scriptPath, '\\');
 	if (lastBackslash && (!lastSlash || lastBackslash > lastSlash)) lastSlash = lastBackslash;
 #endif
-	String dir = lastSlash ? String(scriptPath, (size_t)(lastSlash - scriptPath)) : String(".");
+	return lastSlash ? String(scriptPath, (size_t)(lastSlash - scriptPath)) : String(".");
+}
+
+static void MountAppPayload(const char* scriptPath) {
+	String dir = PayloadDir(scriptPath);
 
 	// Each disk is a *named subdirectory* of the boot script's directory, never
 	// that directory itself.  Mounting the script's own directory would put the
@@ -224,6 +231,14 @@ void RunScript() {
 //--------------------------------------------------------------------------------
 
 void MainLoop() {
+#ifndef PLATFORM_WEB
+	// Collect any files the user dropped on the window.  raylib holds a dropped
+	// path until someone takes it, so draining here (rather than only when
+	// script asks) keeps a drop from sitting in raylib's state across frames --
+	// and the queue is what script sees, by base name, never by path.
+	userdisks::PollDroppedFiles();
+#endif
+
 	// Start the script when it's loaded but not yet started
 	if (scriptState == LOADING && !scriptSource.empty()) {
 		RunScript();
@@ -332,9 +347,14 @@ int main(int argc, char *argv[]) {
 	// beside the executable.  That second path is what a packaged app needs: its
 	// payload ships next to the binary, and launched from the Finder or a
 	// desktop shortcut the working directory is somewhere else entirely.
+	// -usr / -usr2 / --ignore-prefs are ours; the first argument that is not
+	// takes the place argv[1] used to have.
+	userdisks::Args args = userdisks::ParseArgs(argc, argv);
+	userdisks::SetArgs(args);
+
 	String defaultScript = "assets/main.ms";
 	if (!FileExists(defaultScript.c_str())) defaultScript = exeDir + "/assets/main.ms";
-	const char* scriptPath = (argc > 1) ? argv[1] : defaultScript.c_str();
+	const char* scriptPath = args.scriptPath.empty() ? defaultScript.c_str() : args.scriptPath.c_str();
 
 	// MS_SCRIPT_DIR: directory containing the script being run
 	UpdateScriptDir(scriptPath);
@@ -350,14 +370,21 @@ int main(int argc, char *argv[]) {
 	// fixes the working-directory-relative form those paths used to have, which
 	// was already broken for a packaged app launched from the Finder.
 	//
-	// /usr and /usr2 stay unmounted: mounting a user disk is the user's
-	// decision, made through a file picker, and Mini Micro is perfectly usable
-	// without one.
 	//
 	// Nothing here restricts anything.  Until a script calls file.enterSandbox,
 	// paths that name no mount still reach the host file system as before, so
 	// stock raylib-miniscript and Soda are unaffected.
 	MountAppPayload(scriptPath);
+
+	// The user disks.  hostopts.txt (part of the payload, chosen by whoever
+	// built this application) names the app and its default disk, and must be
+	// read before anything consults preferences, since the app name is what
+	// decides *which* preferences.  Then /usr and /usr2 come back as the user
+	// last left them.  An application that ships no hostopts.txt and has no
+	// saved preferences gets no user disks at all, which is what stock
+	// raylib-miniscript and Soda want.
+	userdisks::LoadHostOptions(PayloadDir(scriptPath));
+	userdisks::MountAtBoot();
 #endif
 
 	// Initialize MiniScript
