@@ -53,6 +53,7 @@ set(APP_SOURCES
     src/FileModule.cpp
     src/MoreIntrinsics.cpp
     src/HttpModule.cpp
+    src/FileSystem.cpp
 )
 
 # Create executable
@@ -202,4 +203,46 @@ else()
 
     message(STATUS "raylib-miniscript Configuration: Desktop")
     message(STATUS "  Platform: ${CMAKE_SYSTEM_NAME}")
+
+    #---------------------------------------------------------------------------
+    # fs_tests - tests for the virtual file system layer (src/FileSystem.cpp)
+    #
+    # Not part of the default build; build it explicitly:
+    #   cmake --build build --target fs_tests && ./build/fs_tests
+    # It links raylib only because RawData.cpp (which owns BinaryData) includes
+    # RaylibTypes.h; the file system layer itself has no raylib dependency.
+    #---------------------------------------------------------------------------
+    add_executable(fs_tests EXCLUDE_FROM_ALL
+        tests/fs_tests.cpp
+        src/FileSystem.cpp
+        src/RawData.cpp
+        src/RaylibTypes.cpp
+        ${MINISCRIPT_SOURCES}
+    )
+
+    target_include_directories(fs_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${MS2_DIR}/cpp/core
+        ${MS2_DIR}/cpp
+        ${MS2_DIR}/generated
+        ${CMAKE_SOURCE_DIR}/raylib/src
+    )
+
+    target_compile_options(fs_tests PRIVATE -O0 -g -Wall -DPLATFORM_DESKTOP -fexceptions)
+
+    if(EXISTS ${RAYLIB_LIB_PATH})
+        target_link_libraries(fs_tests ${RAYLIB_LIB_PATH})
+    else()
+        target_link_libraries(fs_tests raylib)
+    endif()
+
+    if(APPLE)
+        target_link_libraries(fs_tests
+            "-framework IOKit"
+            "-framework Cocoa"
+            "-framework OpenGL"
+        )
+    elseif(UNIX)
+        target_link_libraries(fs_tests GL m pthread dl rt X11)
+    endif()
 endif()
