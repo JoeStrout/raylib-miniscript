@@ -236,11 +236,43 @@ static std::string DoHttpPost(const char* urlStr,
 #endif // _WIN32 / macOS+Linux
 
 //--------------------------------------------------
+// URL scheme allow-list
+//--------------------------------------------------
+
+// Only http and https may be requested.  "file:" above all would turn this
+// module into an unrestricted read primitive over the whole disk, straight
+// past the file system resolver.
+//
+// An allow-list rather than a "file:" deny-list, because the next scheme worth
+// blocking is always one nobody thought of -- curl alone also speaks ftp, scp,
+// smb, gopher, and dict.
+//
+// This applies whether or not the sandbox has latched: a network call is named
+// for its protocol, and there was never a reason for http.post to open a file.
+static bool HasAllowedScheme(const String& url) {
+	static const char* allowed[] = { "http://", "https://" };
+	const char* s = url.c_str();
+	for (int i = 0; i < 2; i++) {
+		const char* prefix = allowed[i];
+		size_t n = strlen(prefix);
+		size_t j = 0;
+		for (; j < n; j++) {
+			char c = s[j];
+			if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');   // scheme is case-insensitive
+			if (c != prefix[j]) break;
+		}
+		if (j == n) return true;
+	}
+	return false;
+}
+
+//--------------------------------------------------
 // Shared intrinsic (calls DoHttpPost)
 //--------------------------------------------------
 
 static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult partialResult) {
 	String url = context.GetVar("url").ToString();
+	if (!HasAllowedScheme(url)) return IntrinsicResult(String("http.post: only http and https URLs are supported"));
 	Value dataVal = context.GetVar("data");
 	Value headersVal = context.GetVar("headers");
 
@@ -328,6 +360,7 @@ static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult part
 
 	// State 1: start the fetch.
 	String url = context.GetVar("url").ToString();
+	if (!HasAllowedScheme(url)) return IntrinsicResult(String("http.post: only http and https URLs are supported"));
 	Value dataVal = context.GetVar("data");
 	Value headersVal = context.GetVar("headers");
 

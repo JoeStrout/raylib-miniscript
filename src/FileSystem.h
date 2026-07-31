@@ -256,6 +256,17 @@ bool HostPath(const MiniScript::Value& path, String& outHostPath);
 // both String and Value convert implicitly from const char*.  This resolves it.
 bool HostPath(const char* path, String& outHostPath);
 
+// Same, but for a path that is about to be written, deleted, renamed, or
+// created.  Additionally requires the mount to be writable.
+//
+// HostPath alone is NOT enough for a destination: it happily hands back a real
+// path inside a read-only mount, and raylib will then write to it -- the
+// resolver has no idea what the caller intends to do with the path it returns.
+// Every raylib entry point that modifies a file must use this instead.
+bool HostPathForWrite(const String& path, String& outHostPath);
+bool HostPathForWrite(const MiniScript::Value& path, String& outHostPath);
+bool HostPathForWrite(const char* path, String& outHostPath);
+
 //--------------------------------------------------------------------------------
 // OpenFile: a file opened for reading and/or writing
 //--------------------------------------------------------------------------------
@@ -310,6 +321,13 @@ private:
 // rejection is logged here -- to stderr, visible to whoever is running the
 // build, never to script.
 void LogRejection(const String& path, const char* reason);
+
+// True when a script-facing entry point must refuse to act because we are
+// sandboxed -- for the handful that cannot be made safe by resolving a path,
+// because they leak a real path, change the real working directory, or let
+// script replace raylib's file I/O underneath the resolver.  Logs the refusal
+// on the way out, so a mysterious no-op is findable.
+bool RefuseWhenSandboxed(const char* what);
 
 // The passthrough backend used when not sandboxed.  Exposed for tests.
 Backend* PassthroughBackend();

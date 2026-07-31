@@ -26,6 +26,7 @@
 #include "miniscript.h"
 #include "RawData.h"
 #include "FileSystem.h"
+#include "MoreIntrinsics.h"
 #include "macros.h"
 
 #include <stdio.h>
@@ -430,6 +431,11 @@ static IntrinsicResult intrinsic_feof(Context context, IntrinsicResult partialRe
 // A host application calls this once, at the end of its boot script, after it
 // has finished setting up.
 static IntrinsicResult intrinsic_enterSandbox(Context context, IntrinsicResult partialResult) {
+	// Freeze the import search path in the same breath.  `import` resolves
+	// against real host directories rather than mounts, so if script could
+	// still rewrite env.MS_IMPORT_PATH afterwards it would have a read
+	// primitive over every .ms file on the disk.
+	FreezeImportPath();
 	fs::EnterSandbox();
 	return IntrinsicResult::Null;
 }

@@ -2505,6 +2505,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("url");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("OpenURL")) return IntrinsicResult::Null;
 		String url = context.GetArg(0).ToString();
 		OpenURL(url.c_str());
 		return IntrinsicResult::Null;
@@ -2571,6 +2572,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("TakeScreenshot")) return IntrinsicResult::Null;
 		String fileName = context.GetArg(0).ToString();
 		TakeScreenshot(fileName.c_str());
 		return IntrinsicResult::Null;
@@ -2723,7 +2725,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String fileName;
-		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
 		Value dataValue = context.GetArg(1);
 		int dataSize = context.GetArg(2).IntValue();
 
@@ -2748,7 +2750,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Value dataValue = context.GetArg(0);
 		int dataSize = context.GetArg(1).IntValue();
 		String fileName;
-		if (!fs::HostPath(context.GetArg(2), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(2), fileName)) return IntrinsicResult(Value::Truth(false));
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2776,7 +2778,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value::Truth(false));
 	#endif
 		String fileName;
-		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
 		String text = context.GetArg(1).ToString();
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
 	});
@@ -2785,6 +2787,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("SetLoadFileDataCallback")) return IntrinsicResult::Null;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetLoadFileDataCallback");
 		return IntrinsicResult::Null;
@@ -2815,6 +2818,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("SetSaveFileDataCallback")) return IntrinsicResult::Null;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetSaveFileDataCallback");
 		return IntrinsicResult::Null;
@@ -2845,6 +2849,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("SetLoadFileTextCallback")) return IntrinsicResult::Null;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetLoadFileTextCallback");
 		return IntrinsicResult::Null;
@@ -2875,6 +2880,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("SetSaveFileTextCallback")) return IntrinsicResult::Null;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SetSaveFileTextCallback");
 		return IntrinsicResult::Null;
@@ -2910,8 +2916,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileRename");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetArg(0).ToString();
-		String fileRename = context.GetArg(1).ToString();
+		String fileName;
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(-1);
+		String fileRename;
+		if (!fs::HostPathForWrite(context.GetArg(1), fileRename)) return IntrinsicResult(-1);
 		return IntrinsicResult(FileRename(fileName.c_str(), fileRename.c_str()));
 	});
 	raylibModule.SetValue("FileRename", i.GetFunc());
@@ -2923,7 +2931,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileRemove");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(-1);
 		return IntrinsicResult(FileRemove(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileRemove", i.GetFunc());
@@ -2936,8 +2945,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileCopy");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context.GetArg(0).ToString();
-		String dstPath = context.GetArg(1).ToString();
+		String srcPath;
+		if (!fs::HostPath(context.GetArg(0), srcPath)) return IntrinsicResult(-1);
+		String dstPath;
+		if (!fs::HostPathForWrite(context.GetArg(1), dstPath)) return IntrinsicResult(-1);
 		return IntrinsicResult(FileCopy(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileCopy", i.GetFunc());
@@ -2950,8 +2961,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileMove");
 		return IntrinsicResult(-1);
 	#endif
-		String srcPath = context.GetArg(0).ToString();
-		String dstPath = context.GetArg(1).ToString();
+		String srcPath;
+		if (!fs::HostPathForWrite(context.GetArg(0), srcPath)) return IntrinsicResult(-1);
+		String dstPath;
+		if (!fs::HostPathForWrite(context.GetArg(1), dstPath)) return IntrinsicResult(-1);
 		return IntrinsicResult(FileMove(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileMove", i.GetFunc());
@@ -2965,7 +2978,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileTextReplace");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(-1);
 		String search = context.GetArg(1).ToString();
 		String replacement = context.GetArg(2).ToString();
 		return IntrinsicResult(FileTextReplace(fileName.c_str(), search.c_str(), replacement.c_str()));
@@ -2980,7 +2994,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileTextFindIndex");
 		return IntrinsicResult(-1);
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(-1);
 		String search = context.GetArg(1).ToString();
 		return IntrinsicResult(FileTextFindIndex(fileName.c_str(), search.c_str()));
 	});
@@ -2993,7 +3008,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("FileExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(FileExists(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileExists", i.GetFunc());
@@ -3005,7 +3021,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("DirectoryExists");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String dirPath = context.GetArg(0).ToString();
+		String dirPath;
+		if (!fs::HostPath(context.GetArg(0), dirPath)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));
 	});
 	raylibModule.SetValue("DirectoryExists", i.GetFunc());
@@ -3017,7 +3034,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetFileLength");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::zero);
 		return IntrinsicResult(GetFileLength(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileLength", i.GetFunc());
@@ -3029,7 +3047,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("GetFileModTime");
 		return IntrinsicResult(Value::zero);
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::zero);
 		return IntrinsicResult((double)GetFileModTime(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileModTime", i.GetFunc());
@@ -3076,6 +3095,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("GetWorkingDirectory")) return IntrinsicResult(String());
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWorkingDirectory");
 		return IntrinsicResult(String());
@@ -3086,6 +3106,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("GetApplicationDirectory")) return IntrinsicResult(String());
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetApplicationDirectory");
 		return IntrinsicResult(String());
@@ -3101,7 +3122,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("MakeDirectory");
 		return IntrinsicResult(-1);
 	#endif
-		String dirPath = context.GetArg(0).ToString();
+		String dirPath;
+		if (!fs::HostPathForWrite(context.GetArg(0), dirPath)) return IntrinsicResult(-1);
 		return IntrinsicResult(MakeDirectory(dirPath.c_str()));
 	});
 	raylibModule.SetValue("MakeDirectory", i.GetFunc());
@@ -3109,6 +3131,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("ChangeDirectory")) return IntrinsicResult(Value::Truth(false));
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ChangeDirectory");
 		return IntrinsicResult(Value::Truth(false));
@@ -3125,7 +3148,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("IsPathFile");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(IsPathFile(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathFile", i.GetFunc());
@@ -3146,6 +3170,20 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value::make_list(0));
 	#endif
 		String dirPath = context.GetArg(0).ToString();
+		if (fs::IsSandboxed()) {
+			// raylib's own version returns real host paths, which must never
+			// reach script -- so sandboxed we list through fs and hand back
+			// virtual ones.  This is also the only listing that can see /hw.
+			String virtualDir;
+			ValueList result;
+			std::vector<String> names;
+			if (fs::ResolvePath(dirPath, virtualDir) && fs::ListDir(virtualDir, names)) {
+				for (size_t n = 0; n < names.size(); n++) {
+					result.Add(fs::PathCombine(virtualDir, names[n]));
+				}
+			}
+			return IntrinsicResult(DynamicList(result));
+		}
 		FilePathList files = LoadDirectoryFiles(dirPath.c_str());
 
 		ValueList result;
@@ -3160,6 +3198,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("filter");
 	i.AddParam("scanSubdirs", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("LoadDirectoryFilesEx")) return IntrinsicResult(Value::make_list(0));
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDirectoryFilesEx");
 		return IntrinsicResult(Value::make_list(0));
@@ -3196,6 +3235,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("LoadDroppedFiles")) return IntrinsicResult(Value::make_list(0));
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("LoadDroppedFiles");
 		return IntrinsicResult(Value::make_list(0));
@@ -3224,6 +3264,13 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value::zero);
 	#endif
 		String dirPath = context.GetArg(0).ToString();
+		if (fs::IsSandboxed()) {
+			String virtualDir;
+			std::vector<String> names;
+			if (!fs::ResolvePath(dirPath, virtualDir)) return IntrinsicResult(Value::zero);
+			if (!fs::ListDir(virtualDir, names)) return IntrinsicResult(Value::zero);
+			return IntrinsicResult((int)names.size());
+		}
 		return IntrinsicResult((int)GetDirectoryFileCount(dirPath.c_str()));
 	});
 	raylibModule.SetValue("GetDirectoryFileCount", i.GetFunc());
@@ -3233,6 +3280,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("filter");
 	i.AddParam("scanSubdirs", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
+		if (fs::RefuseWhenSandboxed("GetDirectoryFileCountEx")) return IntrinsicResult(Value::zero);
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetDirectoryFileCountEx");
 		return IntrinsicResult(Value::zero);
@@ -3392,7 +3440,11 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadAutomationEventList");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		// An empty name means "start a new empty list", so only resolve a name
+		// that was actually given.
+		String nameArg = context.GetArg(0).ToString();
+		String fileName;
+		if (nameArg.LengthB() > 0 && !fs::HostPath(nameArg, fileName)) return IntrinsicResult::Null;
 		const char* fileNamePtr = fileName.LengthB() > 0 ? fileName.c_str() : nullptr;
 		AutomationEventList list = LoadAutomationEventList(fileNamePtr);
 		return IntrinsicResult(AutomationEventListToValue(list));
@@ -3434,7 +3486,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value::Truth(false));
 	#endif
 		Value listValue = context.GetArg(0);
-		String fileName = context.GetArg(1).ToString();
+		String fileName;
+		if (!fs::HostPathForWrite(context.GetArg(1), fileName)) return IntrinsicResult(Value::Truth(false));
 
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr != nullptr) return IntrinsicResult(ExportAutomationEventList(*listPtr, fileName.c_str()));

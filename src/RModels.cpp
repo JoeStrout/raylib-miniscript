@@ -1,5 +1,6 @@
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
 #include "raymath.h"
@@ -682,7 +683,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Model model = LoadModel(path.c_str());
 		if (!IsModelValid(model)) return IntrinsicResult::Null;
 		rcModel++;
@@ -939,7 +941,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
-		String path = context.GetArg(1).ToString();
+		String path;
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportMesh(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMesh", i.GetFunc());
@@ -949,7 +952,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
-		String path = context.GetArg(1).ToString();
+		String path;
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportMeshAsCode(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMeshAsCode", i.GetFunc());
@@ -1115,7 +1119,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		int count = 0;
 		Material* materials = LoadMaterials(path.c_str(), &count);
 		if (materials == nullptr || count <= 0) return IntrinsicResult::Null;
@@ -1376,7 +1381,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		int animCount = 0;
 		ModelAnimation* animations = LoadModelAnimations(path.c_str(), &animCount);
 		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;

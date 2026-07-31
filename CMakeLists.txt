@@ -4,6 +4,11 @@ project(raylib-miniscript VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Emit build/compile_commands.json, which clangd (and other LSP/tooling) reads
+# to learn the include paths and defines for each source file. The repo root
+# has a symlink pointing at the desktop build's copy.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # MiniScript 2 source files.
 #
 # MiniScript2 is a sibling repo reached through the MiniScript2 symlink

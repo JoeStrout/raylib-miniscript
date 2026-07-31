@@ -1096,7 +1096,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context.GetArg(0));
 		String path;
-		if (!fs::HostPath(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportImage(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImage", i.GetFunc());
@@ -1121,7 +1121,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context.GetArg(0));
 		String path;
-		if (!fs::HostPath(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportImageAsCode(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImageAsCode", i.GetFunc());

@@ -25,3 +25,7 @@ MiniScript
 MiniScript2
 raygui
 emsdk
+
+# clangd (symlink to build/compile_commands.json)
+compile_commands.json
+.cache/

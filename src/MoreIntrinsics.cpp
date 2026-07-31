@@ -161,9 +161,23 @@ static const char* FindPathSep(const char* entry) {
 	return nullptr;
 }
 
-// Get the import search directory at the given index from MS_IMPORT_PATH.
-// Returns empty string if index is out of range.
-static String GetImportDir(int index) {
+// Import directories, frozen at the moment the sandbox latches.
+//
+// `env` is a writable map, so without this a sandboxed program could set
+// env.MS_IMPORT_PATH = "/etc" and then `import "passwd"` to read any .ms file
+// on the disk.  Narrow, but an escape.  Freezing also covers MS_EXE_DIR and
+// MS_SCRIPT_DIR, which the path is written in terms of.
+//
+// The directories themselves stay real host paths: they are chosen by the host
+// during boot, not by script, and a library name may not contain a separator,
+// so nothing reachable through them lies outside them.
+static std::vector<String>& frozenImportDirs() {
+	static std::vector<String> dirs;
+	return dirs;
+}
+static bool importPathFrozen = false;
+
+static String GetImportDirFromEnv(int index) {
 	String importPath = ExpandVariables(String("$MS_IMPORT_PATH"));
 	const char* start = importPath.c_str();
 	int current = 0;
@@ -178,6 +192,28 @@ static String GetImportDir(int index) {
 		start = sep + 1;
 	}
 	return String();
+}
+
+// Get the import search directory at the given index.  Returns empty string if
+// the index is out of range.
+static String GetImportDir(int index) {
+	if (importPathFrozen) {
+		std::vector<String>& dirs = frozenImportDirs();
+		if (index < 0 || index >= (int)dirs.size()) return String();
+		return dirs[index];
+	}
+	return GetImportDirFromEnv(index);
+}
+
+void FreezeImportPath() {
+	if (importPathFrozen) return;
+	std::vector<String>& dirs = frozenImportDirs();
+	for (int i = 0; ; i++) {
+		String dir = GetImportDirFromEnv(i);
+		if (dir.empty()) break;
+		dirs.push_back(dir);
+	}
+	importPathFrozen = true;
 }
 
 //--------------------------------------------------------------------------------
@@ -310,7 +346,11 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		context.vm.RaiseRuntimeError("import: libname required");
 		return IntrinsicResult::Null;
 	}
-	if (libname.IndexOfB('/') >= 0) {
+	// A library name is a bare name, never a path.  Backslash and ".." matter as
+	// much as "/": with the search directories frozen, this check is the only
+	// thing keeping an import inside them.
+	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
+	    || libname.IndexOfB(String("..")) >= 0) {
 		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
 		return IntrinsicResult::Null;
 	}
@@ -357,7 +397,11 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		context.vm.RaiseRuntimeError("import: libname required");
 		return IntrinsicResult::Null;
 	}
-	if (libname.IndexOfB('/') >= 0) {
+	// A library name is a bare name, never a path.  Backslash and ".." matter as
+	// much as "/": with the search directories frozen, this check is the only
+	// thing keeping an import inside them.
+	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
+	    || libname.IndexOfB(String("..")) >= 0) {
 		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
 		return IntrinsicResult::Null;
 	}

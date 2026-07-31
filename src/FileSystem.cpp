@@ -68,6 +68,12 @@ void LogRejection(const String& path, const char* reason) {
 	fprintf(stderr, "[fs] rejected \"%s\": %s\n", path.c_str(), reason);
 }
 
+bool RefuseWhenSandboxed(const char* what) {
+	if (!sandboxed) return false;
+	fprintf(stderr, "[fs] refused %s: not available in sandbox mode\n", what);
+	return true;
+}
+
 //--------------------------------------------------------------------------------
 // Host path helpers (native separators)
 //--------------------------------------------------------------------------------
@@ -739,10 +745,18 @@ String MoveOrCopy(const String& oldPath, const String& newPath, bool deleteSourc
 	return String();
 }
 
-bool HostPath(const String& path, String& outHostPath) {
+static bool HostPathImpl(const String& path, String& outHostPath, bool forWrite) {
 	Resolved r;
 	if (!Resolve(path, r)) return false;
+	if (forWrite && !r.backend->IsWritable()) {
+		LogRejection(r.virtualPath, "disk is read-only");
+		return false;
+	}
 	return r.backend->RealPath(r.relPath, outHostPath);
+}
+
+bool HostPath(const String& path, String& outHostPath) {
+	return HostPathImpl(path, outHostPath, false);
 }
 
 bool HostPath(const MiniScript::Value& path, String& outHostPath) {
@@ -751,6 +765,18 @@ bool HostPath(const MiniScript::Value& path, String& outHostPath) {
 
 bool HostPath(const char* path, String& outHostPath) {
 	return HostPath(String(path), outHostPath);
+}
+
+bool HostPathForWrite(const String& path, String& outHostPath) {
+	return HostPathImpl(path, outHostPath, true);
+}
+
+bool HostPathForWrite(const MiniScript::Value& path, String& outHostPath) {
+	return HostPathForWrite(path.ToString(), outHostPath);
+}
+
+bool HostPathForWrite(const char* path, String& outHostPath) {
+	return HostPathForWrite(String(path), outHostPath);
 }
 
 //--------------------------------------------------------------------------------

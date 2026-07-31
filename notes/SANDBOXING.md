@@ -257,8 +257,9 @@ are still cheap to fix.
 
 ### Status
 
-Steps 1, 2 and 3 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`,
-`src/FileModule.cpp`).
+Steps 1 through 4 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`,
+`src/FileModule.cpp`, the raylib binding files, `src/MoreIntrinsics.cpp`,
+`src/HttpModule.cpp`).
 
 Step 2 had to pull the *routing* half of step 4 forward: moving Mini Micro's
 resource paths to `/hw/...` is impossible unless the raylib loaders understand
@@ -278,17 +279,53 @@ only after it.** They have to — a host application loads its own resources fro
 the fallback to the host file system for paths that name no mount. That is a
 smaller and much easier thing to reason about than two resolution modes.
 
-What step 4 still owes:
+### Step 4 notes
 
-- The remaining path-taking loaders: `LoadModel`, `LoadModelAnimations`,
-  `LoadMaterials`, `ExportMesh`, `ExportMeshAsCode`, `LoadTextureCubemap`,
-  `LoadDirectoryFiles`, `LoadDirectoryFilesEx`, `LoadAutomationEventList`,
-  `ExportAutomationEventList`, `LoadVrStereoConfig`.
-- The whole "Reject when sandboxed" list above, none of which is done.
-- The `*FromMemory` fallback for backends that decline `RealPath` — untestable
-  until the zip backend exists (step 6), since every backend today is a real
-  directory.
-- `import` and `http` hardening.
+**The reject list turned out to be much longer than this document assumed.**
+Beyond the loaders, RCore exposes a whole `File*`/`Directory*` family —
+`FileRename`, `FileRemove`, `FileCopy`, `FileMove`, `FileTextReplace`,
+`FileTextFindIndex`, `FileExists`, `DirectoryExists`, `GetFileLength`,
+`GetFileModTime`, `MakeDirectory`, `IsPathFile` — each an unrestricted host file
+system call. All are routed now. The pure string helpers next to them
+(`GetFileExtension`, `GetFileName`, `GetDirectoryPath`, `GetPrevDirectoryPath`,
+`IsFileNameValid`) touch no file system and are left alone.
+
+Refused when sandboxed, beyond the list above: `GetApplicationDirectory` and
+`LoadDroppedFiles`, both of which hand real host paths straight to script, and
+`LoadDirectoryFilesEx` / `GetDirectoryFileCountEx`, whose filter-and-recurse
+semantics have no clean virtual answer. Plain `LoadDirectoryFiles` and
+`GetDirectoryFileCount` do have one, so they list through `fs` and return
+*virtual* paths rather than being refused.
+
+**A resolver cannot tell reads from writes, and that was a real hole.**
+`fs::HostPath` resolved a path and handed back a real one — including inside a
+read-only mount, because it has no idea what the caller intends to do with it.
+`raylib.FileRemove("/sys/a.txt")` therefore deleted a file on the read-only
+system disk, and every `Save*`/`Export*` entry point had the same problem from
+the moment step 2 routed them. Destinations now use `fs::HostPathForWrite`,
+which additionally requires `IsWritable`. The lesson generalizes: **any future
+binding that resolves a path it is about to modify must use the write-checked
+variant**, and the read-only flag is only enforced if the call site asks for it.
+
+`import` search directories are frozen at the latch rather than resolved through
+`fs`: they are real host directories chosen by the host during boot, and a
+library name may not contain a separator, so nothing outside them is reachable.
+The name check now rejects `\` and `..` as well as `/`. Verified with a control:
+the same script without the latch *does* import from a repointed
+`MS_IMPORT_PATH`, and with it does not.
+
+`http.post` is restricted to `http` and `https` by allow-list, and this applies
+whether or not the sandbox has latched — a network call is named for its
+protocol, and there was never a reason for it to open a `file:` URL.
+
+### Still outstanding
+
+- The `*FromMemory` fallback for backends that decline `RealPath`. Deferred to
+  step 6 deliberately: every backend today is a real directory, so there is
+  nothing to exercise it against, and it is needed exactly when the zip backend
+  lands. Until then a zip mount would simply fail to load through raylib.
+- Writing through the `file` module *while sandboxed* is still unexercised, for
+  the same reason — no writable mount exists until step 5.
 
 ### Step 3 notes
 

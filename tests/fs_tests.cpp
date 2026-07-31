@@ -245,6 +245,17 @@ static void testReadOnlyEnforcement() {
 	String text;
 	ok(fs::ReadText(String("/sys/lib.ms"), text), "/sys is readable");
 	eq(text, "// system", "contents of /sys/lib.ms");
+
+	// Resolving for raylib's loaders needs the same enforcement.  HostPath has
+	// no idea what its caller will do with the path, so a destination must ask
+	// for HostPathForWrite -- otherwise raylib writes into a read-only mount
+	// with the resolver's blessing.
+	String host;
+	ok(fs::HostPath(String("/sys/lib.ms"), host), "HostPath reads from a read-only mount");
+	ok(!fs::HostPathForWrite(String("/sys/lib.ms"), host), "HostPathForWrite refuses a read-only mount");
+	ok(!fs::HostPathForWrite(String("/sys/new.txt"), host), "...for a new file there too");
+	ok(fs::HostPathForWrite(String("/usr/new.txt"), host), "HostPathForWrite allows a writable mount");
+	ok(!fs::HostPathForWrite(String("/etc/passwd"), host), "HostPathForWrite refuses a non-mount");
 }
 
 static void testListing() {
