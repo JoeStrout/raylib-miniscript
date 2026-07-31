@@ -237,6 +237,25 @@ String Delete(const String& path);
 // rename; across mounts it reads the bytes and writes them to the destination.
 String MoveOrCopy(const String& oldPath, const String& newPath, bool deleteSource, bool overwriteDest);
 
+// Resolve a script-supplied path to a real host path, for raylib's loaders --
+// which want a real file and cannot be handed bytes.  Returns false if the path
+// does not resolve, or if the mount behind it has no real file to offer (a zip
+// or IndexedDB backend); those callers fall back to raylib's *FromMemory
+// variants over ReadBinary.
+//
+// This is the only function that hands a real path back to the host, and it
+// must never hand one back to *script*: the result goes straight into a raylib
+// call, never into a return value or an error message.
+bool HostPath(const String& path, String& outHostPath);
+
+// Convenience for the raylib bindings, whose paths always arrive as a Value
+// straight from context.GetArg().  Saves a .ToString() at every call site.
+bool HostPath(const MiniScript::Value& path, String& outHostPath);
+
+// A literal would otherwise be ambiguous between the two overloads above, since
+// both String and Value convert implicitly from const char*.  This resolves it.
+bool HostPath(const char* path, String& outHostPath);
+
 //--------------------------------------------------------------------------------
 // OpenFile: a file opened for reading and/or writing
 //--------------------------------------------------------------------------------

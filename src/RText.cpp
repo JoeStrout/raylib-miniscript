@@ -7,6 +7,7 @@
 
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
 #include "miniscript.h"
@@ -77,7 +78,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Font font = LoadFont(path.c_str());
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		rcFont++;
@@ -91,7 +93,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i.AddParam("codepoints", Value::Null);
 	i.AddParam("codepointCount", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		int fontSize = context.GetArg(1).IntValue();
 		Value codepointsVal = context.GetArg(2);
 

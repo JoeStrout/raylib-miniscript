@@ -148,6 +148,14 @@ the root sees what it expects. In every other respect `/hw` is an ordinary
 read-only mount: script can read it, list it, and load from it. It is
 undocumented, not secret; nothing breaks if a user finds it.
 
+Each disk is a **named subdirectory** of the boot script's directory — `hw/`,
+`sys/` — and never that directory itself. Mounting the script's own directory
+would publish the boot script and the whole library tree on a disk any program
+can read; a host application should choose what it exposes, one folder at a
+time. Whatever sits directly beside those subdirectories is unreachable, and
+cannot be reached by climbing out of one either, since `..` is folded before any
+mount is consulted.
+
 Keeping it separate from `/sys` is deliberate. `/sys` comes from the
 minimicro-sysdisk repo, on its own release cycle; `/hw` versions with the
 executable. Merging them means either putting host assets in minimicro-sysdisk
@@ -246,6 +254,43 @@ Worth a comment there so it stays that way.
 
 Steps 1 and 2 are the ones that shake out path-translation bugs while escapes
 are still cheap to fix.
+
+### Status
+
+Steps 1 and 2 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`).
+
+Step 2 had to pull the *routing* half of step 4 forward: moving Mini Micro's
+resource paths to `/hw/...` is impossible unless the raylib loaders understand
+`/hw`. So these now resolve through `fs::HostPath`: `LoadImage`, `LoadTexture`,
+`LoadImageAnim`, `LoadImageRaw`, `ExportImage`, `ExportImageAsCode`, `LoadWave`,
+`LoadSound`, `LoadMusicStream`, `LoadFont`, `LoadFontEx`, `LoadShader`,
+`LoadFileText`, `LoadFileData`, `SaveFileData`, `SaveFileText`,
+`ExportDataAsCode`.
+
+The host mounts `<boot script dir>/hw` and `<boot script dir>/sys`, each only if
+present, and says nothing if neither is — so a plain raylib-miniscript or Soda
+app never acquires a disk it did not ask for.
+
+One design point changed along the way: **mounts resolve before the latch, not
+only after it.** They have to — a host application loads its own resources from
+`/hw` during boot, before it latches. So the latch's only effect is to remove
+the fallback to the host file system for paths that name no mount. That is a
+smaller and much easier thing to reason about than two resolution modes.
+
+What step 4 still owes:
+
+- The remaining path-taking loaders: `LoadModel`, `LoadModelAnimations`,
+  `LoadMaterials`, `ExportMesh`, `ExportMeshAsCode`, `LoadTextureCubemap`,
+  `LoadDirectoryFiles`, `LoadDirectoryFilesEx`, `LoadAutomationEventList`,
+  `ExportAutomationEventList`, `LoadVrStereoConfig`.
+- The whole "Reject when sandboxed" list above, none of which is done.
+- The `*FromMemory` fallback for backends that decline `RealPath` — untestable
+  until the zip backend exists (step 6), since every backend today is a real
+  directory.
+- `import` and `http` hardening.
+
+And step 3 is still entirely outstanding: the `file` module continues to take
+real host paths after the latch, which is currently the widest hole.
 
 ## Reference
 

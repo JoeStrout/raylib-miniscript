@@ -7,6 +7,7 @@
 
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
 #include "miniscript.h"
@@ -60,7 +61,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Wave wave = LoadWave(path.c_str());
 		if (!IsWaveValid(wave)) return IntrinsicResult::Null;
 		rcWave++;
@@ -278,7 +280,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Music music = LoadMusicStream(path.c_str());
 		if (!IsMusicValid(music)) return IntrinsicResult::Null;
 		rcMusic++;
@@ -443,7 +446,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Sound sound = LoadSound(path.c_str());
 		if (!IsSoundValid(sound)) return IntrinsicResult::Null;
 		rcSound++;

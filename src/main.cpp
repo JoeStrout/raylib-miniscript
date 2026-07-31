@@ -9,6 +9,7 @@
 #include "FileModule.h"
 #include "MoreIntrinsics.h"
 #include "HttpModule.h"
+#include "FileSystem.h"
 #include "loadfile.h"
 #include <stdio.h>
 
@@ -125,6 +126,45 @@ void loadScriptFromFile(const char *path) {
 		scriptState = ERRORED;
 		printf("Failed to load %s\n", path);
 	}
+}
+
+#endif
+
+//--------------------------------------------------------------------------------
+// Mounting the app payload
+//--------------------------------------------------------------------------------
+
+#ifndef PLATFORM_WEB
+
+static void MountAppPayload(const char* scriptPath) {
+	const char* lastSlash = strrchr(scriptPath, '/');
+#ifdef _WIN32
+	const char* lastBackslash = strrchr(scriptPath, '\\');
+	if (lastBackslash && (!lastSlash || lastBackslash > lastSlash)) lastSlash = lastBackslash;
+#endif
+	String dir = lastSlash ? String(scriptPath, (size_t)(lastSlash - scriptPath)) : String(".");
+
+	// Each disk is a *named subdirectory* of the boot script's directory, never
+	// that directory itself.  Mounting the script's own directory would put the
+	// boot script and the whole library tree on a disk any program can read;
+	// a host application should decide what it publishes, one folder at a time.
+	fs::Backend* hw = fs::RealDirBackend::Open(dir + "/hw", false);
+	if (hw != nullptr) {
+		// Hidden: file.children("/") must return exactly the disks the user
+		// knows about, so that Mini Micro 1 code enumerating the root sees what
+		// it expects.  /hw is undocumented, not secret -- script can read it,
+		// list it, and load from it.
+		fs::Mount(String("hw"), hw, /*listed*/ false);
+	}
+
+	// /sys ships on its own release cycle (the minimicro-sysdisk repo), while
+	// /hw versions with the executable.  Keeping them separate avoids either
+	// putting host assets in minimicro-sysdisk or building a union mount.
+	fs::Backend* sys = fs::RealDirBackend::Open(dir + "/sys", false);
+	if (sys != nullptr) fs::Mount(String("sys"), sys);
+
+	if (hw == nullptr && sys == nullptr) return;   // not a disk-based app; say nothing
+	printf("Mounted%s%s\n", hw != nullptr ? " /hw" : "", sys != nullptr ? " /sys" : "");
 }
 
 #endif
@@ -247,6 +287,7 @@ void MainLoop() {
 void CleanupMiniScript() {
 	ResetRaylibCallbackBridge();
 	interpreter = nullptr;   // releases the shared InterpreterStorage
+	fs::CloseAllMounts();    // a writable backend may have buffered state to flush
 }
 
 //--------------------------------------------------------------------------------
@@ -297,6 +338,26 @@ int main(int argc, char *argv[]) {
 
 	// MS_SCRIPT_DIR: directory containing the script being run
 	UpdateScriptDir(scriptPath);
+
+	// Mount the app payload.  The boot script's own directory is the payload,
+	// so it becomes /hw -- the hardware disk, holding whatever resources the
+	// host application ships with (Mini Micro's screen font, bezel, sticker,
+	// boot chime).  If that directory has a sys/ inside it, that becomes /sys,
+	// the system disk.  Both are read-only.
+	//
+	// These mounts exist from boot, before any latch, so a host application can
+	// address its own resources as /hw/... from its very first line.  That also
+	// fixes the working-directory-relative form those paths used to have, which
+	// was already broken for a packaged app launched from the Finder.
+	//
+	// /usr and /usr2 stay unmounted: mounting a user disk is the user's
+	// decision, made through a file picker, and Mini Micro is perfectly usable
+	// without one.
+	//
+	// Nothing here restricts anything.  Until a script calls file.enterSandbox,
+	// paths that name no mount still reach the host file system as before, so
+	// stock raylib-miniscript and Soda are unaffected.
+	MountAppPayload(scriptPath);
 #endif
 
 	// Initialize MiniScript

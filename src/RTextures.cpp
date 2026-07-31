@@ -7,6 +7,7 @@
 
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
 #include "miniscript.h"
@@ -23,7 +24,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Image img = LoadImage(path.c_str());
 		if (!IsImageValid(img)) return IntrinsicResult::Null;
 		rcImage++;
@@ -73,7 +75,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		Texture tex = LoadTexture(path.c_str());
 		if (!IsTextureValid(tex)) return IntrinsicResult::Null;
 		rcTexture++;
@@ -1007,7 +1010,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.AddParam("frames");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		int frames = 0;
 		Image result = LoadImageAnim(path.c_str(), &frames);
 		rcImage++;
@@ -1091,7 +1095,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context.GetArg(0));
-		String path = context.GetArg(1).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportImage(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImage", i.GetFunc());
@@ -1115,7 +1120,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image img = ValueToImage(context.GetArg(0));
-		String path = context.GetArg(1).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
 		return IntrinsicResult(ExportImageAsCode(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImageAsCode", i.GetFunc());
@@ -1144,7 +1150,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.AddParam("format");
 	i.AddParam("headerSize");
 	i.set_Code(INTRINSIC_LAMBDA {
-		String path = context.GetArg(0).ToString();
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Null;
 		int width = context.GetArg(1).IntValue();
 		int height = context.GetArg(2).IntValue();
 		int format = context.GetArg(3).IntValue();

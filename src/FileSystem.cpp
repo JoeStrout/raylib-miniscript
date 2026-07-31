@@ -528,25 +528,32 @@ bool ResolvePath(const String& path, String& outVirtualPath) {
 }
 
 Backend* GetMount(const String& virtualPath, String& outRelPath) {
-	if (!sandboxed) {
-		outRelPath = virtualPath;
-		return PassthroughBackend();
+	std::string p(virtualPath.c_str());
+
+	// Mounts resolve whether or not we are sandboxed.  They have to: the host
+	// establishes them during boot, and the boot script loads its own resources
+	// through them before it latches.
+	if (!p.empty() && p[0] == '/') {
+		size_t slash = p.find('/', 1);
+		std::string name = (slash == std::string::npos) ? p.substr(1) : p.substr(1, slash - 1);
+		std::string rel = (slash == std::string::npos) ? std::string() : p.substr(slash + 1);
+		if (!name.empty()) {   // the virtual root is not itself a mount
+			std::vector<MountEntry>& m = mounts();
+			for (size_t k = 0; k < m.size(); k++) {
+				if (name == m[k].name.c_str()) {
+					outRelPath = String(rel.c_str());
+					return m[k].backend;
+				}
+			}
+		}
 	}
 
-	std::string p(virtualPath.c_str());
-	if (p.empty() || p[0] != '/') return nullptr;
-
-	size_t slash = p.find('/', 1);
-	std::string name = (slash == std::string::npos) ? p.substr(1) : p.substr(1, slash - 1);
-	std::string rel = (slash == std::string::npos) ? std::string() : p.substr(slash + 1);
-	if (name.empty()) return nullptr;   // the virtual root is not a mount
-
-	std::vector<MountEntry>& m = mounts();
-	for (size_t k = 0; k < m.size(); k++) {
-		if (name == m[k].name.c_str()) {
-			outRelPath = String(rel.c_str());
-			return m[k].backend;
-		}
+	if (!sandboxed) {
+		// Before the latch the host is unrestricted, so a path naming no mount
+		// is simply a host path.  Removing this fallback is the *only* thing
+		// the latch does -- which is what makes the latch easy to reason about.
+		outRelPath = virtualPath;
+		return PassthroughBackend();
 	}
 	return nullptr;
 }
@@ -730,6 +737,20 @@ String MoveOrCopy(const String& oldPath, const String& newPath, bool deleteSourc
 		src.backend->Delete(src.relPath, ignored);   // it is OK if this fails
 	}
 	return String();
+}
+
+bool HostPath(const String& path, String& outHostPath) {
+	Resolved r;
+	if (!Resolve(path, r)) return false;
+	return r.backend->RealPath(r.relPath, outHostPath);
+}
+
+bool HostPath(const MiniScript::Value& path, String& outHostPath) {
+	return HostPath(path.ToString(), outHostPath);
+}
+
+bool HostPath(const char* path, String& outHostPath) {
+	return HostPath(String(path), outHostPath);
 }
 
 //--------------------------------------------------------------------------------

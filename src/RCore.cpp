@@ -7,6 +7,7 @@
 
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
 #include "rlgl.h"
@@ -830,8 +831,13 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("vsFileName", String());
 	i.AddParam("fsFileName", String());
 	i.set_Code(INTRINSIC_LAMBDA {
-		String vsFileName = context.GetArg(0).ToString();
-		String fsFileName = context.GetArg(1).ToString();
+		// Either name may be empty, meaning "use raylib's default shader"; only
+		// the ones actually given are resolved.
+		String vsArg = context.GetArg(0).ToString();
+		String fsArg = context.GetArg(1).ToString();
+		String vsFileName, fsFileName;
+		if (vsArg.LengthB() > 0 && !fs::HostPath(vsArg, vsFileName)) return IntrinsicResult::Null;
+		if (fsArg.LengthB() > 0 && !fs::HostPath(fsArg, fsFileName)) return IntrinsicResult::Null;
 		const char* vsPtr = vsFileName.LengthB() > 0 ? vsFileName.c_str() : nullptr;
 		const char* fsPtr = fsFileName.LengthB() > 0 ? fsFileName.c_str() : nullptr;
 		Shader shader = LoadShader(vsPtr, fsPtr);
@@ -2651,7 +2657,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		// Hold the String in a named local: ToString() returns a temporary whose
 		// c_str() would otherwise dangle before LoadFileText reads it.
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Null;
 		char *text = LoadFileText(fileName.c_str());
 		if (text == nullptr) return IntrinsicResult::Null;
 		String ret(text);
@@ -2669,7 +2676,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("LoadFileData");
 		return IntrinsicResult::Null;
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Null;
 		int dataSize = 0;
 		unsigned char* data = LoadFileData(fileName.c_str(), &dataSize);
 		if (data == nullptr || dataSize <= 0) return IntrinsicResult::Null;
@@ -2714,7 +2722,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SaveFileData");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
 		Value dataValue = context.GetArg(1);
 		int dataSize = context.GetArg(2).IntValue();
 
@@ -2738,7 +2747,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	#endif
 		Value dataValue = context.GetArg(0);
 		int dataSize = context.GetArg(1).IntValue();
-		String fileName = context.GetArg(2).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(2), fileName)) return IntrinsicResult(Value::Truth(false));
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
@@ -2765,7 +2775,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SaveFileText");
 		return IntrinsicResult(Value::Truth(false));
 	#endif
-		String fileName = context.GetArg(0).ToString();
+		String fileName;
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
 		String text = context.GetArg(1).ToString();
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
 	});

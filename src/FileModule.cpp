@@ -11,6 +11,7 @@
 #include "FileModule.h"
 #include "miniscript.h"
 #include "RawData.h"
+#include "FileSystem.h"
 #include "macros.h"
 
 #include <stdio.h>
@@ -527,6 +528,17 @@ static IntrinsicResult intrinsic_writeLines(Context context, IntrinsicResult par
 	return IntrinsicResult((int)written);
 }
 
+// Enter sandbox mode: from here on, only mounted disks are reachable.
+//
+// Deliberately one-way.  There is no matching intrinsic to leave, and there
+// must never be one: a program that could leave the sandbox is not sandboxed.
+// A host application calls this once, at the end of its boot script, after it
+// has finished setting up.
+static IntrinsicResult intrinsic_enterSandbox(Context context, IntrinsicResult partialResult) {
+	fs::EnterSandbox();
+	return IntrinsicResult::Null;
+}
+
 static IntrinsicResult intrinsic_FileHandle(Context context, IntrinsicResult partialResult) {
 	return IntrinsicResult(StaticMap(fileHandleClass));
 }
@@ -646,6 +658,11 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("data");
 	i.set_Code(&intrinsic_saveRaw);
 	fileModule.SetValue("saveRaw", i.GetFunc());
+
+	// Enter sandbox mode (one-way; there is no way back)
+	i = Intrinsic::Create("");
+	i.set_Code(&intrinsic_enterSandbox);
+	fileModule.SetValue("enterSandbox", i.GetFunc());
 
 	// FileHandle methods
 
