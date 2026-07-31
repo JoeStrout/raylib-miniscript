@@ -136,10 +136,15 @@ scanBindingFile = function(path, moduleVar)
 	codeRef = ""   // name of function referenced via ->code = &funcName
 	for line in lines
 		trimmed = line.trim
-		// Track function-pointer assignments: varName->code = &funcName;
-		// or without & (e.g. i->code = intrinsic_foo;)
+		// Track function-pointer registrations, in any of the spellings the
+		// source uses: the older "i->code = &funcName;" and the current
+		// "i.set_Code(&funcName);".  An inline lambda registration opens with
+		// "i.set_Code(INTRINSIC_LAMBDA {" and has no closing ");" on the line,
+		// so it cannot match here -- those are read from the block instead.
 		m = trimmed.match("{var}->code = &{funcName};")
 		if not m then m = trimmed.match("{var}->code = {funcName};")
+		if not m then m = trimmed.match("{var}.set_Code(&{funcName});")
+		if not m then m = trimmed.match("{var}.set_Code({funcName});")
 		if m then codeRef = m.funcName
 		// Each new Intrinsic::Create starts a fresh block (prevents the first
 		// API from accumulating the entire top of the file as its block).
@@ -250,11 +255,63 @@ parseParams = function(paramStr)
 end function
 
 // ---------------------------------------------------------------------------
+// Preserving hand-written content
+//
+// Everything above the Notes section is derived from the C++ source and is safe
+// to rewrite.  Everything below it is written by hand -- notes, examples,
+// caveats -- and regenerating must never destroy it.  So we read the existing
+// page first and carry its hand-written part across unchanged.
+// ---------------------------------------------------------------------------
+
+// The "## " headings this script generates itself.  The first heading that is
+// NOT one of these marks the start of hand-written content.
+generatedHeadings = ["Parameters", "Return value"]
+
+// Everything from the first hand-written heading to the end of the file.
+// Returns [] for a page that does not exist yet or has none.
+readPageTail = function(path)
+	lines = file.readLines(path)
+	if lines == null then return []
+	i = 0
+	for line in lines
+		if line.startsWith("## ") and generatedHeadings.indexOf(line[3:].trim) == null then
+			return lines[i:]
+		end if
+		i += 1
+	end for
+	return []
+end function
+
+// Overview files are shaped differently: a heading, then a generated table.
+// Their first heading is the section name, so the rule above would preserve the
+// whole file and the table would never update.  Here the hand-written part is
+// whatever follows the last table row instead.
+readOverviewTail = function(path)
+	lines = file.readLines(path)
+	if lines == null then return []
+	lastRow = -1
+	i = 0
+	for line in lines
+		if line.startsWith("|") then lastRow = i
+		i += 1
+	end for
+	if lastRow < 0 then return []
+	tail = lines[lastRow + 1:]
+	// Drop leading blanks; the table below writes its own separating line.
+	while tail.len > 0 and tail[0].trim == ""
+		tail.pull
+	end while
+	return tail
+end function
+
+// ---------------------------------------------------------------------------
 // Overview file generation (one per folder)
 // Writes {folder}/{folder}.md with the full table, names linked to their pages.
 // ---------------------------------------------------------------------------
 writeOverview = function(folder, heading, rows)
 	if rows.len == 0 then return
+	overviewPath = file.child(file.child(wikiDir, folder), folder + ".md")
+	tail = readOverviewTail(overviewPath)
 	lines = []
 	lines.push "## " + heading
 	lines.push ""
@@ -264,14 +321,16 @@ writeOverview = function(folder, heading, rows)
 		lines.push row
 	end for
 	lines.push ""
-	overviewPath = file.child(file.child(wikiDir, folder), folder + ".md")
+	for t in tail
+		lines.push t
+	end for
 	file.writeLines(overviewPath, lines)
 end function
 
 // ---------------------------------------------------------------------------
 // Wiki page generation
 // ---------------------------------------------------------------------------
-generatePage = function(apiName, params, purpose, retType)
+generatePage = function(apiName, params, purpose, retType, pagePath)
 	lines = []
 
 	// Opening description (no heading)
@@ -305,9 +364,16 @@ generatePage = function(apiName, params, purpose, retType)
 	end if
 	lines.push ""
 
-	// Notes (hand-written later)
-	lines.push "## Notes"
-	lines.push ""
+	// Notes and anything after them: keep whatever is already on the page.
+	tail = readPageTail(pagePath)
+	if tail.len == 0 then
+		lines.push "## Notes"
+		lines.push ""
+	else
+		for t in tail
+			lines.push t
+		end for
+	end if
 
 	return lines
 end function
@@ -383,9 +449,9 @@ for line in docLines
 	params = parseParams(paramStr)
 
 	// Generate and write individual page
-	pageContent = generatePage(apiName, params, purpose, retType)
 	pageName = currentPrefix + "." + apiName + ".md"
 	pagePath = file.child(file.child(wikiDir, currentFolder), pageName)
+	pageContent = generatePage(apiName, params, purpose, retType, pagePath)
 	file.writeLines(pagePath, pageContent)
 	pageCount += 1
 

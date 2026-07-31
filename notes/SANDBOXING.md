@@ -257,7 +257,8 @@ are still cheap to fix.
 
 ### Status
 
-Steps 1 and 2 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`).
+Steps 1, 2 and 3 are done (`src/FileSystem.{h,cpp}`, `tests/fs_tests.cpp`,
+`src/FileModule.cpp`).
 
 Step 2 had to pull the *routing* half of step 4 forward: moving Mini Micro's
 resource paths to `/hw/...` is impossible unless the raylib loaders understand
@@ -289,8 +290,41 @@ What step 4 still owes:
   directory.
 - `import` and `http` hardening.
 
-And step 3 is still entirely outstanding: the `file` module continues to take
-real host paths after the latch, which is currently the widest hole.
+### Step 3 notes
+
+The `file` module now goes through the resolver for everything. Two behavior
+changes came with it, both deliberate:
+
+- **File handles buffer in memory and write back on `close`.** That is forced by
+  the backend interface (a zip mount has no seekable stream to hand out), and it
+  is what Mini Micro 1 has always done. The cost is that a handle which is never
+  closed never persists. `file.open` with the default mode still creates a
+  missing file, as it always has, by mapping onto fs's `rw+`.
+- **`FileHandle.read` counts code points, not bytes**, and its parameter is now
+  `codePointCount`. This follows Mini Micro; **MiniScript 2's own
+  `ShellIntrinsics` counts bytes**, so the two `file` modules now disagree. That
+  is a porting-friction item worth taking back to MS2 rather than leaving as a
+  silent divergence — MS1 code that reads a fixed count from a UTF-8 file
+  mis-slices under byte semantics.
+
+`FileHandle.seek(pos)` was added; MS2's `ShellIntrinsics` already had it and we
+did not. MiniScript 2 has no assignment hooks, so Mini Micro 1's assignable
+`f.position` cannot be reproduced and `seek` is the replacement.
+
+`name`, `parent`, and `child` are pure string operations, so they switch on the
+latch: virtual `/`-separated paths when sandboxed, their previous
+platform-specific behavior when not. Unsandboxed `file.info().path` likewise
+still reports the canonical *real* path, because that is what it has always
+done; sandboxed it reports the virtual path.
+
+One real bug fixed in passing: `readLines` buffered the final line of a file
+that did not end in a newline and then discarded it.
+
+Not yet exercised end to end: **writing through the file module while
+sandboxed.** Every mount today is read-only, so there is no writable disk to
+test against until step 5 mounts one. The path is covered in `fs_tests` at the
+fs layer, and unsandboxed writes are covered through the intrinsics, but the
+combination is not.
 
 ## Reference
 

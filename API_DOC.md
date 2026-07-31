@@ -79,18 +79,18 @@
 |Vector3ClampValue |**v**=[0, 0, 0], **min**=0, **max**=1 |Clamp the magnitude of the vector between two values |
 |Vector3Equals |**p**=[0, 0, 0], **q**=[0, 0, 0] |Check whether two given vectors are almost equal |
 |Vector3Refract |**v**=[0, 0, 0], **n**=[0, 1, 0], **r**=1 |Compute the direction of a refracted ray v: normalized direction of the incoming ray n: normalized normal vector of the interface of two optical media r: ratio of the refractive index of the medium from where the ray comes to the refractive index of the medium on the other side of the surface |
-|Vector4Zero | |Vector4 math |
-|Vector4One | | |
-|Vector4Add |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] | |
-|Vector4AddValue |**v**=[0, 0, 0, 0], **add**=0 | |
-|Vector4Subtract |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] | |
-|Vector4SubtractValue |**v**=[0, 0, 0, 0], **sub**=0 | |
-|Vector4Length |**v**=[0, 0, 0, 0] | |
-|Vector4LengthSqr |**v**=[0, 0, 0, 0] | |
-|Vector4DotProduct |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] | |
+|Vector4Zero | |Get  vector zero |
+|Vector4One | |Get vector one |
+|Vector4Add |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Add two vectors |
+|Vector4AddValue |**v**=[0, 0, 0, 0], **add**=0 |Add value to vector components |
+|Vector4Subtract |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Substract vectors |
+|Vector4SubtractValue |**v**=[0, 0, 0, 0], **sub**=0 |Substract value from vector components |
+|Vector4Length |**v**=[0, 0, 0, 0] |Vector length |
+|Vector4LengthSqr |**v**=[0, 0, 0, 0] |Vector square length |
+|Vector4DotProduct |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Vectors dot product |
 |Vector4Distance |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Calculate distance between two vectors |
 |Vector4DistanceSqr |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Calculate square distance between two vectors |
-|Vector4Scale |**v**=[0, 0, 0, 0], **scale**=1 | |
+|Vector4Scale |**v**=[0, 0, 0, 0], **scale**=1 |Scale vector components by value (multiply) |
 |Vector4Multiply |**v1**=[0, 0, 0, 0], **v2**=[0, 0, 0, 0] |Multiply vector by vector |
 |Vector4Negate |**v**=[0, 0, 0, 0] |Negate vector |
 |Vector4Divide |**v1**=[0, 0, 0, 0], **v2**=[1, 1, 1, 1] |Divide vector by vector |
@@ -109,7 +109,7 @@
 |MatrixAdd |**left**=MatrixIdentity, **right**=MatrixIdentity |Add two matrices |
 |MatrixSubtract |**left**=MatrixIdentity, **right**=MatrixIdentity |Subtract two matrices (left - right) |
 |MatrixMultiply |**left**=MatrixIdentity, **right**=MatrixIdentity |Get two matrix multiplication NOTE: When multiplying matrices... the order matters! |
-|MatrixMultiplyValue |**left**=MatrixIdentity, **value**=1 | |
+|MatrixMultiplyValue |**left**=MatrixIdentity, **value**=1 |Multiply matrix components by value |
 |MatrixTranslate |**x**=0, **y**=0, **z**=0 |Get translation matrix |
 |MatrixRotate |**axis**=[0, 1, 0], **angle**=0 |Create rotation matrix from axis and angle NOTE: Angle should be provided in radians |
 |MatrixRotateX |**angle**=0 |Get x-rotation matrix NOTE: Angle must be provided in radians |
@@ -386,7 +386,7 @@
 |IsRenderTextureValid |**target** |Check if a render texture is valid (loaded in GPU) |
 |IsTextureValid |**texture** |Check if a texture is valid (loaded in GPU) |
 |LoadImageAnim |**fileName**, **frames** |Load animated image data  - Image.data buffer includes all frames: [image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' parameter  - All frames are returned in RGBA format  - Frames delay data is discarded |
-|LoadImageAnimFromMemory |**fileType**, **fileData**, **frames** |Load animated image data  - Image.data buffer includes all frames: [image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' parameter  - All frames are returned in RGBA format  - Frames delay data is discarded |
+|LoadImageAnimFromMemory |**fileType**, **fileData**, **frames** |Load animated image data from memory  - Image.data buffer includes all frames: [image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' parameter  - All frames are returned in RGBA format  - Frames delay data is discarded |
 |LoadImageColors |**image** |Load color data from image as a Color array (RGBA - 32bit) NOTE: Memory allocated should be freed using UnloadImageColors(); |
 |LoadImageFromMemory |**fileType**, **fileData** |Load image from memory buffer, fileType refers to extension: i.e. ".png" WARNING: File extension must be provided in lower-case |
 |LoadImageFromScreen | |Load image from screen buffer and (screenshot) |
@@ -471,7 +471,7 @@
 |UnloadUTF8 |**text** |Unload UTF-8 text encoded from codepoints array |
 |DrawTextCodepoints |**font**, **codepoints**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw multiple character (codepoints) |
 |GenImageFontAtlas |**glyphs**, **glyphRecs**, **fontSize**, **padding**, **packMethod** |Generate image font atlas using chars info NOTE: Packing method: 0-Default, 1-Skyline |
-|TextFormat |**text**, **args**=ValueList( | |
+|TextFormat |**text**, **args**=[] | |
 |TextFindIndex |**text**, **search** |Find first text occurrence within a string REQUIRES: strstr() |
 |GetTextBetween |**text**, **begin**, **end** |Get text between two strings |
 |TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() NOTE: Limited text replace functionality, using static string |
@@ -712,8 +712,8 @@
 |ChangeDirectory |**dirPath** |Change working directory, returns true on success |
 |IsPathFile |**path** |Check if a given path point to a file |
 |IsFileNameValid |**fileName** |Check if fileName is valid for the platform/OS |
-|LoadDirectoryFiles |**dirPath** |Load directory filepaths NOTE: Base path is prepended to the scanned filepaths WARNING: Directory is scanned twice, first time to get files count No recursive scanning is done! |
-|LoadDirectoryFilesEx |**basePath**, **filter**, **scanSubdirs**=0 |Load directory filepaths with extension filtering and recursive directory scan Use 'DIR*' to include directories on directory scan Use '*.*' to include all file types and directories on directory scan WARNING: Directory is scanned twice, first time to get files count |
+|LoadDirectoryFiles |**dirPath** |Load directory filepaths NOTE: Base path is prepended to the scanned filepaths WARNING: Directory is scanned twice, first time to get paths count Scanneed files and directories, no recursive/subdirs scanning |
+|LoadDirectoryFilesEx |**basePath**, **filter**, **scanSubdirs**=0 |Load directory filepaths with extension filtering and recursive directory scan Use "*.*" to include all files and directories on scan Use "FILES*" to include only files on scan Use "DIRS*" to include only directories on scan WARNING: Directory is scanned twice, first time to get paths count |
 |UnloadDirectoryFiles |**files** |Unload directory filepaths WARNING: files.count is not reseted to 0 after unloading |
 |IsFileDropped | |Check if a file has been dropped into window |
 |LoadDroppedFiles | |Load dropped filepaths |
@@ -839,18 +839,20 @@
 |writeLines |**path**, **lines** |Write a list of strings (or a single string) to a text file |
 |loadRaw |**path** |Load a binary file, returning a RawData object |
 |saveRaw |**path**, **data** |Save a RawData object to a binary file |
+|enterSandbox | |Enter sandbox mode (one-way; there is no way back) |
 
 ## FileHandle
 
 |Name | Parameters | Purpose |
 |-----|------------|---------|
-|close | |Close the file handle |
+|close | |Close the file handle, writing any changes to the disk |
 |isOpen | |Get whether the file handle is still open |
 |write |**data** |Write a string to the file |
 |writeLine |**data** |Write a string followed by a newline to the file |
-|read |**byteCount**=-1 |Read up to byteCount bytes from the file (or all remaining if -1) |
+|read |**codePointCount**=-1 |Read up to codePointCount characters from the file (or all remaining if -1) |
 |readLine | |Read the next line from the file |
 |position | |Get the current read/write position in the file |
+|seek |**pos**=0 |Move the read/write position within the file |
 |atEnd | |Get whether the file position is at the end of the file |
 
 ## http module

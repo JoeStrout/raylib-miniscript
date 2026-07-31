@@ -5,10 +5,15 @@
 import "stringUtil"
 
 
+// MiniScript 2 renamed several of these; keep the old spellings too so this
+// table still works if an older binding turns up.
 magicValues = {
 	"Value::null": "null",
+	"Value::Null": "null",
 	"Value::zero": "0",
 	"Value::one": "1",
+	"Value::emptyString": """""",
+	"Value::make_list(0)": "[]",
 	"QuaternionToValue(QuaternionIdentity())": "QuaternionIdentity",
 	"MatrixToValue(MatrixIdentity())": "MatrixIdentity" }
 
@@ -98,7 +103,11 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			continue
 		end if
 
+		// Intrinsic was a pointer under MiniScript 1 and is a value under
+		// MiniScript 2, so the bindings say "i.AddParam" where they used to say
+		// "i->AddParam".  Accept both, or this scanner silently finds nothing.
 		m = line.match("{var}->AddParam(""{param}"", {defval});")
+		if not m then m = line.match("{var}.AddParam(""{param}"", {defval});")
 		if m then
 			if m.param != "self" then
 				params.push "**" + m.param + "**=" + valToText(m.defval)
@@ -107,6 +116,7 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 		end if
 
 		m = line.match("{var}->AddParam(""{param}"");")
+		if not m then m = line.match("{var}.AddParam(""{param}"");")
 		if m then
 			if m.param != "self" then
 				params.push "**" + m.param + "**"
@@ -114,9 +124,11 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			continue
 		end if
 
-		// Match: moduleVar.SetValue("api", x->GetFunc()) or moduleVar.SetValue(String("api"), x->GetFunc())
+		// Match: moduleVar.SetValue("api", x.GetFunc()) or moduleVar.SetValue(String("api"), x.GetFunc())
 		m = line.match(moduleVar + ".SetValue(""{api}"", {var}->GetFunc());")
 		if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}->GetFunc());")
+		if not m then m = line.match(moduleVar + ".SetValue(""{api}"", {var}.GetFunc());")
+		if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}.GetFunc());")
 		if m then
 			if apiCount == 0 then
 				outLines.push ""
@@ -169,6 +181,7 @@ processGlobalIntrinsicsFile = function(path, heading="Global Intrinsics")
 
 		m = line.match("i->AddParam(""{param}"", {defval});")
 		if not m then m = line.match("{var}->AddParam(""{param}"", {defval});")
+		if not m then m = line.match("{var}.AddParam(""{param}"", {defval});")
 		if m then
 			if m.param != "self" then
 				params.push "**" + m.param + "**=" + valToText(m.defval)
@@ -178,6 +191,7 @@ processGlobalIntrinsicsFile = function(path, heading="Global Intrinsics")
 
 		m = line.match("i->AddParam(""{param}"");")
 		if not m then m = line.match("{var}->AddParam(""{param}"");")
+		if not m then m = line.match("{var}.AddParam(""{param}"");")
 		if m then
 			if m.param != "self" then
 				params.push "**" + m.param + "**"
