@@ -16,12 +16,6 @@ namespace MiniScript { struct Interpreter; }
 /// Call after the interpreter is created.
 void AddMoreIntrinsics();
 
-/// Returns true if the `exit` intrinsic has been called.
-bool ExitRequested();
-
-/// Returns the exit result code set by the `exit` intrinsic.
-int ExitResultCode();
-
 /// Update the MS_SCRIPT_DIR environment variable to the directory containing
 /// the given file path.
 void UpdateScriptDir(const char* path);

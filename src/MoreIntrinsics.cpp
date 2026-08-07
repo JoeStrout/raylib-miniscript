@@ -30,9 +30,6 @@ extern "C" {
 
 using namespace MiniScript;
 
-static bool exitASAP = false;
-static int exitResult = 0;
-
 //--------------------------------------------------------------------------------
 // Environment variable support
 //--------------------------------------------------------------------------------
@@ -448,10 +445,13 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 //--------------------------------------------------------------------------------
 
 static IntrinsicResult intrinsic_exit(Context context, IntrinsicResult partialResult) {
-	exitASAP = true;
+	// The request is recorded on the VM that made it, so `exit` needs to know
+	// nothing about who is running: our main loop polls the root interpreter
+	// and shuts the process down, while a child interpreter's `exit` simply
+	// ends that child (see Interp.exitRequested in InterpModule.cpp).
 	Value resultCode = context.GetVar("resultCode");
-	if (!resultCode.IsNull()) exitResult = (int)resultCode.IntValue();
-	context.vm.Stop();
+	int code = resultCode.IsNull() ? 0 : (int)resultCode.IntValue();
+	context.vm.RequestExit(code);
 	return IntrinsicResult::Null;
 }
 
@@ -670,10 +670,3 @@ void AddMoreIntrinsics() {
 	}
 }
 
-bool ExitRequested() {
-	return exitASAP;
-}
-
-int ExitResultCode() {
-	return exitResult;
-}

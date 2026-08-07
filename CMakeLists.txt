@@ -58,6 +58,7 @@ set(APP_SOURCES
     src/FileModule.cpp
     src/MoreIntrinsics.cpp
     src/HttpModule.cpp
+    src/InterpModule.cpp
     src/FileSystem.cpp
     src/HostPaths.cpp
     src/UserDisks.cpp
@@ -68,6 +69,15 @@ add_executable(raylib-miniscript
     ${APP_SOURCES}
     ${MINISCRIPT_SOURCES}
 )
+
+# The Interp class (child interpreters; see notes/HOSTING_MS.md).  On by
+# default: Mini Micro 2 is meant to be this stock binary plus a tree of
+# MiniScript, and its shell cannot exist without Interp.  Turn it off for a
+# build that should expose no way to spawn a second interpreter.
+option(MS_ENABLE_INTERP "Expose the Interp class (child interpreters) to script" ON)
+if(MS_ENABLE_INTERP)
+    target_compile_definitions(raylib-miniscript PRIVATE MS_ENABLE_INTERP)
+endif()
 
 # Include directories (common to all platforms)
 target_include_directories(raylib-miniscript PRIVATE
@@ -252,4 +262,28 @@ else()
     elseif(UNIX)
         target_link_libraries(fs_tests GL m pthread dl rt X11)
     endif()
+
+    #---------------------------------------------------------------------------
+    # interp_tests - the seeding spike, and the Interp class built on it
+    #
+    # Exercises the MiniScript runtime directly (two Interpreters, seeded
+    # globals, shared library code) plus src/InterpModule.cpp, which depends on
+    # nothing but MiniScript -- so this needs no raylib and nothing else in src/.
+    #
+    #   cmake --build build --target interp_tests && ./build/interp_tests
+    #---------------------------------------------------------------------------
+    add_executable(interp_tests EXCLUDE_FROM_ALL
+        tests/interp_tests.cpp
+        src/InterpModule.cpp
+        ${MINISCRIPT_SOURCES}
+    )
+
+    target_include_directories(interp_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${MS2_DIR}/cpp/core
+        ${MS2_DIR}/cpp
+        ${MS2_DIR}/generated
+    )
+
+    target_compile_options(interp_tests PRIVATE -O0 -g -Wall -DPLATFORM_DESKTOP -fexceptions)
 endif()

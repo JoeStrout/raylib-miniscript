@@ -9,6 +9,7 @@
 #include "FileModule.h"
 #include "MoreIntrinsics.h"
 #include "HttpModule.h"
+#include "InterpModule.h"
 #include "FileSystem.h"
 #include "UserDisks.h"
 #include "loadfile.h"
@@ -204,6 +205,13 @@ void InitMiniScript() {
 
 	// Add HTTP module
 	AddHttpIntrinsics();
+
+#ifdef MS_ENABLE_INTERP
+	// Add the Interp class (child interpreters -- see notes/HOSTING_MS.md).
+	// On unless the build turns it off: Mini Micro 2 runs on this stock binary
+	// and its shell is built on Interp.
+	AddInterpIntrinsics();
+#endif
 
 	printf("MiniScript interpreter initialized with Raylib intrinsics\n");
 }
@@ -403,7 +411,7 @@ int main(int argc, char *argv[]) {
 #else
 	while (true) {
 		MainLoop();
-		if (ExitRequested()) break;
+		if (interpreter.ExitRequested()) break;
 		if (IsWindowReady()) {
 			if (WindowShouldClose()) break;
 		} else if (scriptState == ERRORED || scriptState == COMPLETE) {
@@ -413,6 +421,11 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
+	// The `exit` state lives on the interpreter's VM, so read it before cleanup
+	// releases the interpreter.
+	bool exitRequested = interpreter.ExitRequested();
+	int exitCode = interpreter.ExitCode();
+
 	// Cleanup
 	CleanupMiniScript();
 	if (IsAudioDeviceReady()) CloseAudioDevice();
@@ -420,6 +433,6 @@ int main(int argc, char *argv[]) {
 
 	// A script that failed should not report success, unless it chose its own
 	// result code by calling `exit`.
-	if (scriptState == ERRORED && !ExitRequested()) return 1;
-	return ExitResultCode();
+	if (scriptState == ERRORED && !exitRequested) return 1;
+	return exitCode;
 }
