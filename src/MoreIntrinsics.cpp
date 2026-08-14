@@ -6,6 +6,7 @@
 //
 
 #include "MoreIntrinsics.h"
+#include "FileSystem.h"
 #include "RaylibTypes.h"
 #include "raylib.h"
 #include "miniscript.h"
@@ -160,14 +161,14 @@ static const char* FindPathSep(const char* entry) {
 
 // Import directories, frozen at the moment the sandbox latches.
 //
-// `env` is a writable map, so without this a sandboxed program could set
-// env.MS_IMPORT_PATH = "/etc" and then `import "passwd"` to read any .ms file
-// on the disk.  Narrow, but an escape.  Freezing also covers MS_EXE_DIR and
-// MS_SCRIPT_DIR, which the path is written in terms of.
+// These are the *boot* search path: real host directories, chosen by the host,
+// and the only ones there are until the latch.  `env` is a writable map, so
+// without freezing them a program could set env.MS_IMPORT_PATH = "/etc" and
+// then `import "passwd"` to read any .ms file on the disk.  Narrow, but an
+// escape.  Freezing also covers MS_EXE_DIR and MS_SCRIPT_DIR, which the path is
+// written in terms of.
 //
-// The directories themselves stay real host paths: they are chosen by the host
-// during boot, not by script, and a library name may not contain a separator,
-// so nothing reachable through them lies outside them.
+// After the latch these are not used at all; see GetVirtualImportDirs.
 static std::vector<String>& frozenImportDirs() {
 	static std::vector<String> dirs;
 	return dirs;
@@ -200,6 +201,34 @@ static String GetImportDir(int index) {
 		return dirs[index];
 	}
 	return GetImportDirFromEnv(index);
+}
+
+// Import directories once sandboxed: the virtual paths in env.importPaths,
+// read from the *calling* VM's globals so that a child interpreter with its own
+// `env` map searches its own paths.  Mini Micro's default is
+// [".", "/usr/lib", "/sys/lib"]; "." is the virtual working directory.
+//
+// Deliberately live, not frozen.  Freezing exists to stop a program naming a
+// host directory, and these cannot name one: they resolve through the mount
+// table like every other path, so the worst a program can do by rewriting them
+// is import from a disk it could already read.  Mini Micro 1 lets a program set
+// env.importPaths for exactly that reason, and `reset` puts them back.
+//
+// Nothing else is searched.  A sandboxed host that never sets env.importPaths
+// therefore cannot import at all -- which is the honest answer, since the boot
+// directories it would otherwise fall back to are host paths that no longer
+// exist as far as script is concerned.
+static void GetVirtualImportDirs(Context& context, std::vector<String>& out) {
+	Value envVal;
+	if (!context.vm.GetGlobals().TryGet(Value("env"), &envVal)) return;
+	if (envVal.Type() != ValueType::Map) return;
+	Value pathsVal = envVal.GetDict().Lookup(Value("importPaths"), Value::null);
+	if (pathsVal.Type() != ValueType::List) return;
+	ValueList paths = pathsVal.GetList();
+	for (int i = 0; i < paths.Count(); i++) {
+		String dir = paths[i].ToString();
+		if (!dir.empty()) out.push_back(dir);
+	}
 }
 
 void FreezeImportPath() {
@@ -403,19 +432,34 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		return IntrinsicResult::Null;
 	}
 
-	// Search each directory in MS_IMPORT_PATH
+	// Search env.importPaths once sandboxed, MS_IMPORT_PATH before that.  The
+	// sandboxed side reads through fs rather than raylib, so it sees virtual
+	// paths -- and will see a .minidisk mounted as /usr when the zip backend
+	// lands, without anything here changing.
 	String moduleSource;
 	bool found = false;
-	for (int i = 0; ; i++) {
-		String dir = GetImportDir(i);
-		if (dir.empty()) break;
-		String path = dir + "/" + libname + ".ms";
-		char* text = LoadFileText(path.c_str());
-		if (text != nullptr) {
-			moduleSource = String(text);
-			UnloadFileText(text);
-			found = true;
-			break;
+	if (fs::IsSandboxed()) {
+		std::vector<String> dirs;
+		GetVirtualImportDirs(context, dirs);
+		for (size_t i = 0; i < dirs.size(); i++) {
+			String path = dirs[i] + "/" + libname + ".ms";
+			if (fs::ReadText(path, moduleSource)) {
+				found = true;
+				break;
+			}
+		}
+	} else {
+		for (int i = 0; ; i++) {
+			String dir = GetImportDir(i);
+			if (dir.empty()) break;
+			String path = dir + "/" + libname + ".ms";
+			char* text = LoadFileText(path.c_str());
+			if (text != nullptr) {
+				moduleSource = String(text);
+				UnloadFileText(text);
+				found = true;
+				break;
+			}
 		}
 	}
 

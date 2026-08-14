@@ -223,6 +223,10 @@ on the disk. Narrow, but an escape. Freeze `MS_IMPORT_PATH`, `MS_EXE_DIR`, and
 `MS_SCRIPT_DIR` at lockdown, or resolve import directories through the same
 function.
 
+(Both, in the end: the frozen host directories are the boot search path, and
+once sandboxed `import` searches virtual paths through `fs` instead. See the
+step 4 notes.)
+
 ### `http`
 
 The `http` module must reject the `file:` protocol — otherwise it is a read
@@ -432,12 +436,48 @@ which additionally requires `IsWritable`. The lesson generalizes: **any future
 binding that resolves a path it is about to modify must use the write-checked
 variant**, and the read-only flag is only enforced if the call site asks for it.
 
-`import` search directories are frozen at the latch rather than resolved through
-`fs`: they are real host directories chosen by the host during boot, and a
-library name may not contain a separator, so nothing outside them is reachable.
-The name check now rejects `\` and `..` as well as `/`. Verified with a control:
-the same script without the latch *does* import from a repointed
-`MS_IMPORT_PATH`, and with it does not.
+`import` has two search paths, and the latch is the switch between them.
+
+**Before the latch**, `MS_IMPORT_PATH` as always — real host directories, chosen
+by the host during boot, and the only way the host application imports its own
+library layer at all. They are frozen at the latch so a program cannot repoint
+them afterwards; a library name may not contain a separator, so nothing outside
+them is reachable either. The name check now rejects `\` and `..` as well as
+`/`. Verified with a control: the same script without the latch *does* import
+from a repointed `MS_IMPORT_PATH`, and with it does not.
+
+**After the latch**, `env.importPaths`: a list of *virtual* paths, read from the
+calling VM's globals, resolved through `fs::ReadText` like any other file. Mini
+Micro 1's convention, whose default is `[".", "/usr/lib", "/sys/lib"]`. This is
+what a program actually gets, and it is the answer to a question the frozen list
+dodged: a sandboxed program that imports should reach the *system disk's*
+library, not the host's payload directory, which is not on any disk and whose
+path it cannot name.
+
+Three things follow, all deliberate:
+
+- **These are live, not frozen, and that is not a hole.** Freezing exists to
+  stop a program naming a host directory, and a virtual path cannot name one —
+  it resolves through the mount table like everything else, so rewriting
+  `env.importPaths` at worst imports from a disk the program could already read.
+  Verified: `/etc`, an absolute host path, and `/usr/../../lib` are all rejected
+  by the resolver and logged, and `env.MS_IMPORT_PATH` is simply not consulted.
+- **Nothing else is searched.** A sandboxed application that never sets
+  `env.importPaths` cannot import; there is no fallback to the boot directories,
+  because those are host paths that no longer exist as far as script is
+  concerned, and silently reaching them again is exactly the confusion this
+  replaced.
+- **It comes from the calling VM.** A child interpreter with its own `env` map
+  searches its own paths, which is what a shell running user code in a child
+  needs. A VM whose `env` is still the host intrinsic rather than a map has no
+  import paths at all.
+
+Reading through `fs` also means a `.minidisk` mounted as `/usr` will be
+importable the day the zip backend lands, with nothing here to change.
+
+Only the desktop `import` is dual-pathed; the web one still uses fetch over
+`MS_IMPORT_PATH`, which is fine while the file module is desktop-only, and
+becomes step 7's problem.
 
 `http.post` is restricted to `http` and `https` by allow-list, and this applies
 whether or not the sandbox has latched — a network call is named for its
