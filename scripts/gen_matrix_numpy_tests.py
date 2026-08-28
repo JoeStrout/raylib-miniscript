@@ -5,7 +5,9 @@ numpy is used as an INDEPENDENT oracle.  The hand-written checks in
 assets/matrix_test.ms and any reference loop written in MiniScript share their
 author's assumptions with the kernel under test -- if the row-major indexing or
 the meaning of a transpose flag were misunderstood, both would be wrong the same
-way and would agree.  numpy was written by other people from the same maths.
+way and would agree.  numpy was written by other people from the same maths.  The activation and loss
+checks use scipy (expit / softmax / log_softmax) for the same reason: those are
+independent implementations, not the same formula typed twice.
 
 The generated file has the expected values baked in, so running the tests needs
 no Python.  Regenerate with:
@@ -13,6 +15,7 @@ no Python.  Regenerate with:
     python3 scripts/gen_matrix_numpy_tests.py
 """
 import numpy as np
+from scipy.special import expit, softmax, log_softmax
 
 rng = np.random.default_rng(20260828)
 OUT = "assets/matrix_numpy_test.ms"
@@ -359,6 +362,85 @@ force = rand(32, 3)
 emit("torque = r x F over 32 bodies",
      "Matrix.fromList(%s).rowCross(Matrix.fromList(%s))" % (lit(r), lit(force)),
      np.cross(r, force))
+
+# ---- neural network primitives ----
+#
+# scipy's expit / softmax / log_softmax are the oracle here.  Re-deriving
+# 1/(1+exp(-x)) in numpy would only prove the formula was typed the same way
+# twice; scipy's versions were written by other people and are separately
+# hardened against overflow, which is the whole point of these kernels.
+lines.append("")
+lines.append('print "-- numpy oracle: NN primitives --"')
+
+# A spread that reaches well into both saturated tails, where the naive forms
+# return inf or NaN.
+act = np.array([[-800.0, -40.0, -1.0, 0.0], [0.5, 1.0, 40.0, 800.0]])
+emit("sigmoid against scipy.expit, into both tails",
+     "Matrix.fromList(%s).sigmoid" % lit(act), expit(act))
+emit("tanh against numpy",
+     "Matrix.fromList(%s).tanh" % lit(act), np.tanh(act))
+
+act2 = rand(5, 4, -6, 6)
+emit("sigmoid over a random block", "Matrix.fromList(%s).sigmoid" % lit(act2), expit(act2))
+emit("tanh over a random block", "Matrix.fromList(%s).tanh" % lit(act2), np.tanh(act2))
+
+# softmax on all three axis settings.
+sm = rand(6, 5, -4, 4)
+emit("softmax across rows (the default)",
+     "Matrix.fromList(%s).softmax" % lit(sm), softmax(sm, axis=1))
+emit("softmax down columns",
+     "Matrix.fromList(%s).softmax(0)" % lit(sm), softmax(sm, axis=0))
+emit("softmax over the whole matrix",
+     "Matrix.fromList(%s).softmax(null)" % lit(sm), softmax(sm, axis=None))
+
+# Max subtraction is what keeps this finite; without it every entry is NaN.
+shifted = sm + 900.0
+emit("softmax with logits near the overflow threshold",
+     "Matrix.fromList(%s).softmax" % lit(shifted), softmax(shifted, axis=1))
+
+# greaterThan, including the broadcast forms.
+gx = rand(4, 3)
+gy = rand(4, 3)
+emit("greaterThan, elementwise against a Matrix",
+     "Matrix.fromList(%s).greaterThan(Matrix.fromList(%s))" % (lit(gx), lit(gy)),
+     (gx > gy).astype(float))
+emit("greaterThan a scalar",
+     "Matrix.fromList(%s).greaterThan(0)" % lit(gx), (gx > 0).astype(float))
+grow = rand(1, 3)
+emit("greaterThan a broadcast row",
+     "Matrix.fromList(%s).greaterThan(%s)" % (lit(gx), flat(grow)),
+     (gx > grow).astype(float))
+
+# softmaxCrossEntropy: the loss is -(log_softmax picked at the target).  Both
+# target forms, and a batch wide enough to catch a row/column mix-up.
+Z = rand(7, 4, -5, 5)
+labels = rng.integers(0, 4, size=7)
+onehot = np.eye(4)[labels]
+ls = log_softmax(Z, axis=1)
+emit("softmaxCrossEntropy with one-hot targets",
+     "Matrix.fromList(%s).softmaxCrossEntropy(Matrix.fromList(%s))" % (lit(Z), lit(onehot)),
+     -(onehot * ls).sum(axis=1, keepdims=True))
+emit("softmaxCrossEntropy with class indices",
+     "Matrix.fromList(%s).softmaxCrossEntropy(%s)"
+     % (lit(Z), "[" + ",".join(num(v) for v in labels) + "]"),
+     -ls[np.arange(7), labels].reshape(-1, 1))
+
+# Soft targets (label smoothing), which the one-hot shortcut would get wrong.
+smooth = onehot * 0.9 + 0.1 / 4
+emit("softmaxCrossEntropy with smoothed targets",
+     "Matrix.fromList(%s).softmaxCrossEntropy(Matrix.fromList(%s))" % (lit(Z), lit(smooth)),
+     -(smooth * ls).sum(axis=1, keepdims=True))
+
+# Logits far enough apart that a non-fused implementation would hit log(0).
+Zx = np.array([[600.0, -600.0, 0.0], [-600.0, 600.0, 0.0], [0.0, 0.0, 0.0]])
+lx = log_softmax(Zx, axis=1)
+emit("softmaxCrossEntropy where a naive log(softmax) would take log(0)",
+     "Matrix.fromList(%s).softmaxCrossEntropy([0,0,0])" % lit(Zx),
+     -lx[np.arange(3), [0, 0, 0]].reshape(-1, 1))
+
+# The gradient identity the design doc pairs the loss with.
+emit("softmax(logits) is the probs half of the gradient probs - targets",
+     "Matrix.fromList(%s).softmax" % lit(Z), softmax(Z, axis=1))
 
 lines.append("")
 lines.append('print')

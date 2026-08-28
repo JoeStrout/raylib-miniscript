@@ -843,15 +843,190 @@ matches u, 2, 3, [1,2,3,4,5,6], "rowCross leaves the receiver alone"
 matches v, 2, 3, [7,8,9,1,0,2], "...and the operand"
 
 print
-print "-- storage is reclaimed --"
-before = hostMemory
-big = []
-for i in range(1, 20)
-	big.push Matrix.ofSize(256, 256)    // 512KB each, 10MB total
+print "-- sigmoid --"
+near = function(got, want, label, tol=1e-9)
+	d = got - want
+	if d < 0 then d = -d
+	ok d <= tol, label + "  (got " + got + ", want " + want + ")"
+end function
+
+sg = Matrix.fromList([[0, 1, -1]]).sigmoid
+near sg.getElem(0,0), 0.5, "sigmoid(0) is 1/2"
+near sg.getElem(0,1) + sg.getElem(0,2), 1, "sigmoid(-x) == 1 - sigmoid(x)"
+near sg.getElem(0,1), 0.7310585786300049, "sigmoid(1)"
+// The naive 1/(1+exp(-x)) overflows here and yields inf; the stable form must not.
+ext = Matrix.fromList([[-1000, 1000, -750, 750]]).sigmoid
+eq ext.getElem(0,0), 0, "sigmoid(-1000) saturates to 0, not inf or NaN"
+eq ext.getElem(0,1), 1, "sigmoid(1000) saturates to 1"
+eq ext.getElem(0,2), 0, "sigmoid(-750) is finite"
+ok not isNaN(ext.getElem(0,3)), "sigmoid(750) is not NaN"
+s0 = Matrix.ofSize(2,2)
+ok s0.sigmoid == s0, "sigmoid returns self"
+ok isErr((new Matrix).sigmoid), "sigmoid needs storage"
+matches Matrix.ofSize(0,3).sigmoid, 0, 3, [], "sigmoid of an empty matrix"
+
+print
+print "-- tanh --"
+th = Matrix.fromList([[0, 1, -1]]).tanh
+eq th.getElem(0,0), 0, "tanh(0) is 0"
+near th.getElem(0,1), 0.7615941559557649, "tanh(1)"
+near th.getElem(0,1) + th.getElem(0,2), 0, "tanh is odd"
+te = Matrix.fromList([[-1000, 1000]]).tanh
+eq te.getElem(0,0), -1, "tanh(-1000) saturates to -1"
+eq te.getElem(0,1), 1, "tanh(1000) saturates to 1"
+t0 = Matrix.ofSize(2,2)
+ok t0.tanh == t0, "tanh returns self"
+ok isErr((new Matrix).tanh), "tanh needs storage"
+
+print
+print "-- softmax --"
+sm = Matrix.fromList([[1,2,3],[1,1,1]]).softmax
+near sm.getRow(0).sum, 1, "each row sums to 1"
+near sm.getRow(1).sum, 1, "...every row"
+near sm.getElem(1,0), 1/3, "a uniform row gives a uniform distribution"
+ok sm.getElem(0,2) > sm.getElem(0,1), "softmax is monotonic in the logit"
+// Shift invariance is the property max-subtraction must preserve exactly.
+a = Matrix.fromList([[1,2,3]]).softmax
+b = Matrix.fromList([[101,102,103]]).softmax
+ok a.equals(b, 1e-12), "softmax is invariant to adding a constant to a row"
+// Without max subtraction exp(1000) is inf and the result is all NaN.
+big = Matrix.fromList([[1000, 1001, 1002]]).softmax
+ok not isNaN(big.getElem(0,0)), "huge logits do not overflow"
+near big.getRow(0).sum, 1, "...and still sum to 1"
+ok big.equals(a, 1e-12), "...and match the shifted-down answer"
+// axis 0 normalizes down the columns instead.
+c0 = Matrix.fromList([[1,2],[3,4]]).softmax(0)
+near c0.getColumn(0).sum, 1, "axis 0: each column sums to 1"
+near c0.getColumn(1).sum, 1, "...every column"
+// axis null is the whole matrix.
+cw = Matrix.fromList([[1,2],[3,4]]).softmax(null)
+near cw.sum, 1, "axis null: the whole matrix sums to 1"
+sx = Matrix.ofSize(2,2)
+ok sx.softmax == sx, "softmax returns self"
+ok isErr(Matrix.ofSize(2,2).softmax(2)), "an axis other than 0, 1, null is an error"
+ok isErr((new Matrix).softmax), "softmax needs storage"
+matches Matrix.ofSize(2,0).softmax, 2, 0, [], "softmax of a zero-column matrix"
+
+print
+print "-- greaterThan --"
+matches Matrix.fromList([[1,2],[3,4]]).greaterThan(2), 2, 2, [0,0,1,1], "greaterThan a scalar"
+matches Matrix.fromList([[1,2],[3,4]]).greaterThan(Matrix.fromList([[0,9],[9,0]])), 2, 2,
+  [1,0,0,1], "greaterThan a Matrix, elementwise"
+matches Matrix.fromList([[1,2],[3,4]]).greaterThan([0,3]), 2, 2, [1,0,1,1], "a 1x2 row broadcasts"
+matches Matrix.fromList([[1,2],[3,4]]).greaterThan([[2],[3]]), 2, 2, [0,0,0,1], "an nx1 column broadcasts"
+eq Matrix.fromList([[2]]).greaterThan(2).getElem(0,0), 0, "strictly greater: equal is 0"
+// relu's derivative is exactly this.
+matches Matrix.fromList([[-1,0,5]]).greaterThan(0), 1, 3, [0,0,1], "relu derivative via greaterThan(0)"
+nanM = Matrix.fromList([[0]])
+nanM.setElem 0, 0, 0/0
+eq nanM.greaterThan(0).getElem(0,0), 0, "NaN compares false and becomes 0"
+g = Matrix.ofSize(2,2)
+ok g.greaterThan(0) == g, "greaterThan returns self"
+ok isErr(Matrix.ofSize(2,2).greaterThan([1,2,3])), "a non-broadcastable operand is an error"
+ok isErr((new Matrix).greaterThan(0)), "greaterThan needs storage"
+
+print
+print "-- softmaxCrossEntropy --"
+// Two equal logits: the loss of a coin flip is log 2, whichever class is right.
+flat2 = Matrix.fromList([[0,0],[0,0]])
+L = flat2.softmaxCrossEntropy(Matrix.fromList([[1,0],[0,1]]))
+ok L.rows == 2 and L.columns == 1, "returns one loss per sample, unreduced"
+near L.getElem(0,0), 0.6931471805599453, "equal logits give log(2)"
+near L.getElem(1,0), 0.6931471805599453, "...for either class"
+// A confident correct prediction costs almost nothing; a confident wrong one costs a lot.
+conf = Matrix.fromList([[10,0],[0,10]])
+Lc = conf.softmaxCrossEntropy(Matrix.fromList([[1,0],[1,0]]))
+ok Lc.getElem(0,0) < 1e-4, "a confident correct prediction has near-zero loss"
+ok Lc.getElem(1,0) > 9, "a confident wrong one is heavily penalized"
+
+// The two target forms must agree exactly.
+z = Matrix.fromList([[1,2,3],[2,0,-1],[0.5,0.5,0.5]])
+oneHot = Matrix.fromList([[0,0,1],[1,0,0],[0,1,0]])
+byIndex = Matrix.fromList([[2],[0],[1]])
+ok z.softmaxCrossEntropy(oneHot).equals(z.softmaxCrossEntropy(byIndex), 1e-12),
+  "one-hot targets and class indices agree"
+ok z.softmaxCrossEntropy([2,0,1]).equals(z.softmaxCrossEntropy(byIndex), 1e-12),
+  "a flat list of indices is a column of class indices"
+ok z.softmaxCrossEntropy([[0,0,1],[1,0,0],[0,1,0]]).equals(z.softmaxCrossEntropy(oneHot), 1e-12),
+  "a nested list is read as a distribution"
+// Soft targets: label smoothing is just a non-one-hot distribution.
+soft = z.softmaxCrossEntropy(Matrix.fromList([[0.1,0.1,0.8],[0.8,0.1,0.1],[0.1,0.8,0.1]]))
+ok soft.getElem(0,0) > 0, "smoothed targets give a positive loss"
+ok soft.getElem(0,0) > z.softmaxCrossEntropy(oneHot).getElem(0,0) - 1, "...near the hard-target loss"
+
+// outProbs must be exactly softmax(logits).
+P = Matrix.ofSize(1,1)
+z.softmaxCrossEntropy oneHot, P
+ok P.equals(z.gemm(null).softmax, 1e-12), "outProbs receives softmax(logits)"
+ok P.rows == 3 and P.columns == 3, "outProbs is resized to n x k"
+// Aliasing the logits themselves is allowed: each row is read before it is written.
+zc = z.gemm(null)
+Lz = zc.softmaxCrossEntropy(oneHot, zc)
+ok Lz.equals(z.softmaxCrossEntropy(oneHot), 1e-12), "outProbs may be the logits matrix"
+ok zc.equals(z.gemm(null).softmax, 1e-12), "...and it holds the probabilities afterward"
+
+// Numerical stability: logits far apart must not produce inf or NaN.
+huge = Matrix.fromList([[1000, 0],[0, 1000],[-1000, -1000]])
+Lh = huge.softmaxCrossEntropy(Matrix.fromList([[0],[0],[0]]))
+ok not isNaN(Lh.getElem(0,0)) and Lh.getElem(0,0) < 1e-9, "huge correct logit: no overflow"
+near Lh.getElem(1,0), 1000, "huge wrong logit gives a finite large loss"
+near Lh.getElem(2,0), 0.6931471805599453, "two equal huge-negative logits still give log(2)"
+
+// The pairing the design doc insists on: the gradient of the SUM is probs - targets.
+// Check it against central differences, which is the only way to catch a
+// mismatch between the documented loss and the documented gradient.
+gz = Matrix.fromList([[0.3,-1.2,2.0],[1.1,0.4,-0.7]])
+gt = Matrix.fromList([[0,1,0],[0,0,1]])
+gP = Matrix.ofSize(1,1)
+gz.softmaxCrossEntropy gt, gP
+analytic = gP.gemm(null, gt, null, false, false, 1, -1)   // probs - targets
+h = 1e-6
+worst = 0
+for i in range(0,1)
+	for j in range(0,2)
+		up = gz.gemm(null)
+		up.setElem i, j, gz.getElem(i,j) + h
+		dn = gz.gemm(null)
+		dn.setElem i, j, gz.getElem(i,j) - h
+		numeric = (up.softmaxCrossEntropy(gt).sum - dn.softmaxCrossEntropy(gt).sum) / (2*h)
+		d = numeric - analytic.getElem(i,j)
+		if d < 0 then d = -d
+		if d > worst then worst = d
+	end for
 end for
-grew = hostMemory - before
+ok worst < 1e-6, "softmaxCrossEntropyGrad == probs - targets, by central differences  (worst " + worst + ")"
+
+// Errors.
+ok isErr(z.softmaxCrossEntropy(Matrix.fromList([[0],[1]]))), "targets with the wrong row count"
+ok isErr(z.softmaxCrossEntropy(Matrix.fromList([[0,1],[1,0],[0,1]]))), "targets that are neither n x k nor n x 1"
+ok isErr(z.softmaxCrossEntropy(Matrix.fromList([[3],[0],[1]]))), "a class index past the last class"
+ok isErr(z.softmaxCrossEntropy(Matrix.fromList([[-1],[0],[1]]))), "a negative class index"
+ok isErr(z.softmaxCrossEntropy(Matrix.fromList([[1.5],[0],[1]]))), "a fractional class index"
+ok isErr(z.softmaxCrossEntropy(byIndex, byIndex)), "outProbs may not be the targets matrix"
+ok isErr(z.softmaxCrossEntropy(byIndex, 7)), "a non-Matrix outProbs is an error"
+ok isErr(z.softmaxCrossEntropy("x")), "non-matrix targets"
+ok isErr((new Matrix).softmaxCrossEntropy([0])), "softmaxCrossEntropy needs storage"
+matches Matrix.ofSize(0,3).softmaxCrossEntropy(Matrix.ofSize(0,3)), 0, 1, [], "no samples gives a 0x1"
+
+print
+print "-- storage is reclaimed --"
+// Allocate inside a function that then RETURNS.  The VM's root scan includes the
+// current frame's registers, so a matrix that is dead but still sitting in a
+// register of the top-level frame survives the collect until that register is
+// reused by some later expression.  Measured at top level this test reclaimed
+// anywhere from 0% to 100% depending on incidental register allocation; from a
+// returned frame it is consistently over 90%.
+churn = function(before)
+	b = []
+	for i in range(1, 20)
+		b.push Matrix.ofSize(256, 256)    // 512KB each, 10MB total
+	end for
+	return hostMemory - before           // measured while they are all still live
+end function
+
+before = hostMemory
+grew = churn(before)
 ok grew > 8000000, "20 x 256x256 allocated about 10MB  (grew " + grew + ")"
-big = []
 gc.collect true
 held = hostMemory - before
 ok held < grew / 4, "dropping them returns most of it  (held " + held + ")"

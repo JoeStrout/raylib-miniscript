@@ -1330,6 +1330,199 @@ static MatrixData* RowCross(const MatrixData* A, Value vB, Value* outErr) {
 }
 
 //--------------------------------------------------------------------------------
+// Neural network primitives
+//--------------------------------------------------------------------------------
+
+// The textbook 1/(1+exp(-x)) overflows exp() for x around -746 and returns inf
+// rather than 0.  Branching on the sign keeps the exponent negative either way,
+// which is exact at both tails.  Costs one predictable branch per element.
+static double StableSigmoid(double x) {
+	if (x >= 0.0) return 1.0 / (1.0 + std::exp(-x));
+	double e = std::exp(x);
+	return e / (1.0 + e);
+}
+
+// Softmax in place along `axis` (0 = down columns, 1 = across rows, -1 = over
+// the whole matrix).  Always max-subtracted, so exp() cannot overflow.
+//
+// A run that is entirely -inf yields NaN, as it does in numpy: there is no
+// distribution over impossible outcomes to report.
+static void SoftmaxRun(double* base, long count, long stride) {
+	if (count <= 0) return;
+	double mx = base[0];
+	for (long i = 1; i < count; i++) {
+		double v = base[i * stride];
+		if (v > mx) mx = v;
+	}
+	double sum = 0.0;
+	for (long i = 0; i < count; i++) {
+		double e = std::exp(base[i * stride] - mx);
+		base[i * stride] = e;
+		sum += e;
+	}
+	for (long i = 0; i < count; i++) base[i * stride] /= sum;
+}
+
+static void SoftmaxInPlace(MatrixData* m, int axis) {
+	int rows = m->rows, cols = m->columns;
+	if (axis == 1) {
+		for (int i = 0; i < rows; i++) SoftmaxRun(m->data + (long)i * cols, cols, 1);
+	} else if (axis == 0) {
+		for (int j = 0; j < cols; j++) SoftmaxRun(m->data + j, rows, cols);
+	} else {
+		SoftmaxRun(m->data, m->LiveElems(), 1);
+	}
+}
+
+// m.softmaxCrossEntropy(targets, outProbs=null) -> a new n x 1 Matrix of
+// per-sample losses.  See notes/MATRIX_DESIGN.md; the essentials:
+//
+//   - INPUT IS LOGITS, not probabilities.  This applies the softmax itself.
+//     `z.softmax.softmaxCrossEntropy(t)` is a double softmax: wrong, and
+//     numerically worse than the thing this fusion exists to avoid.
+//   - Row-wise only, samples in rows.  No axis knob: cross-entropy is a
+//     per-sample loss, and an axis would only muddy what a sample is.
+//   - UNREDUCED.  Returning the mean would silently mispair with the
+//     documented gradient (yHat - targets), which is the gradient of the SUM.
+//   - Natural log, and log-sum-exp with max subtraction, so log(0) is
+//     unreachable by construction.
+//
+// `targets` is n x k (a distribution -- one-hot, or smoothed/soft) or n x 1
+// (class indices), dispatched on column count; they overlap only at k=1, where
+// the distribution reading wins.
+//
+// Each row is fully read before anything is written back to it, so `outProbs`
+// may safely be the logits matrix itself.
+static MatrixData* SoftmaxCrossEntropy(const MatrixData* logits, Value vTargets,
+                                       Value vOutProbs, Value* outErr) {
+	int n = logits->rows, k = logits->columns;
+	if (k == 0 && n > 0) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.softmaxCrossEntropy: logits must have at least one column");
+		return nullptr;
+	}
+
+	// ---- targets ----
+	const MatrixData* tM = nullptr;
+	ValueList tList;
+	bool tNested = false;
+	int tRows = 0, tCols = 0;
+	if (vTargets.Type() == ValueType::List) {
+		tList = vTargets.GetList();
+		if (!ListShape(tList, &tNested, &tRows, &tCols, "softmaxCrossEntropy", outErr)) return nullptr;
+		// A flat list is ALWAYS a column of class indices -- the same reading
+		// `solve` gives its right-hand side.  Not conditional on the shape
+		// working out, because at n == k a flat list would otherwise be a
+		// silently different thing than at n != k.  A distribution must be
+		// written as a nested list or a Matrix.
+		if (!tNested) { tRows = tCols; tCols = 1; }
+	} else {
+		tM = ValueToMatrix(vTargets);
+		if (tM == nullptr) {
+			*outErr = ErrorTypes::RuntimeError(
+				"Matrix.softmaxCrossEntropy: targets must be a Matrix or a list");
+			return nullptr;
+		}
+		tRows = tM->rows;
+		tCols = tM->columns;
+	}
+	if (tRows != n) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.softmaxCrossEntropy: targets must have one row per sample");
+		return nullptr;
+	}
+	bool asIndices = (tCols != k);
+	if (asIndices && tCols != 1) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.softmaxCrossEntropy: targets must be n x k (a distribution) or n x 1 (class indices)");
+		return nullptr;
+	}
+
+	// ---- outProbs ----
+	MatrixData* probs = nullptr;
+	if (!vOutProbs.IsNull()) {
+		probs = ValueToMatrix(vOutProbs);
+		if (probs == nullptr) {
+			*outErr = ErrorTypes::RuntimeError(
+				"Matrix.softmaxCrossEntropy: outProbs must be a Matrix or null");
+			return nullptr;
+		}
+		// Reshaping outProbs would move storage the targets still point into.
+		if (tM != nullptr && tM == probs) {
+			*outErr = ErrorTypes::RuntimeError(
+				"Matrix.softmaxCrossEntropy: outProbs must not be the targets matrix");
+			return nullptr;
+		}
+		if (!EnsureCapacity(probs, (long)n * k)) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.softmaxCrossEntropy: out of memory");
+			return nullptr;
+		}
+		probs->rows = n;
+		probs->columns = k;
+	}
+
+	MatrixData* out = NewMatrixData(n, 1);
+	if (out == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.softmaxCrossEntropy: out of memory");
+		return nullptr;
+	}
+
+	// One accessor for element (i, j) of the targets, however they arrived.
+	// The flat-list case is the trap worth centralizing: it was reinterpreted
+	// above as n x 1, so sample i lives at [i], which ListElem addresses as
+	// (row 0, column i) -- not (row i, column 0).
+	bool tFlat = (tM == nullptr && !tNested);
+	auto targetAt = [&](int i, int j) -> double {
+		if (tM != nullptr) return tM->data[(long)i * tCols + j];
+		if (tFlat) return ListElem(tList, false, 0, i);
+		return ListElem(tList, true, i, j);
+	};
+
+	for (int i = 0; i < n; i++) {
+		const double* z = logits->data + (long)i * k;
+		double mx = z[0];
+		for (int j = 1; j < k; j++) {
+			if (z[j] > mx) mx = z[j];
+		}
+		double sum = 0.0;
+		for (int j = 0; j < k; j++) sum += std::exp(z[j] - mx);
+		double logZ = mx + std::log(sum);
+
+		double loss;
+		if (asIndices) {
+			double raw = targetAt(i, 0);
+			int c = (int)raw;
+			if ((double)c != raw || c < 0 || c >= k) {
+				delete out;
+				*outErr = ErrorTypes::RuntimeError(
+					"Matrix.softmaxCrossEntropy: class index out of range");
+				return nullptr;
+			}
+			loss = logZ - z[c];
+		} else {
+			// -sum(t*log(p)) = sum(t)*logZ - sum(t*z).  Carrying sum(t) rather
+			// than assuming it is 1 costs nothing and stays correct for targets
+			// that are not normalized.
+			double sumT = 0.0, dot = 0.0;
+			for (int j = 0; j < k; j++) {
+				double t = targetAt(i, j);
+				sumT += t;
+				dot += t * z[j];
+			}
+			loss = sumT * logZ - dot;
+		}
+		out->data[i] = loss;
+
+		// Written last: until now `z` may be the very row we are about to fill.
+		if (probs != nullptr) {
+			double* p = probs->data + (long)i * k;
+			for (int j = 0; j < k; j++) p[j] = std::exp(z[j] - logZ);
+		}
+	}
+	return out;
+}
+
+//--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
 
@@ -2367,6 +2560,99 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(MatrixToValue(result));
 	});
 	matrixClass.SetValue(String("rowCross"), f.GetFunc());
+
+	// ---- Neural network primitives ----
+	//
+	// Derivatives are expressed in terms of a layer's OUTPUT, not its input
+	// (sigmoid' = y*(1-y), tanh' = 1-y^2), so a layer caches only what it
+	// returned.  Those derivatives, and softmaxCrossEntropyGrad, are one-line
+	// script wrappers; only the forward passes need C++.
+
+	// m.sigmoid -> self
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) m->data[i] = StableSigmoid(m->data[i]);
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("sigmoid"), f.GetFunc());
+
+	// m.tanh -> self
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) m->data[i] = std::tanh(m->data[i]);
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("tanh"), f.GetFunc());
+
+	// m.softmax(axis=1) -> self.  1 = across rows (the usual: samples in rows),
+	// 0 = down columns, null = over the whole matrix.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis", Value::one);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int axis = 1;
+		if (!AxisArg(context.GetVar("axis"), &axis, &err)) return IntrinsicResult(err);
+		SoftmaxInPlace(m, axis);
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("softmax"), f.GetFunc());
+
+	// m.greaterThan(x) -> self, each element replaced by 1 or 0.
+	//
+	// Broadcasts like the elementwise ops.  This is the indicator that makes
+	// relu's derivative a wrapper: y.greaterThan(0).  NaN compares false, so a
+	// NaN element becomes 0.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("x");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Broadcast b;
+		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "greaterThan", &b, &err)) {
+			return IntrinsicResult(err);
+		}
+		for (int i = 0; i < m->rows; i++) {
+			double* row = m->data + (long)i * m->columns;
+			for (int j = 0; j < m->columns; j++) row[j] = (row[j] > b.At(i, j)) ? 1.0 : 0.0;
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("greaterThan"), f.GetFunc());
+
+	// m.softmaxCrossEntropy(targets, outProbs=null) -> new n x 1 Matrix
+	//
+	// self holds LOGITS, not probabilities.  Returns the unreduced per-sample
+	// loss; `.mean` is the caller's to write, and visibly so.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("targets");
+	f.AddParam("outProbs");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value vOutProbs = context.GetVar("outProbs");
+		MatrixData* losses = SoftmaxCrossEntropy(m, context.GetVar("targets"), vOutProbs, &err);
+		if (losses == nullptr) return IntrinsicResult(err);
+		if (!vOutProbs.IsNull()) SyncShape(vOutProbs, ValueToMatrix(vOutProbs));
+		return IntrinsicResult(MatrixToValue(losses));
+	});
+	matrixClass.SetValue(String("softmaxCrossEntropy"), f.GetFunc());
 
 	// m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null) -> string
 	//

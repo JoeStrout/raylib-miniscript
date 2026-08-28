@@ -450,7 +450,17 @@ knob would only invite confusion about what a sample is.
 Dispatch: if `targets.columns == self.columns` it is a distribution; else if
 `targets.columns == 1` it is class indices; else error. (The two overlap only at k=1,
 where softmax is degenerate anyway; distribution wins.) Out-of-range class indices return
-an error value.
+an error value, as do fractional ones.
+
+A **flat list** is always read as a column of class indices — the same reading `solve`
+gives its right-hand side — never as a one-row distribution. Deliberately unconditional:
+dispatching a flat list on whether n happens to equal k would make `[2,0,1]` mean one
+thing for a 3-class batch of 3 and something else for a 4-class batch of 3. A distribution
+must be written as a nested list or a Matrix.
+
+`outProbs` may safely be the logits matrix itself — each row is fully read before anything
+is written back to it — but not the targets matrix, which is refused, since reshaping
+`outProbs` would move storage the targets are still being read from.
 
 **Returns the unreduced n x 1 per-sample loss vector, not a scalar.** This matters because
 of the gradient pairing: `softmaxCrossEntropyGrad` is `yHat - targets`, which is the
