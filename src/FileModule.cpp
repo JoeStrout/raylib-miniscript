@@ -340,8 +340,6 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 	instance.SetValue(_handleKey(), fileWrapper);
 
 	Value result = DynamicMap(instance);
-	instance.SetValue(result, fileWrapper);
-
 	return IntrinsicResult(result);
 }
 
