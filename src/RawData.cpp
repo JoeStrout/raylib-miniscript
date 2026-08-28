@@ -663,10 +663,11 @@ ValueDict& RawDataClass() {
 Value RawDataToValue(BinaryData* data) {
     if (data == nullptr) return Value::Null;
 
-    ValueDict map = RawDataClass();
-    map.SetValue(kHandle(), Value((double)(intptr_t)data));
-    map.SetValue(kLittleEndian(), Value(data->littleEndian ? 1.0 : 0.0));
-    return DynamicMap(map);
+	ValueDict instance;
+	instance.SetValue(Value::magicIsA, StaticMap(RawDataClass()));
+    instance.SetValue(kHandle(), Value((double)(intptr_t)data));
+	instance.SetValue(kLittleEndian(), Value(data->littleEndian ? 1.0 : 0.0));
+    return DynamicMap(instance);
 }
 
 BinaryData* ValueToRawData(Value value) {
