@@ -333,7 +333,7 @@ ValueDict& RawDataClass() {
     f.AddParam("self");
     f.set_Code(INTRINSIC_LAMBDA {
         BinaryData* data = GetBinaryData(context);
-        if (data == nullptr) return IntrinsicResult(Value::zero);
+        if (data == nullptr) return IntrinsicResult::Zero;
         return IntrinsicResult(Value(data->length));
     });
     // get the size of this RawData object in bytes
@@ -684,7 +684,7 @@ ValueDict& RawDataClass() {
     f.set_Code(INTRINSIC_LAMBDA {
         int offset = context.GetArg(1).IntValue();
         String value = context.GetArg(2).ToString();
-        if (value.empty()) return IntrinsicResult(Value::zero);
+        if (value.empty()) return IntrinsicResult::Zero;
 
         BinaryData* data = GetBinaryData(context);
         if (data == nullptr) return raiseError(context, "index out of range");

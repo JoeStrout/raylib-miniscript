@@ -82,9 +82,9 @@ static IntrinsicResult intrinsic_getcwd(Context context, IntrinsicResult partial
 
 static IntrinsicResult intrinsic_chdir(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::zero);
+	if (path.IsNull()) return IntrinsicResult::Zero;
 	String pathStr = path.ToString();
-	if (pathStr.empty()) return IntrinsicResult(Value::Truth(false));
+	if (pathStr.empty()) return IntrinsicResult::Zero;
 	return IntrinsicResult(Value::Truth(fs::SetCwd(pathStr)));
 }
 
@@ -102,7 +102,7 @@ static IntrinsicResult intrinsic_readdir(Context context, IntrinsicResult partia
 
 static IntrinsicResult intrinsic_basename(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::zero);
+	if (path.IsNull()) return IntrinsicResult::Zero;
 	String pathStr = path.ToString();
 	if (fs::IsSandboxed()) return IntrinsicResult(fs::GetFileName(pathStr));
 #if WINDOWS
@@ -119,7 +119,7 @@ static IntrinsicResult intrinsic_basename(Context context, IntrinsicResult parti
 
 static IntrinsicResult intrinsic_dirname(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::zero);
+	if (path.IsNull()) return IntrinsicResult::Zero;
 	String pathStr = path.ToString();
 	if (fs::IsSandboxed()) {
 		// A trailing separator names the same directory, so drop it before
@@ -168,7 +168,7 @@ static IntrinsicResult intrinsic_child(Context context, IntrinsicResult partialR
 
 static IntrinsicResult intrinsic_exists(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::Null);
+	if (path.IsNull()) return IntrinsicResult::Null;
 	return IntrinsicResult(Value::Truth(fs::Exists(path.ToString())));
 }
 
@@ -179,14 +179,14 @@ static IntrinsicResult intrinsic_info(Context context, IntrinsicResult partialRe
 	if (pathStr.empty()) pathStr = fs::Cwd();
 
 	fs::FileInfo info;
-	if (!fs::GetInfo(pathStr, info)) return IntrinsicResult(Value::Null);
+	if (!fs::GetInfo(pathStr, info)) return IntrinsicResult::Null;
 
 	// The reported path: virtual when sandboxed, so no host layout escapes.
 	// Unsandboxed we keep returning the canonical *real* path, which is what
 	// this intrinsic has always done and what existing scripts expect.
 	String reportedPath;
 	if (fs::IsSandboxed()) {
-		if (!fs::ResolvePath(pathStr, reportedPath)) return IntrinsicResult(Value::Null);
+		if (!fs::ResolvePath(pathStr, reportedPath)) return IntrinsicResult::Null;
 	} else {
 #if WINDOWS
 		char pathBuf[512];
@@ -213,7 +213,7 @@ static IntrinsicResult intrinsic_info(Context context, IntrinsicResult partialRe
 
 static IntrinsicResult intrinsic_mkdir(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult(Value::Null);
+	if (path.IsNull()) return IntrinsicResult::Null;
 	return IntrinsicResult(Value::Truth(fs::MakeDir(path.ToString()).empty()));
 }
 
@@ -346,11 +346,11 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 static IntrinsicResult intrinsic_fclose(Context context, IntrinsicResult partialResult) {
 	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
 	if (file == nullptr) return IntrinsicResult::Null;
-	if (!file->IsOpen()) return IntrinsicResult(Value::zero);
+	if (!file->IsOpen()) return IntrinsicResult::Zero;
 	// Close is where a handle's writes actually reach the disk, so a script
 	// that never closes never persists anything.
 	file->Close();
-	return IntrinsicResult(Value::one);
+	return IntrinsicResult::One;
 }
 
 static IntrinsicResult intrinsic_isOpen(Context context, IntrinsicResult partialResult) {
@@ -365,7 +365,7 @@ static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partial
 	String data = context.GetVar("data").ToString();
 	file->error = String();
 	file->Write(data);
-	if (!file->error.empty()) return IntrinsicResult(Value::zero);
+	if (!file->error.empty()) return IntrinsicResult::Zero;
 	return IntrinsicResult((int)data.sizeB());
 }
 
@@ -375,7 +375,7 @@ static IntrinsicResult intrinsic_fwriteLine(Context context, IntrinsicResult par
 	String data = context.GetVar("data").ToString();
 	file->error = String();
 	file->Write(data + "\n");
-	if (!file->error.empty()) return IntrinsicResult(Value::zero);
+	if (!file->error.empty()) return IntrinsicResult::Zero;
 	return IntrinsicResult((int)data.sizeB() + 1);
 }
 
@@ -383,7 +383,7 @@ static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialR
 	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
 	if (file == nullptr) return IntrinsicResult::Null;
 	int count = (int)context.GetVar("codePointCount").IntValue();
-	if (count == 0) return IntrinsicResult(Value::emptyString);
+	if (count == 0) return IntrinsicResult::EmptyString;
 	String result;
 	bool ok = (count < 0) ? file->ReadToEnd(result) : file->ReadChars(count, result);
 	if (!ok) return IntrinsicResult::Null;

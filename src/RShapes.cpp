@@ -620,7 +620,7 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Vector2 point = ValueToVector2(context.GetArg(0));
 		ValueList pointsList = context.GetArg(1).GetList();
 		int pointCount = pointsList.Count();
-		if (pointCount < 3) return IntrinsicResult(Value::zero);
+		if (pointCount < 3) return IntrinsicResult::Zero;
 
 		Vector2* points = new Vector2[pointCount];
 		for (int i = 0; i < pointCount; i++) {

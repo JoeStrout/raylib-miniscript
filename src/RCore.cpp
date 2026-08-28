@@ -1467,7 +1467,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowHidden");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 #endif
 		return IntrinsicResult(IsWindowHidden());
 	});
@@ -1477,7 +1477,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMinimized");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 #endif
 		return IntrinsicResult(IsWindowMinimized());
 	});
@@ -1487,7 +1487,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowMaximized");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 #endif
 		return IntrinsicResult(IsWindowMaximized());
 	});
@@ -1497,7 +1497,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 #ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowResized");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 #endif
 		return IntrinsicResult(IsWindowResized());
 	});
@@ -1508,7 +1508,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsWindowState");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		unsigned int flags = (unsigned int)context.GetArg(0).IntValue();
 		return IntrinsicResult(IsWindowState(flags));
@@ -1703,7 +1703,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorCount");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		return IntrinsicResult(GetMonitorCount());
 	});
@@ -1713,7 +1713,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetCurrentMonitor");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		return IntrinsicResult(GetCurrentMonitor());
 	});
@@ -1736,7 +1736,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorWidth");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorWidth(monitor));
@@ -1748,7 +1748,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorHeight");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorHeight(monitor));
@@ -1760,7 +1760,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorPhysicalWidth");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalWidth(monitor));
@@ -1772,7 +1772,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorPhysicalHeight");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorPhysicalHeight(monitor));
@@ -1784,7 +1784,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetMonitorRefreshRate");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		int monitor = context.GetArg(0).IntValue();
 		return IntrinsicResult(GetMonitorRefreshRate(monitor));
@@ -2722,17 +2722,17 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileData");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String fileName;
-		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		Value dataValue = context.GetArg(1);
 		int dataSize = context.GetArg(2).IntValue();
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
 		int byteCount = 0;
-		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
+		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult::Zero;
 
 		return IntrinsicResult(SaveFileData(fileName.c_str(), (void*)bytes, byteCount));
 	});
@@ -2745,17 +2745,17 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportDataAsCode");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		Value dataValue = context.GetArg(0);
 		int dataSize = context.GetArg(1).IntValue();
 		String fileName;
-		if (!fs::HostPathForWrite(context.GetArg(2), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(2), fileName)) return IntrinsicResult::Zero;
 
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
 		int byteCount = 0;
-		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::Truth(false));
+		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult::Zero;
 
 		return IntrinsicResult(ExportDataAsCode(bytes, byteCount, fileName.c_str()));
 	});
@@ -2775,10 +2775,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("SaveFileText");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String fileName;
-		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		String text = context.GetArg(1).ToString();
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
 	});
@@ -3006,10 +3006,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("FileExists");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String fileName;
-		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		return IntrinsicResult(FileExists(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileExists", i.GetFunc());
@@ -3019,10 +3019,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("DirectoryExists");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String dirPath;
-		if (!fs::HostPath(context.GetArg(0), dirPath)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPath(context.GetArg(0), dirPath)) return IntrinsicResult::Zero;
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));
 	});
 	raylibModule.SetValue("DirectoryExists", i.GetFunc());
@@ -3032,10 +3032,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetFileLength");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		String fileName;
-		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::zero);
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		return IntrinsicResult(GetFileLength(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileLength", i.GetFunc());
@@ -3045,10 +3045,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetFileModTime");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		String fileName;
-		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult(Value::zero);
+		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		return IntrinsicResult((double)GetFileModTime(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileModTime", i.GetFunc());
@@ -3131,10 +3131,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		if (fs::RefuseWhenSandboxed("ChangeDirectory")) return IntrinsicResult(Value::Truth(false));
+		if (fs::RefuseWhenSandboxed("ChangeDirectory")) return IntrinsicResult::Zero;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ChangeDirectory");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
@@ -3146,10 +3146,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsPathFile");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		String path;
-		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(IsPathFile(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathFile", i.GetFunc());
@@ -3227,7 +3227,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("IsFileDropped");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		return IntrinsicResult(IsFileDropped());
 	});
@@ -3261,14 +3261,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetDirectoryFileCount");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		String dirPath = context.GetArg(0).ToString();
 		if (fs::IsSandboxed()) {
 			String virtualDir;
 			std::vector<String> names;
-			if (!fs::ResolvePath(dirPath, virtualDir)) return IntrinsicResult(Value::zero);
-			if (!fs::ListDir(virtualDir, names)) return IntrinsicResult(Value::zero);
+			if (!fs::ResolvePath(dirPath, virtualDir)) return IntrinsicResult::Zero;
+			if (!fs::ListDir(virtualDir, names)) return IntrinsicResult::Zero;
 			return IntrinsicResult((int)names.size());
 		}
 		return IntrinsicResult((int)GetDirectoryFileCount(dirPath.c_str()));
@@ -3280,10 +3280,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("filter");
 	i.AddParam("scanSubdirs", Value::zero);
 	i.set_Code(INTRINSIC_LAMBDA {
-		if (fs::RefuseWhenSandboxed("GetDirectoryFileCountEx")) return IntrinsicResult(Value::zero);
+		if (fs::RefuseWhenSandboxed("GetDirectoryFileCountEx")) return IntrinsicResult::Zero;
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetDirectoryFileCountEx");
-		return IntrinsicResult(Value::zero);
+		return IntrinsicResult::Zero;
 	#endif
 		String basePath = context.GetArg(0).ToString();
 		String filter = context.GetArg(1).ToString();
@@ -3362,7 +3362,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		std::vector<unsigned char> scratch;
 		const unsigned char* bytes = nullptr;
 		int byteCount = 0;
-		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult(Value::zero);
+		if (!GetBytesFromValue(dataValue, dataSize, scratch, &bytes, &byteCount)) return IntrinsicResult::Zero;
 
 		return IntrinsicResult((int)ComputeCRC32((unsigned char*)bytes, byteCount));
 	});
@@ -3483,20 +3483,20 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ExportAutomationEventList");
-		return IntrinsicResult(Value::Truth(false));
+		return IntrinsicResult::Zero;
 	#endif
 		Value listValue = context.GetArg(0);
 		String fileName;
-		if (!fs::HostPathForWrite(context.GetArg(1), fileName)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(1), fileName)) return IntrinsicResult::Zero;
 
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr != nullptr) return IntrinsicResult(ExportAutomationEventList(*listPtr, fileName.c_str()));
 
-		if (listValue.Type() != ValueType::Map) return IntrinsicResult(Value::Truth(false));
+		if (listValue.Type() != ValueType::Map) return IntrinsicResult::Zero;
 
 		ValueDict map = listValue.GetDict();
 		Value eventsValue = map.Lookup(String("events"), Value::Null);
-		if (eventsValue.Type() != ValueType::List) return IntrinsicResult(Value::Truth(false));
+		if (eventsValue.Type() != ValueType::List) return IntrinsicResult::Zero;
 
 		ValueList eventsList = eventsValue.GetList();
 		std::vector<AutomationEvent> events;
@@ -3610,7 +3610,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		int max = context.GetArg(2).IntValue();
 
 		int* sequence = LoadRandomSequence(count, min, max);
-		if (sequence == nullptr) return IntrinsicResult(Value::Null);
+		if (sequence == nullptr) return IntrinsicResult::Null;
 
 		ValueList result;
 		for (unsigned int i = 0; i < count; i++) {

@@ -47,6 +47,7 @@ set(APP_SOURCES
     src/RaylibIntrinsics.cpp
     src/RaylibTypes.cpp
     src/RawData.cpp
+    src/Matrix.cpp
     src/RAudio.cpp
     src/RCore.cpp
     src/RMath.cpp

@@ -864,7 +864,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		String textStr = context.GetArg(0).ToString();
 		String delimiterStr = context.GetArg(1).ToString();
-		if (delimiterStr.LengthB() == 0) return IntrinsicResult(Value::Null);
+		if (delimiterStr.LengthB() == 0) return IntrinsicResult::Null;
 
 		char delimiter = delimiterStr.data()[0];
 		int count = 0;

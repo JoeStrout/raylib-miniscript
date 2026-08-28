@@ -942,7 +942,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
 		String path;
-		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(ExportMesh(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMesh", i.GetFunc());
@@ -953,7 +953,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
 		String path;
-		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult(Value::Truth(false));
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(ExportMeshAsCode(mesh, path.c_str()));
 	});
 	raylibModule.SetValue("ExportMeshAsCode", i.GetFunc());
