@@ -36,10 +36,33 @@ static const bool kSystemIsLittleEndian = IsSystemLittleEndian();
 // BinaryData implementation
 //--------------------------------------------------------------------------------
 
+// A failed allocation may only mean that unreachable RawData buffers are still
+// waiting to be swept, since a buffer is not freed until its handle is
+// collected.  So collect once and try again before giving up.  One retry only:
+// if a full mark-sweep did not free enough, nothing is reclaimable and a second
+// pass would just burn time on the way to the same failure.
+//
+// Both callers below run inside an intrinsic, which VM.MarkRoots covers (it
+// scans the current frame's registers), and neither holds a GC Value in a local
+// at the point of the call -- the requirement stated on GCManager::MaybeCollect.
+static unsigned char* AllocOrCollect(int size) {
+    unsigned char* p = (unsigned char*)malloc(size);
+    if (p != nullptr) return p;
+    GCManager::CollectGarbage();
+    return (unsigned char*)malloc(size);
+}
+
+static unsigned char* ReallocOrCollect(unsigned char* oldPtr, int size) {
+    unsigned char* p = (unsigned char*)realloc(oldPtr, size);
+    if (p != nullptr) return p;
+    GCManager::CollectGarbage();
+    return (unsigned char*)realloc(oldPtr, size);
+}
+
 BinaryData::BinaryData(int size)
     : bytes(nullptr), length(size), littleEndian(true), ownsBuffer(true) {
     if (size > 0) {
-        bytes = (unsigned char*)malloc(size);
+        bytes = AllocOrCollect(size);
         if (bytes == nullptr) {
             throw std::bad_alloc();
         }
@@ -76,7 +99,7 @@ void BinaryData::Resize(int newSize) {
         return;
     }
 
-    unsigned char* newBytes = (unsigned char*)realloc(bytes, newSize);
+    unsigned char* newBytes = ReallocOrCollect(bytes, newSize);
     if (newBytes == nullptr) {
         throw std::bad_alloc();
     }
@@ -255,6 +278,25 @@ int BinaryData::SetUTF8(int offset, const String& value) {
 static const Value& kHandle() { static Value v("_handle"); return v; }
 static const Value& kLittleEndian() { static Value v("littleEndian"); return v; }
 
+// The buffer behind a RawData lives in a GCHandle, so it is released when the
+// last map referring to it becomes unreachable -- no explicit dispose, and no
+// leak when a script simply drops the value.  Before this, "_handle" held the
+// pointer as a number and nothing ever freed it.
+//
+// The finalizer only deletes the wrapper.  Whether the *buffer* is freed is
+// BinaryData's own decision: its destructor checks ownsBuffer, so a borrowed
+// buffer (one raylib will free itself, see UnloadWaveSamples / UnloadFileData)
+// is left alone.  That keeps the existing ownership API working unchanged.
+static Value MakeHandle(BinaryData* data) {
+    return Value::NewHandle(data, [](void* p) { delete (BinaryData*)p; });
+}
+
+// The BinaryData behind a handle Value, or null if it is not one.
+static BinaryData* HandleData(Value handleVal) {
+    if (!handleVal.IsHandle()) return nullptr;
+    return (BinaryData*)handleVal.HandlePtr();
+}
+
 // Helper: get BinaryData from a RawData object
 static BinaryData* GetBinaryData(Context context) {
     Value self = context.GetVar(String("self"));
@@ -265,11 +307,8 @@ static BinaryData* GetBinaryData(Context context) {
     ValueDict map = self.GetDict();
     Value handleVal = map.Lookup(kHandle(), Value::Null);
 
-    if (handleVal.Type() != ValueType::Number) {
-        return nullptr;
-    }
-
-    BinaryData* data = (BinaryData*)ValueToPointer(handleVal);
+    BinaryData* data = HandleData(handleVal);
+    if (data == nullptr) return nullptr;
 
     // Update littleEndian from the map
     Value leVal = map.Lookup(kLittleEndian(), Value::one);
@@ -318,8 +357,9 @@ ValueDict& RawDataClass() {
         }
 
         if (newSize == 0) {
-            // Delete old data
-            if (oldData != nullptr) delete oldData;
+            // Dropping the handle is the release: the finalizer deletes the
+            // BinaryData once nothing else refers to it.  Deleting it here
+            // instead would leave the handle dangling and double-free on sweep.
             map.SetValue(kHandle(), Value::Null);
             return IntrinsicResult::Null;
         }
@@ -327,7 +367,7 @@ ValueDict& RawDataClass() {
         // Create new data or resize existing
         if (oldData == nullptr) {
             BinaryData* newData = new BinaryData(newSize);
-            map.SetValue(kHandle(), Value((double)(intptr_t)newData));
+            map.SetValue(kHandle(), MakeHandle(newData));
         } else {
             if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
             oldData->Resize(newSize);
@@ -665,7 +705,7 @@ Value RawDataToValue(BinaryData* data) {
 
 	ValueDict instance;
 	instance.SetValue(Value::magicIsA, StaticMap(RawDataClass()));
-    instance.SetValue(kHandle(), Value((double)(intptr_t)data));
+    instance.SetValue(kHandle(), MakeHandle(data));
 	instance.SetValue(kLittleEndian(), Value(data->littleEndian ? 1.0 : 0.0));
     return DynamicMap(instance);
 }
@@ -676,9 +716,8 @@ BinaryData* ValueToRawData(Value value) {
     ValueDict map = value.GetDict();
     Value handleVal = map.Lookup(kHandle(), Value::Null);
 
-    if (handleVal.Type() != ValueType::Number) return nullptr;
-
-    BinaryData* data = (BinaryData*)ValueToPointer(handleVal);
+    BinaryData* data = HandleData(handleVal);
+    if (data == nullptr) return nullptr;
 
     // Update littleEndian setting
     if (data != nullptr) {

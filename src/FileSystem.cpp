@@ -897,6 +897,23 @@ bool OpenFile::ReadChars(int codePointCount, String& out) {
 	return true;
 }
 
+// A file handle's writes live in `buf` until Close writes them back, so a script
+// that drops its last reference without calling close would silently lose them.
+// The GC handle finalizer deletes us, which makes this destructor the backstop:
+// dropping a handle now saves, rather than discarding, the work.
+//
+// This is a correctness net, not the expected path -- close is still how a
+// script should finish with a file, because that is where it can see an error.
+// Here there is no caller left to report to: Close records failure in `error`,
+// which nobody will read, and a destructor must not throw regardless.  The
+// alternative was silent data loss, which is the worse of the two.
+//
+// Close is idempotent (it returns immediately when !open), so an explicit close
+// followed by destruction does no second write.
+OpenFile::~OpenFile() {
+	Close();
+}
+
 void OpenFile::Close() {
 	if (!open) return;
 	if (writable && needSave) {

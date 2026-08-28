@@ -228,8 +228,12 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 			data->ReleaseOwnership();
 		}
 
-		// Delete the BinaryData wrapper
-		delete data;
+		// Leave the wrapper for the GC.  Now that the buffer lives in a
+		// GCHandle, deleting it here would leave that handle dangling and
+		// delete it a second time on sweep.  Emptied out, it is harmless: the
+		// script's RawData reads as zero-length until it drops the reference.
+		data->bytes = nullptr;
+		data->length = 0;
 
 		return IntrinsicResult::Null;
 	});

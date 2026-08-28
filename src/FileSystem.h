@@ -291,6 +291,10 @@ public:
 	// Check error after constructing: non-empty means the open failed.
 	OpenFile(const Resolved& res, const String& mode);
 
+	// Flushes pending writes if the script never called close.  See the
+	// definition in FileSystem.cpp for why this is worth doing here.
+	~OpenFile();
+
 	bool IsOpen() const { return open; }
 	bool IsAtEnd() const { return !open || pos >= buf.size(); }
 	long Position() const { return open ? (long)pos : 0; }

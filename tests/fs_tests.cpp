@@ -361,15 +361,28 @@ static void testOpenFilePersistence() {
 	fs::ReadText(String("/usr/written.txt"), text);
 	eq(text, "alpha\nbeta\n", "contents round-tripped");
 
-	// An unclosed handle loses its writes.  Mini Micro has always behaved this
-	// way; the test exists so the behavior is a decision, not a surprise.
+	// A handle destroyed without close still saves, because ~OpenFile calls
+	// Close.  This is a deliberate divergence from Mini Micro 1, whose OpenFile
+	// (Assets/Scripts/FileUtils.cs) has only an explicit Close -- no finalizer,
+	// no IDisposable -- so a dropped handle there loses its writes.
+	//
+	// We diverge because a script's RawData/FileHandle now lives in a GCHandle,
+	// so dropping the last reference runs a finalizer that can flush; losing the
+	// data instead would be silent.  The cost, accepted knowingly: the save
+	// happens when the sweep runs, not at a point the script chooses, so a
+	// write-drop-read sequence depends on GC timing.  close() remains the
+	// supported way to finish with a file -- it is the only one that is
+	// deterministic and the only one where the script can see a write error.
 	{
 		fs::Resolved r2;
 		fs::Resolve(String("/usr/dropped.txt"), r2);
 		fs::OpenFile f(r2, String("w"));
-		f.Write(String("lost"));
+		f.Write(String("saved anyway"));
 	}
-	ok(!fs::Exists(String("/usr/dropped.txt")), "an unclosed handle does not persist");
+	ok(fs::Exists(String("/usr/dropped.txt")), "a dropped handle persists via the destructor");
+	String dropped;
+	fs::ReadText(String("/usr/dropped.txt"), dropped);
+	eq(dropped, "saved anyway", "...with its contents intact");
 
 	// Position and seeking, over the in-memory buffer.
 	{

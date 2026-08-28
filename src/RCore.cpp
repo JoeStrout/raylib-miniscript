@@ -2708,7 +2708,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 		if (dataValue.Type() == ValueType::Map) {
 			ValueDict map = dataValue.GetDict();
-			map.SetValue(String("_handle"), Value::zero);
+			map.SetValue(String("_handle"), Value::Null);   // a handle Value now, not a number
 		}
 
 		return IntrinsicResult::Null;

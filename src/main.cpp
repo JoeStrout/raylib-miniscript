@@ -257,6 +257,13 @@ void MainLoop() {
 			// MS2 does not throw for runtime errors; they are delivered to the
 			// errorOutput delegate (PrintErr), which sets the ERRORED state.
 			interpreter.RunUntilDone(0.1, true);
+			// One GC tick per frame.  This is a safe point -- RunUntilDone has
+			// returned, so the VM is between steps with no intrinsic in flight.
+			// MaybeCollect decides whether it is actually worth collecting (see
+			// GCManager); a script that yields will usually have collected
+			// already through the lower "encouraged" thresholds, and this call
+			// is the guarantee for one that never yields.
+			MiniScript::GCManager::MaybeCollect();
 		} else {
 			scriptState = COMPLETE;
 			printf("Script finished\n");

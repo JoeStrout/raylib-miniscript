@@ -24,6 +24,15 @@ extern "C" {
 }
 #endif
 
+// Host (malloc) heap introspection, for leak diagnostics.  Every platform we
+// ship on can report how many bytes are currently handed out by the allocator;
+// there is just no single standard spelling for it.
+#if defined(__APPLE__)
+	#include <malloc/malloc.h>
+#elif defined(__EMSCRIPTEN__) || defined(__linux__)
+	#include <malloc.h>
+#endif
+
 // Separator between entries in MS_IMPORT_PATH.  We write ':' on all platforms,
 // matching MiniScript 1.x and command-line MiniScript 2; ';' is also accepted
 // when parsing (see FindPathSep).
@@ -652,6 +661,46 @@ static IntrinsicResult intrinsic_run(Context context, IntrinsicResult partialRes
 // Public API
 //--------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------
+// Host heap introspection
+//--------------------------------------------------------------------------------
+//
+// Bytes currently allocated from the C heap and not yet freed, or -1 where the
+// platform gives us no way to ask.  This counts *everything* malloc'd in the
+// process, including raylib's own buffers and the C++ runtime -- so it is noisy
+// in absolute terms and only meaningful as a difference between two readings.
+//
+// Its purpose is to catch host-side memory that the MiniScript GC cannot see.
+// A block reached only through a raw pointer stored in a map (as RawData and
+// the raylib types do today) is invisible to gc.stats; it shows up here.
+
+static long long HostBytesInUse() {
+#if defined(__APPLE__)
+	// malloc_zone_statistics() on the default zone reports a constant on modern
+	// macOS -- real allocations land in the nano/scalable zones -- so ask for
+	// the all-zones total instead.
+	struct mstats m = mstats();
+	return (long long)m.bytes_used;
+#elif defined(__EMSCRIPTEN__)
+	// Present for both dlmalloc and emmalloc.  Documented as slow; fine for a
+	// diagnostic that a script calls a handful of times.
+	struct mallinfo mi = mallinfo();
+	return (long long)(unsigned)mi.uordblks;
+#elif defined(__linux__) && defined(__GLIBC__) \
+      && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33))
+	// mallinfo2 uses size_t fields; the older mallinfo wraps past 4GB.
+	struct mallinfo2 mi = mallinfo2();
+	return (long long)mi.uordblks;
+#elif defined(__linux__)
+	struct mallinfo mi = mallinfo();
+	return (long long)(unsigned)mi.uordblks;
+#else
+	// Windows: the CRT exposes this only through the debug heap (_CrtMemState)
+	// or a HeapWalk of every heap, neither of which is worth it here.
+	return -1;
+#endif
+}
+
 void AddMoreIntrinsics() {
 	// Import a MiniScript library by name, searching MS_IMPORT_PATH
 	Intrinsic importFunc = Intrinsic::Create("import");
@@ -702,6 +751,16 @@ void AddMoreIntrinsics() {
 		add("ModelAnimation", rcModelAnimation);
 		map.SetValue(String("total"), Value(total));
 		return IntrinsicResult(DynamicMap(map));
+	});
+
+	// Bytes currently allocated from the host (malloc) heap, or null if this
+	// platform cannot report it.  Meaningful only as a delta between readings;
+	// see HostBytesInUse above.
+	Intrinsic hmFunc = Intrinsic::Create("hostMemory");
+	hmFunc.set_Code([](Context context, IntrinsicResult partialResult) -> IntrinsicResult {
+		long long bytes = HostBytesInUse();
+		if (bytes < 0) return IntrinsicResult::Null;
+		return IntrinsicResult(Value((double)bytes));
 	});
 
 	// Set the default import search path (variables are expanded at import time),
