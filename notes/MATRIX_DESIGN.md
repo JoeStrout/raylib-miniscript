@@ -190,8 +190,20 @@ for free.)
 Matrix.ofSize(rows, columns, initialValue=0)
 ```
 `initialValue` may be a number, or a **function taking no arguments**, invoked once per
-element — e.g. `Matrix.ofSize(3, 3, @rnd)`. (Matches `list.init` / `list.init2d`.)
-A function will always be slower than a numeric value; users understand this.
+element, in row-major order — e.g. `Matrix.ofSize(3, 3, @rnd)`. (Matches `list.init` /
+`list.init2d`.) A function will always be slower than a numeric value; users understand
+this.
+
+The callback runs re-entrantly (`VM::RunFunction` pushes its frame above the intrinsic's
+own registers), so it may do anything an ordinary function can: allocate, call other
+intrinsics, even call `ofSize` with another callback. Each result must be a number:
+
+- an **error value** returned by the callback is returned to the caller in place of the
+  matrix — that exact error, not a generic wrapper;
+- any other non-number is a `TypeError` (this includes the `null` from a function with no
+  explicit return, so a mistaken callback fails loudly rather than filling with zeros);
+- a runtime error **raised** inside the callback stops the program, as it would anywhere
+  else; the half-built matrix is discarded.
 
 ```
 Matrix.identity(size)              // square; ones on the main diagonal

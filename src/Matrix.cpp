@@ -1858,6 +1858,46 @@ static int MatrixFromRawData(MatrixData* m, BinaryData* rd, const DType* dt,
 }
 
 //--------------------------------------------------------------------------------
+// Callback fill
+//--------------------------------------------------------------------------------
+
+// Fill m->data[0 .. elems-1] by calling a MiniScript function once per element,
+// in row-major order.  The function is invoked with no arguments; each call's
+// result must be a number.
+//
+// The re-entrant call is VM::RunFunction, which pushes the callee's frame above
+// this intrinsic's own registers and drives the VM until it returns.  That means
+// the callback can do anything a normal function can -- including allocating,
+// and so triggering a collection.  The MatrixData we are filling is not a GC
+// object yet (its handle is made later, by MatrixToValue), so a collection
+// cannot take it; but it is also owned by nobody but us, so every early exit
+// below has to delete it.  That is the caller's job, and the caller does it.
+//
+// Returns true on success.  On failure, *outErr holds what the caller should
+// return in place of the matrix:
+//   - the callback's own error value, if it returned one;
+//   - a TypeError, if it returned anything else that isn't a number;
+//   - null, if the callback RAISED a runtime error rather than returning one.
+//     RunFunction has already surfaced that on the outer run and stopped the
+//     VM, so there is nothing left for us to report -- we just stop filling.
+static bool FillFromCallback(Context context, MatrixData* m, long elems,
+							 Value fn, Value* outErr) {
+	*outErr = Value::Null;
+	ValueList noArgs;
+	for (long i = 0; i < elems; i++) {
+		Value v = context.vm.RunFunction(fn, noArgs);
+		if (!context.vm.IsRunning) return false;
+		if (v.IsError()) { *outErr = v; return false; }
+		if (v.Type() != ValueType::Number) {
+			*outErr = ErrorTypes::TypeError("number", v);
+			return false;
+		}
+		m->data[i] = v.DoubleValue();
+	}
+	return true;
+}
+
+//--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
 
@@ -1877,6 +1917,8 @@ ValueDict& MatrixClass() {
 	Intrinsic f;
 
 	// Matrix.ofSize(rows, columns, initialValue=0) -> new Matrix
+	// initialValue may be a number, or a function of no arguments called once
+	// per element in row-major order (see FillFromCallback).
 	f = Intrinsic::Create("");
 	f.AddParam("rows");
 	f.AddParam("columns");
@@ -1897,17 +1939,11 @@ ValueDict& MatrixClass() {
 				"Matrix.ofSize: requested size exceeds the maximum matrix size"));
 		}
 
-		Value initial = context.GetVar("initialValue");
-		if (initial.Type() == ValueType::Function) {
-			// Per-element callback needs the intrinsic to re-enter the VM,
-			// which this slice does not do yet.  Say so rather than quietly
-			// filling with zeros.
-			return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.ofSize: a function initialValue is not supported yet"));
-		}
 		// Note that null is NOT accepted: the parameter already defaults to 0,
 		// so an explicit null would be a second spelling of the same thing.
-		if (initial.Type() != ValueType::Number) {
+		Value initial = context.GetVar("initialValue");
+		bool isFunc = (initial.Type() == ValueType::Function);
+		if (!isFunc && initial.Type() != ValueType::Number) {
 			return IntrinsicResult(ErrorTypes::TypeError("number", initial));
 		}
 
@@ -1916,10 +1952,18 @@ ValueDict& MatrixClass() {
 			return IntrinsicResult(ErrorTypes::RuntimeError(
 				"Matrix.ofSize: out of memory"));
 		}
-		// NewMatrixData zero-fills, so only a nonzero initial value needs work.
-		double init = initial.DoubleValue();
-		if (init != 0.0) {
-			for (long i = 0; i < elems; i++) m->data[i] = init;
+		if (isFunc) {
+			Value err;
+			if (!FillFromCallback(context, m, elems, initial, &err)) {
+				delete m;
+				return IntrinsicResult(err);
+			}
+		} else {
+			// NewMatrixData zero-fills, so only a nonzero value needs work.
+			double init = initial.DoubleValue();
+			if (init != 0.0) {
+				for (long i = 0; i < elems; i++) m->data[i] = init;
+			}
 		}
 		return IntrinsicResult(MatrixToValue(m));
 	});

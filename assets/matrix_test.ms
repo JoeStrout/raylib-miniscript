@@ -107,9 +107,66 @@ ok isErr(m.setElem(9, 9, 1)), "setElem bounds-checks too"
 ok isErr(m.getElem("x", 0)), "non-numeric index is an error"
 ok isErr(m.setElem(0, 0, "x")), "non-numeric value is an error"
 ok isErr(Matrix.ofSize(-1, 3)), "negative size is an error"
-ok isErr(Matrix.ofSize(3, 3, @print)), "function initialValue is refused, not ignored"
 ok isErr(Matrix.ofSize(3, 3, null)), "explicit null initialValue is refused (0 is the default)"
 ok isErr(Matrix.ofSize(100000, 100000)), "oversized request is an error, not an OOM"
+
+// A function initialValue is called once per element, with no arguments.  These
+// exercise the intrinsic re-entering the VM: the callback runs a full MiniScript
+// frame pushed above the intrinsic's own registers, so it may do anything an
+// ordinary function can -- allocate, call other intrinsics, even nest.
+print
+print "-- ofSize with a function initialValue --"
+counter = 0
+nextVal = function
+	outer.counter = outer.counter + 1
+	return counter
+end function
+matches Matrix.ofSize(2, 3, @nextVal), 2, 3, [1, 2, 3, 4, 5, 6], "callback fills in row-major order"
+eq counter, 6, "callback runs exactly rows*columns times"
+
+counter = 0
+matches Matrix.ofSize(0, 4, @nextVal), 0, 4, [], "an empty matrix calls the callback not at all"
+eq counter, 0, "...really not at all"
+
+// We pass no arguments, so a callback that declares parameters gets its defaults.
+withParam = function(x = 42)
+	return x
+end function
+matches Matrix.ofSize(1, 2, @withParam), 1, 2, [42, 42], "a callback's parameter defaults apply"
+
+// Re-entrancy: the callback allocates matrices of its own while ours is still
+// half-filled and not yet reachable from the VM.
+allocCb = function
+	junk = Matrix.ofSize(20, 20, 1)
+	return junk.rows
+end function
+matches Matrix.ofSize(2, 2, @allocCb), 2, 2, [20, 20, 20, 20], "a callback may allocate"
+
+// ...and may itself be an ofSize with a callback.
+three = function
+	return 3
+end function
+nestCb = function
+	return Matrix.ofSize(1, 2, @three).getElem(0, 1)
+end function
+matches Matrix.ofSize(1, 2, @nestCb), 1, 2, [3, 3], "callbacks may nest"
+
+// An error VALUE returned by the callback is what the caller gets back -- that
+// exact error, not a generic "the callback failed".
+failCb = function
+	return Matrix.ofSize(-1, -1)
+end function
+e = Matrix.ofSize(2, 2, @failCb)
+ok isErr(e), "an error returned by the callback is returned to the caller"
+ok e.message.indexOf("must be >= 0") != null, "...and it is the callback's own error"
+
+// Anything else non-numeric is a type error, including the null that a function
+// with no explicit return gives back.
+strCb = function
+	return "hello"
+end function
+ok isErr(Matrix.ofSize(2, 2, @strCb)), "a non-numeric callback result is an error"
+ok isErr(Matrix.ofSize(3, 3, @print)), "a callback returning null is an error, not a zero fill"
 
 // The whole point of the null handle on the class.
 print
