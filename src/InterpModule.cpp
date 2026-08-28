@@ -456,6 +456,8 @@ ValueDict& InterpClass() {
 	// drain and clear whatever the child printed to stdout
 	interpClass.SetValue(String("takeOutput"), f.GetFunc());
 
+	Intrinsic::AddShortName(StaticMap(interpClass), String("Interp"));
+
 	return interpClass;
 }
 

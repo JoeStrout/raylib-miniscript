@@ -11,6 +11,9 @@
 #include "miniscript.h"
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
+#include <string>
+#include <cstdio>
 
 namespace MiniScript {
 
@@ -323,6 +326,390 @@ static bool ResolveRowCol(Context context, MatrixData* m,
 	if (!ResolveIndex(context.GetVar("row"), m->rows, "row", outRow, outErr)) return false;
 	if (!ResolveIndex(context.GetVar("column"), m->columns, "column", outCol, outErr)) return false;
 	return true;
+}
+
+//--------------------------------------------------------------------------------
+// gemm
+//--------------------------------------------------------------------------------
+//
+// One routine behind every product and every add/scale in the API:
+//
+//     out := alpha * op(A) * op(B) + beta * addend
+//
+// with op(X) being X or its transpose.  A null B collapses this to
+// alpha*op(A) + beta*addend, which is how plus/minus/negate/clone/transpose are
+// all expressed.  See notes/MATRIX_DESIGN.md.
+
+// Scratch for de-aliasing.  Static and thread-local, grown on demand and never
+// shrunk, so a steady-state loop that aliases allocates zero times after
+// warmup.  There is no reentrancy hazard: gemm never calls back into MiniScript.
+//
+// Call this ONCE per gemm with the total needed, then carve segments out of the
+// result -- a second call may realloc and invalidate the first pointer.
+static double* Scratch(long elems) {
+	static thread_local double* buf = nullptr;
+	static thread_local long cap = 0;
+	if (elems <= cap) return buf;
+	double* p = (double*)realloc(buf, (size_t)elems * sizeof(double));
+	if (p == nullptr) {
+		GCManager::CollectGarbage();
+		p = (double*)realloc(buf, (size_t)elems * sizeof(double));
+		if (p == nullptr) return nullptr;
+	}
+	buf = p;
+	cap = elems;
+	return buf;
+}
+
+// A read-only snapshot of an operand: dimensions plus contiguous data with
+// stride == columns.  Taken BEFORE `out` is reshaped, because an operand that
+// aliases `out` is the very same MatrixData -- reshaping out would change this
+// operand's dimensions out from under us.
+struct Operand {
+	const double* data = nullptr;
+	int rows = 0;
+	int columns = 0;
+	long Elems() const { return (long)rows * (long)columns; }
+};
+
+// How `addend` maps onto the m x n result.
+enum AddendMode {
+	kAddendNone,        // absent, or beta == 0
+	kAddendScalar,      // a number, or a 1x1 matrix
+	kAddendFull,        // exactly m x n
+	kAddendRow,         // 1 x n, broadcast down every row
+	kAddendCol          // m x 1, broadcast across every column
+};
+
+// Write beta*addend into the m x n result, or zeros when there is nothing to
+// add.  The kernels then accumulate onto this, which is what lets one code path
+// serve both the "fresh result" and "accumulate into existing" cases.
+//
+// beta == 0 must not read the addend at all -- fresh storage may hold anything,
+// and 0*NaN is NaN.  Same contract as BLAS.
+static void Prefill(double* out, int m, int n, const Operand& add,
+                    AddendMode mode, double beta, double scalar) {
+	long total = (long)m * n;
+	if (mode == kAddendNone) {
+		memset(out, 0, (size_t)total * sizeof(double));
+		return;
+	}
+	switch (mode) {
+		case kAddendScalar: {
+			double v = beta * scalar;
+			for (long i = 0; i < total; i++) out[i] = v;
+			break;
+		}
+		case kAddendFull:
+			for (long i = 0; i < total; i++) out[i] = beta * add.data[i];
+			break;
+		case kAddendRow:
+			for (int i = 0; i < m; i++) {
+				double* crow = out + (long)i * n;
+				for (int j = 0; j < n; j++) crow[j] = beta * add.data[j];
+			}
+			break;
+		case kAddendCol:
+			for (int i = 0; i < m; i++) {
+				double v = beta * add.data[i];
+				double* crow = out + (long)i * n;
+				for (int j = 0; j < n; j++) crow[j] = v;
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+// Level-1: out += alpha * op(A).  Reached whenever B is null.
+//
+// This is the reason gemm early-dispatches instead of funnelling everything
+// through the matmul: add, plus, subtract, negate, addScaled, clone, copyFrom,
+// transpose and transposed are ALL defined as gemm with a null B, and they are
+// bandwidth-bound work that must not pay matmul setup.
+static void KernelAxpby(double* out, int m, int n, const Operand& A, bool transA, double alpha) {
+	if (!transA) {
+		long total = (long)m * n;
+		for (long i = 0; i < total; i++) out[i] += alpha * A.data[i];
+	} else {
+		// Transpose-copy: the flag does not transpose anything, it changes the
+		// indexing.  out is n_A-rows by m_A-cols reversed, so walk A by column.
+		for (int i = 0; i < m; i++) {
+			double* crow = out + (long)i * n;
+			for (int j = 0; j < n; j++) crow[j] += alpha * A.data[(long)j * A.columns + i];
+		}
+	}
+}
+
+// Level-3: out += alpha * op(A) * op(B), with (m x k) times (k x n).
+//
+// Three of the four transpose combinations have a formulation whose inner loop
+// walks contiguous memory, which is why transposedTimes and timesTransposed
+// cost no allocation and no copy:
+//   NN  i-k-j : broadcast A[i][k] over a contiguous run of B's row
+//   NT  i-j-k : a dot product of two contiguous rows
+//   TN  k-i-j : a rank-1 update over contiguous rows of both
+// TT has no such form and falls back to strided indexing; it is also the one
+// combination nothing in the API actually asks for.
+static void KernelMatmul(double* out, int m, int n, int k,
+                         const Operand& A, bool transA,
+                         const Operand& B, bool transB, double alpha) {
+	if (!transA && !transB) {
+		for (int i = 0; i < m; i++) {
+			double* crow = out + (long)i * n;
+			const double* arow = A.data + (long)i * A.columns;
+			for (int kk = 0; kk < k; kk++) {
+				double aik = alpha * arow[kk];
+				if (aik == 0.0) continue;
+				const double* brow = B.data + (long)kk * B.columns;
+				for (int j = 0; j < n; j++) crow[j] += aik * brow[j];
+			}
+		}
+	} else if (!transA && transB) {
+		for (int i = 0; i < m; i++) {
+			double* crow = out + (long)i * n;
+			const double* arow = A.data + (long)i * A.columns;
+			for (int j = 0; j < n; j++) {
+				const double* brow = B.data + (long)j * B.columns;
+				double sum = 0.0;
+				for (int kk = 0; kk < k; kk++) sum += arow[kk] * brow[kk];
+				crow[j] += alpha * sum;
+			}
+		}
+	} else if (transA && !transB) {
+		for (int kk = 0; kk < k; kk++) {
+			const double* arow = A.data + (long)kk * A.columns;
+			const double* brow = B.data + (long)kk * B.columns;
+			for (int i = 0; i < m; i++) {
+				double a = alpha * arow[i];
+				if (a == 0.0) continue;
+				double* crow = out + (long)i * n;
+				for (int j = 0; j < n; j++) crow[j] += a * brow[j];
+			}
+		}
+	} else {
+		for (int i = 0; i < m; i++) {
+			double* crow = out + (long)i * n;
+			for (int j = 0; j < n; j++) {
+				double sum = 0.0;
+				for (int kk = 0; kk < k; kk++) {
+					sum += A.data[(long)kk * A.columns + i] * B.data[(long)j * B.columns + kk];
+				}
+				crow[j] += alpha * sum;
+			}
+		}
+	}
+}
+
+// A second operand that must match, or broadcast to, an m x n matrix: a number,
+// a Matrix, or a list (read exactly as Matrix.fromList would read it).
+//
+// Reuses the AddendMode classification that gemm's addend uses, so the
+// broadcasting rules cannot drift between gemm and the elementwise ops.
+struct Broadcast {
+	AddendMode mode = kAddendNone;
+	double scalar = 0.0;
+	const double* data = nullptr;
+	int stride = 0;
+	double At(int i, int j) const {
+		switch (mode) {
+			case kAddendScalar: return scalar;
+			case kAddendFull:   return data[(long)i * stride + j];
+			case kAddendRow:    return data[j];
+			case kAddendCol:    return data[i];
+			default:            return 0.0;
+		}
+	}
+};
+
+// Resolve such an operand.  A list is materialized into the shared scratch
+// buffer, so callers must resolve at most ONE broadcast operand per call -- a
+// second Scratch() call may realloc and invalidate the first pointer.
+static bool ResolveBroadcast(Value v, int m, int n, const char* who,
+                             Broadcast* out, Value* outErr) {
+	if (v.Type() == ValueType::Number) {
+		out->mode = kAddendScalar;
+		out->scalar = v.DoubleValue();
+		return true;
+	}
+	int rows = 0, cols = 0;
+	const double* data = nullptr;
+	if (v.Type() == ValueType::List) {
+		ValueList list = v.GetList();
+		bool nested = false;
+		if (!ListShape(list, &nested, &rows, &cols, who, outErr)) return false;
+		long need = (long)rows * cols;
+		if (need > 0) {
+			double* buf = Scratch(need);
+			if (buf == nullptr) {
+				*outErr = ErrorTypes::RuntimeError(String("Matrix.") + who + ": out of memory");
+				return false;
+			}
+			for (int r = 0; r < rows; r++)
+				for (int c = 0; c < cols; c++)
+					buf[(long)r * cols + c] = ListElem(list, nested, r, c);
+			data = buf;
+		}
+	} else {
+		MatrixData* md = ValueToMatrix(v);
+		if (md == nullptr) {
+			*outErr = ErrorTypes::RuntimeError(
+				String("Matrix.") + who + ": expected a number, a Matrix, or a list");
+			return false;
+		}
+		rows = md->rows; cols = md->columns; data = md->data;
+	}
+	out->data = data;
+	out->stride = cols;
+	if (rows == 1 && cols == 1) {
+		out->mode = kAddendScalar;
+		out->scalar = (data != nullptr) ? data[0] : 0.0;
+	}
+	else if (rows == m && cols == n) out->mode = kAddendFull;
+	else if (rows == 1 && cols == n) out->mode = kAddendRow;
+	else if (rows == m && cols == 1) out->mode = kAddendCol;
+	else {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": operand does not match or broadcast to the matrix shape");
+		return false;
+	}
+	return true;
+}
+
+// Reduction axis: null (whole matrix) is reported as -1; 0 reduces down the
+// columns to a 1 x n result, 1 reduces across the rows to an m x 1 result.
+// Same axis meaning as numpy, differing only in that we return a matrix rather
+// than a 1-D array.
+static bool AxisArg(Value v, int* out, Value* outErr) {
+	if (v.IsNull()) { *out = -1; return true; }
+	if (v.Type() != ValueType::Number) {
+		*outErr = ErrorTypes::TypeError("number", v);
+		return false;
+	}
+	int a = v.IntValue();
+	if (a != 0 && a != 1) {
+		*outErr = ErrorTypes::RuntimeError("Matrix: axis must be 0, 1, or null");
+		return false;
+	}
+	*out = a;
+	return true;
+}
+
+// ---- Reductions ----
+
+enum ReduceOp {
+	kReduceSum, kReduceSumSq, kReduceMax, kReduceMin, kReduceArgMax, kReduceArgMin
+};
+
+static bool ReduceNeedsElement(int op) {
+	return op == kReduceMax || op == kReduceMin || op == kReduceArgMax || op == kReduceArgMin;
+}
+
+// Reduce `count` elements starting at `base`, `stride` apart.  For the arg
+// forms the return value is an index into that run.
+//
+// Ties go to the FIRST occurrence (the comparison is strict), and NaN
+// propagates: any NaN makes max/min NaN and makes argmax/argmin report that
+// NaN's position.  Both match numpy, whose nan-skipping behavior lives in
+// separate nanmax/nanargmax functions.
+static double ReduceRun(const double* base, long count, long stride, int op) {
+	switch (op) {
+		case kReduceSum: {
+			double s = 0.0;
+			for (long i = 0; i < count; i++) s += base[i * stride];
+			return s;
+		}
+		case kReduceSumSq: {
+			double s = 0.0;
+			for (long i = 0; i < count; i++) { double v = base[i * stride]; s += v * v; }
+			return s;
+		}
+		case kReduceMax:
+		case kReduceMin: {
+			double best = base[0];
+			if (best != best) return best;
+			for (long i = 1; i < count; i++) {
+				double v = base[i * stride];
+				if (v != v) return v;
+				if (op == kReduceMax ? (v > best) : (v < best)) best = v;
+			}
+			return best;
+		}
+		default: {
+			double best = base[0];
+			long bi = 0;
+			if (best != best) return 0.0;
+			for (long i = 1; i < count; i++) {
+				double v = base[i * stride];
+				if (v != v) return (double)i;
+				if (op == kReduceArgMax ? (v > best) : (v < best)) { best = v; bi = i; }
+			}
+			return (double)bi;
+		}
+	}
+}
+
+// The body of every reduction intrinsic.
+static IntrinsicResult DoReduce(Context context, int op, const char* who) {
+	Value err;
+	MatrixData* m = SelfMatrix(context, &err);
+	if (m == nullptr) return IntrinsicResult(err);
+	int axis;
+	if (!AxisArg(context.GetVar("axis"), &axis, &err)) return IntrinsicResult(err);
+
+	if (axis < 0) {
+		// Whole matrix.  The live region is contiguous, so this is one run --
+		// which also makes an argmax a FLAT index, exactly as numpy's argmax
+		// over a flattened array reports it.
+		long count = m->LiveElems();
+		if (count == 0) {
+			if (ReduceNeedsElement(op)) return IntrinsicResult(ErrorTypes::RuntimeError(
+				String("Matrix.") + who + ": cannot reduce an empty matrix"));
+			return IntrinsicResult::Zero;
+		}
+		return IntrinsicResult(Value(ReduceRun(m->data, count, 1, op)));
+	}
+
+	int runLen = (axis == 0) ? m->rows : m->columns;
+	if (runLen == 0 && ReduceNeedsElement(op)) {
+		return IntrinsicResult(ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": cannot reduce a zero-length axis"));
+	}
+	int outRows = (axis == 0) ? 1 : m->rows;
+	int outCols = (axis == 0) ? m->columns : 1;
+	MatrixData* out = NewMatrixData(outRows, outCols);
+	if (out == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+		String("Matrix.") + who + ": out of memory"));
+
+	if (axis == 0) {
+		// Down each column: start at the top of the column, step by the stride.
+		for (int j = 0; j < m->columns; j++) {
+			out->data[j] = (runLen == 0) ? 0.0
+				: ReduceRun(m->data + j, runLen, m->columns, op);
+		}
+	} else {
+		// Across each row: contiguous.
+		for (int i = 0; i < m->rows; i++) {
+			out->data[i] = (runLen == 0) ? 0.0
+				: ReduceRun(m->data + (long)i * m->columns, runLen, 1, op);
+		}
+	}
+	return IntrinsicResult(MatrixToValue(out));
+}
+
+// One matrix element as display text.
+//
+// With a precision, fixed-point with that many decimals; without, MiniScript's
+// own number formatting, so a matrix shows its numbers exactly the way `print`
+// would show them individually.  NaN and the infinities are spelled the way
+// MiniScript spells them, so the two cannot disagree.
+static std::string FormatElem(double v, bool hasPrecision, int precision) {
+	if (std::isnan(v)) return "NaN";
+	if (std::isinf(v)) return v < 0 ? "-Inf" : "Inf";
+	if (!hasPrecision) return std::string(Value(v).ToString().c_str());
+	char buf[512];
+	snprintf(buf, sizeof(buf), "%.*f", precision, v);
+	return std::string(buf);
 }
 
 //--------------------------------------------------------------------------------
@@ -994,6 +1381,444 @@ ValueDict& MatrixClass() {
 	});
 	matrixClass.SetValue(String("equals"), f.GetFunc());
 
+	// A.gemm(B, addend=null, out=null, transA=false, transB=false, alpha=1, beta=1)
+	//
+	//     alpha * op(A) * op(B) + beta * addend
+	//
+	// B null  -> alpha*op(A) + beta*addend (the level-1 path)
+	// addend  -> null, a number, a 1xn / mx1 vector (broadcast), or a full mxn
+	// out     -> null allocates a fresh result; otherwise written in place and
+	//            resized as needed, and returned
+	//
+	// Aliasing is allowed everywhere: an input that shares storage with `out` is
+	// snapshotted into scratch before `out` is touched.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("B");
+	f.AddParam("addend");
+	f.AddParam("out");
+	f.AddParam("transA", Value::zero);
+	f.AddParam("transB", Value::zero);
+	f.AddParam("alpha", Value::one);
+	f.AddParam("beta", Value::one);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* A = SelfMatrix(context, &err);
+		if (A == nullptr) return IntrinsicResult(err);
+
+		Value vAlpha = context.GetVar("alpha");
+		Value vBeta = context.GetVar("beta");
+		if (vAlpha.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vAlpha));
+		if (vBeta.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vBeta));
+		double alpha = vAlpha.DoubleValue();
+		double beta = vBeta.DoubleValue();
+		bool transA = context.GetVar("transA").BoolValue();
+		bool transB = context.GetVar("transB").BoolValue();
+
+		// ---- B, and the result shape ----
+		Value vB = context.GetVar("B");
+		MatrixData* B = nullptr;
+		if (!vB.IsNull()) {
+			B = ValueToMatrix(vB);
+			if (B == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: B must be a Matrix or null"));
+		}
+		int m = transA ? A->columns : A->rows;
+		int kA = transA ? A->rows : A->columns;
+		int n, k = 0;
+		if (B != nullptr) {
+			int kB = transB ? B->columns : B->rows;
+			n = transB ? B->rows : B->columns;
+			if (kA != kB) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: inner dimensions do not match"));
+			k = kA;
+		} else {
+			n = kA;
+		}
+
+		// ---- addend, and how it broadcasts onto m x n ----
+		Value vAdd = context.GetVar("addend");
+		AddendMode mode = kAddendNone;
+		double addScalar = 0.0;
+		MatrixData* addM = nullptr;
+		ValueList addList;
+		bool addNested = false;
+		int addRows = 0, addCols = 0;
+		if (!vAdd.IsNull() && beta != 0.0) {
+			if (vAdd.Type() == ValueType::Number) {
+				mode = kAddendScalar;
+				addScalar = vAdd.DoubleValue();
+			} else {
+				if (vAdd.Type() == ValueType::List) {
+					addList = vAdd.GetList();
+					if (!ListShape(addList, &addNested, &addRows, &addCols, "gemm", &err)) {
+						return IntrinsicResult(err);
+					}
+				} else {
+					addM = ValueToMatrix(vAdd);
+					if (addM == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+						"Matrix.gemm: addend must be null, a number, a Matrix, or a list"));
+					addRows = addM->rows;
+					addCols = addM->columns;
+				}
+				if (addRows == 1 && addCols == 1) {
+					// A 1x1 operand is a scalar wearing a matrix's clothes.
+					// Read the value out here; the scalar path never looks at
+					// opAdd.data.
+					mode = kAddendScalar;
+					addScalar = addM != nullptr ? addM->data[0]
+					                            : ListElem(addList, addNested, 0, 0);
+				}
+				else if (addRows == m && addCols == n)          mode = kAddendFull;
+				else if (addRows == 1 && addCols == n)          mode = kAddendRow;
+				else if (addRows == m && addCols == 1)          mode = kAddendCol;
+				else return IntrinsicResult(ErrorTypes::RuntimeError(
+					"Matrix.gemm: addend does not match or broadcast to the result shape"));
+			}
+		}
+
+		// ---- resolve `out` ----
+		Value vOut = context.GetVar("out");
+		MatrixData* out = nullptr;
+		if (!vOut.IsNull()) {
+			out = ValueToMatrix(vOut);
+			if (out == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: out must be a Matrix or null"));
+		}
+
+		// ---- snapshot anything that aliases `out` ----
+		//
+		// An operand aliases `out` only by being the same MatrixData (storage is
+		// never shared otherwise), and then reshaping `out` would move its data
+		// and rewrite its dimensions.  So copy first, and record the dimensions
+		// as they are NOW.  A list addend is copied here too, which lets the
+		// prefill treat every addend uniformly as contiguous doubles.
+		Operand opA, opB, opAdd;
+		opA.rows = A->rows; opA.columns = A->columns;
+		if (B != nullptr) { opB.rows = B->rows; opB.columns = B->columns; }
+		opAdd.rows = addRows; opAdd.columns = addCols;
+
+		bool copyA = (out != nullptr && A == out);
+		bool copyB = (B != nullptr && out != nullptr && B == out);
+		bool copyAdd = (mode != kAddendNone && mode != kAddendScalar)
+		               && (!addList.Empty() || (addM != nullptr && out != nullptr && addM == out));
+		bool addIsList = !addList.Empty();
+		if (addIsList) copyAdd = (mode != kAddendNone && mode != kAddendScalar);
+
+		long needA = copyA ? opA.Elems() : 0;
+		long needB = copyB ? opB.Elems() : 0;
+		long needAdd = copyAdd ? opAdd.Elems() : 0;
+		long total = needA + needB + needAdd;
+		double* scratch = nullptr;
+		if (total > 0) {
+			scratch = Scratch(total);
+			if (scratch == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: out of memory"));
+		}
+		long at = 0;
+		if (copyA) { memcpy(scratch + at, A->data, (size_t)needA * sizeof(double)); opA.data = scratch + at; at += needA; }
+		else opA.data = A->data;
+		if (B != nullptr) {
+			if (copyB) { memcpy(scratch + at, B->data, (size_t)needB * sizeof(double)); opB.data = scratch + at; at += needB; }
+			else opB.data = B->data;
+		}
+		if (copyAdd) {
+			double* dst = scratch + at;
+			if (addIsList) {
+				for (int r = 0; r < addRows; r++)
+					for (int c = 0; c < addCols; c++)
+						dst[(long)r * addCols + c] = ListElem(addList, addNested, r, c);
+			} else {
+				memcpy(dst, addM->data, (size_t)needAdd * sizeof(double));
+			}
+			opAdd.data = dst;
+			at += needAdd;
+		} else if (addM != nullptr) {
+			opAdd.data = addM->data;
+		}
+
+		// ---- shape the destination ----
+		bool freshOut = (out == nullptr);
+		if (freshOut) {
+			if ((long)m * n > kMaxMatrixElems) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: result exceeds the maximum matrix size"));
+			out = NewMatrixData(m, n);
+			if (out == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: out of memory"));
+		} else {
+			if (!EnsureCapacity(out, (long)m * n)) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.gemm: out of memory"));
+			out->rows = m;
+			out->columns = n;
+		}
+
+		// ---- compute ----
+		if ((long)m * n > 0) {
+			Prefill(out->data, m, n, opAdd, mode, beta, addScalar);
+			if (B == nullptr) {
+				KernelAxpby(out->data, m, n, opA, transA, alpha);
+			} else {
+				KernelMatmul(out->data, m, n, k, opA, transA, opB, transB, alpha);
+			}
+		}
+
+		if (freshOut) return IntrinsicResult(MatrixToValue(out));
+		SyncShape(vOut, out);
+		return IntrinsicResult(vOut);
+	});
+	matrixClass.SetValue(String("gemm"), f.GetFunc());
+
+	// ---- Elementwise, in place ----
+	//
+	// Only the mutating forms are intrinsic; the copying counterparts
+	// (elemTimes, elemOver, powed, absed, sqrted, rounded, clamped) are
+	// clone-then-mutate wrappers in the script layer.
+	//
+	// Each takes a number, a Matrix, or a list, with row/column broadcasting --
+	// the same rules gemm's addend follows, from the same code.
+
+	// m.elemMultiplyBy(x) -> self   (Hadamard product when x is a Matrix)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("x");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Broadcast b;
+		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemMultiplyBy", &b, &err))
+			return IntrinsicResult(err);
+		for (int i = 0; i < m->rows; i++) {
+			double* row = m->data + (long)i * m->columns;
+			for (int j = 0; j < m->columns; j++) row[j] *= b.At(i, j);
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("elemMultiplyBy"), f.GetFunc());
+
+	// m.elemDivideBy(x) -> self
+	//
+	// Division by zero yields inf or NaN rather than an error, following IEEE
+	// and numpy: a matrix op should not abort a whole batch over one element.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("x");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Broadcast b;
+		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemDivideBy", &b, &err))
+			return IntrinsicResult(err);
+		for (int i = 0; i < m->rows; i++) {
+			double* row = m->data + (long)i * m->columns;
+			for (int j = 0; j < m->columns; j++) row[j] /= b.At(i, j);
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("elemDivideBy"), f.GetFunc());
+
+	// m.pow(k) -> self   (k may broadcast, as numpy's ** does)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("k");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Broadcast b;
+		if (!ResolveBroadcast(context.GetVar("k"), m->rows, m->columns, "pow", &b, &err))
+			return IntrinsicResult(err);
+		for (int i = 0; i < m->rows; i++) {
+			double* row = m->data + (long)i * m->columns;
+			for (int j = 0; j < m->columns; j++) row[j] = std::pow(row[j], b.At(i, j));
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("pow"), f.GetFunc());
+
+	// m.abs -> self
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) if (m->data[i] < 0) m->data[i] = -m->data[i];
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("abs"), f.GetFunc());
+
+	// m.sqrt -> self   (negative input gives NaN, as in numpy)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) m->data[i] = std::sqrt(m->data[i]);
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("sqrt"), f.GetFunc());
+
+	// m.round(places=0) -> self
+	//
+	// Rounds half AWAY FROM ZERO, matching MiniScript's own round() -- not
+	// numpy, which rounds half to even.  Agreeing with the language matters
+	// more here: m.round and round(m.getElem(...)) must not disagree.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("places", Value::zero);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int places = 0;
+		if (!IntArg(context, "places", &places, &err)) return IntrinsicResult(err);
+		if (places > 15) places = 15;
+		double factor = std::pow(10.0, (double)places);
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) m->data[i] = std::round(m->data[i] * factor) / factor;
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("round"), f.GetFunc());
+
+	// m.clamp(lo, hi) -> self
+	//
+	// Either bound may be null for an open end.  Bounds are plain numbers
+	// rather than broadcastable operands: two broadcast operands would need two
+	// scratch segments, and a per-element clamp range is a rare thing to want.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("lo");
+	f.AddParam("hi");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value vlo = context.GetVar("lo");
+		Value vhi = context.GetVar("hi");
+		bool hasLo = !vlo.IsNull(), hasHi = !vhi.IsNull();
+		if (hasLo && vlo.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vlo));
+		if (hasHi && vhi.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vhi));
+		double lo = hasLo ? vlo.DoubleValue() : 0.0;
+		double hi = hasHi ? vhi.DoubleValue() : 0.0;
+		if (hasLo && hasHi && lo > hi) return IntrinsicResult(ErrorTypes::RuntimeError(
+			"Matrix.clamp: lo must not exceed hi"));
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) {
+			double v = m->data[i];
+			if (hasLo && v < lo) v = lo;
+			if (hasHi && v > hi) v = hi;
+			m->data[i] = v;
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("clamp"), f.GetFunc());
+
+	// m.sum(axis=null) / sumOfSquares / max / min / argmax / argmin
+	//
+	// axis null -> a scalar; axis 0 -> 1 x n (down the columns);
+	// axis 1 -> m x 1 (across the rows).  Same axis meaning as numpy.
+	{
+		struct Reg { const char* name; int op; };
+		static const Reg regs[] = {
+			{ "sum",           kReduceSum    },
+			{ "sumOfSquares",  kReduceSumSq  },
+			{ "max",           kReduceMax    },
+			{ "min",           kReduceMin    },
+			{ "argmax",        kReduceArgMax },
+			{ "argmin",        kReduceArgMin },
+		};
+		// One lambda per op, since an intrinsic's code must be captureless.
+		NativeCallbackDelegate codes[] = {
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceSum, "sum"); },
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceSumSq, "sumOfSquares"); },
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceMax, "max"); },
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceMin, "min"); },
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMax, "argmax"); },
+			INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMin, "argmin"); },
+		};
+		for (int i = 0; i < 6; i++) {
+			f = Intrinsic::Create("");
+			f.AddParam("self");
+			f.AddParam("axis");
+			f.set_Code(codes[i]);
+			matrixClass.SetValue(String(regs[i].name), f.GetFunc());
+		}
+	}
+
+	// m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null) -> string
+	//
+	// A human-readable table.  Elements are right-aligned in fieldWidth
+	// characters, columns joined by columnSep, rows by rowSep (newline by
+	// default).  Returns the string rather than printing it, so `print` is a
+	// one-line script wrapper and the result can also be written to a file.
+	//
+	// On tiny values: the old matrixUtil.print rewrote any element whose text
+	// contained "E-" to "0", to stop floating-point noise like 1e-17 from
+	// dominating a table.  That also silently zeroed legitimately small values
+	// such as 1.5e-5, which is why the rule is gone.  Passing a `precision`
+	// handles the real case properly -- fixed-point notation renders 1e-17 as
+	// "0.000" because that is genuinely its value to three places -- while
+	// leaving the default honest about magnitude.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("fieldWidth", Value(10));
+	f.AddParam("precision");
+	f.AddParam("columnSep", Value::emptyString);
+	f.AddParam("rowSep");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+
+		int fieldWidth = 0;
+		if (!IntArg(context, "fieldWidth", &fieldWidth, &err)) return IntrinsicResult(err);
+		if (fieldWidth < 0) return IntrinsicResult(ErrorTypes::RuntimeError(
+			"Matrix.format: fieldWidth must be >= 0"));
+
+		Value vPrec = context.GetVar("precision");
+		bool hasPrec = !vPrec.IsNull();
+		int precision = 0;
+		if (hasPrec) {
+			if (vPrec.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vPrec));
+			precision = vPrec.IntValue();
+			if (precision < 0 || precision > 15) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.format: precision must be between 0 and 15"));
+		}
+
+		std::string colSep = context.GetVar("columnSep").ToString().c_str();
+		Value vRowSep = context.GetVar("rowSep");
+		std::string rowSep = vRowSep.IsNull() ? "\n" : std::string(vRowSep.ToString().c_str());
+
+		std::string out;
+		for (int i = 0; i < m->rows; i++) {
+			if (i > 0) out += rowSep;
+			const double* row = m->data + (long)i * m->columns;
+			for (int j = 0; j < m->columns; j++) {
+				if (j > 0) out += colSep;
+				std::string s = FormatElem(row[j], hasPrec, precision);
+				if (fieldWidth > 0) {
+					// Truncate to fieldWidth-1 rather than fieldWidth, so that a
+					// too-wide number still leaves one space before the next
+					// column and the table cannot run together.  Only ever
+					// truncate a value that has a fractional part, so the
+					// integer magnitude is never falsified.
+					if ((int)s.size() >= fieldWidth && s.find('.') != std::string::npos) {
+						s = s.substr(0, fieldWidth - 1);
+					}
+					if ((int)s.size() < fieldWidth) s.insert(0, fieldWidth - s.size(), ' ');
+				}
+				out += s;
+			}
+		}
+		return IntrinsicResult(String(out.c_str()));
+	});
+	matrixClass.SetValue(String("format"), f.GetFunc());
+
 	// m.size -> [rows, columns]
 	//
 	// The canonical shape accessor: a list of extents, so a hypothetical N-D
@@ -1025,6 +1850,11 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(Value((double)m->capacityElems));
 	});
 	matrixClass.SetValue(String("capacity"), f.GetFunc());
+
+	// Register the class under a short name.  Value.CodeForm consults it when
+	// stringifying an __isa entry, which is the difference between str(m)
+	// reporting `{"__isa": Matrix, ...}` and dumping every method in the class.
+	Intrinsic::AddShortName(StaticMap(matrixClass), String("Matrix"));
 
 	return matrixClass;
 }

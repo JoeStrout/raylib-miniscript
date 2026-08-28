@@ -23,6 +23,7 @@ ValueDict& ImageClass() {
 		map.SetValue(String("height"), Value::zero);
 		map.SetValue(String("mipmaps"), Value::zero);
 		map.SetValue(String("format"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Image"));
 	}
 	return map;
 }
@@ -36,6 +37,7 @@ ValueDict& TextureClass() {
 		map.SetValue(String("height"), Value::zero);
 		map.SetValue(String("mipmaps"), Value::zero);
 		map.SetValue(String("format"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Texture"));
 	}
 	return map;
 }
@@ -48,6 +50,7 @@ ValueDict& FontClass() {
 		map.SetValue(String("baseSize"), Value::zero);
 		map.SetValue(String("glyphCount"), Value::zero);
 		map.SetValue(String("glyphPadding"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Font"));
 	}
 	return map;
 }
@@ -60,6 +63,7 @@ ValueDict& WaveClass() {
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
 		map.SetValue(String("channels"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Wave"));
 	}
 	return map;
 }
@@ -70,6 +74,7 @@ ValueDict& MusicClass() {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("looping"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Music"));
 	}
 	return map;
 }
@@ -79,6 +84,7 @@ ValueDict& SoundClass() {
 	if (map.Count() == 0) {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Sound"));
 	}
 	return map;
 }
@@ -90,6 +96,7 @@ ValueDict& AudioStreamClass() {
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
 		map.SetValue(String("channels"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("AudioStream"));
 	}
 	return map;
 }
@@ -100,6 +107,7 @@ ValueDict& RenderTextureClass() {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("id"), Value::zero);
 		map.SetValue(String("texture"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("RenderTexture"));
 	}
 	return map;
 }
@@ -109,6 +117,7 @@ ValueDict& ShaderClass() {
 	if (map.Count() == 0) {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("id"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Shader"));
 	}
 	return map;
 }
@@ -119,6 +128,7 @@ ValueDict& MeshClass() {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("vertexCount"), Value::zero);
 		map.SetValue(String("triangleCount"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Mesh"));
 	}
 	return map;
 }
@@ -131,6 +141,7 @@ ValueDict& MaterialClass() {
 		map.SetValue(String("_arrayHandle"), Value::zero);
 		map.SetValue(String("_arrayCount"), Value::zero);
 		map.SetValue(String("_arrayIndex"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Material"));
 	}
 	return map;
 }
@@ -141,6 +152,7 @@ ValueDict& ModelClass() {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("meshCount"), Value::zero);
 		map.SetValue(String("materialCount"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("Model"));
 	}
 	return map;
 }
@@ -155,6 +167,7 @@ ValueDict& ModelAnimationClass() {
 		map.SetValue(String("_arrayHandle"), Value::zero);
 		map.SetValue(String("_arrayCount"), Value::zero);
 		map.SetValue(String("_arrayIndex"), Value::zero);
+		Intrinsic::AddShortName(StaticMap(map), String("ModelAnimation"));
 	}
 	return map;
 }
@@ -167,6 +180,7 @@ ValueDict& Camera3DClass() {
 		map.SetValue(String("up"), Vector3ToValue(Vector3{0, 1, 0}));
 		map.SetValue(String("fovy"), Value(45.0));
 		map.SetValue(String("projection"), Value(CAMERA_PERSPECTIVE));
+		Intrinsic::AddShortName(StaticMap(map), String("Camera3D"));
 	}
 	return map;
 }

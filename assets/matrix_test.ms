@@ -358,6 +358,317 @@ matches rf2, 0, 2, [], "removing the only row works"
 ok isErr(rf2.removeRowFast(0)), "removing from an empty matrix is an error"
 
 print
+print "-- gemm: plain matrix product --"
+A23 = Matrix.fromList([[1,2,3],[4,5,6]])
+B34 = Matrix.fromList([[1,0,0,1],[0,1,0,2],[0,0,1,3]])
+matches A23.gemm(B34), 2, 4, [1,2,3,14,4,5,6,32], "2x3 times 3x4"
+I3 = Matrix.fromList([[1,0,0],[0,1,0],[0,0,1]])
+ok A23.gemm(I3).equals(A23), "times identity is a no-op"
+matches Matrix.fromList([[1,2],[3,4]]).gemm(Matrix.fromList([[5,6],[7,8]])), 2, 2, [19,22,43,50], "the classic 2x2"
+// Vector shapes.
+matches Matrix.fromList([[1,2,3]]).gemm(Matrix.fromList([[4],[5],[6]])), 1, 1, [32], "row times column is a dot product"
+matches Matrix.fromList([[1],[2]]).gemm(Matrix.fromList([[3,4]])), 2, 2, [3,4,6,8], "column times row is an outer product"
+ok isErr(A23.gemm(A23)), "mismatched inner dimensions are an error"
+
+print
+print "-- gemm: transpose flags (all four combinations) --"
+P = Matrix.fromList([[1,2],[3,4],[5,6]])      // 3x2
+Q = Matrix.fromList([[1,2,3],[4,5,6]])        // 2x3
+// NN: 3x2 * 2x3 -> 3x3
+matches P.gemm(Q), 3, 3, [9,12,15,19,26,33,29,40,51], "NN"
+// TN: Pt(2x3) * P(3x2) -> 2x2
+matches P.gemm(P, null, null, true, false), 2, 2, [35,44,44,56], "TN: transposedTimes"
+// NT: Q(2x3) * Qt(3x2) -> 2x2
+matches Q.gemm(Q, null, null, false, true), 2, 2, [14,32,32,77], "NT: timesTransposed"
+// TT: Pt(2x3) * Qt(3x2) -> 2x2 ; equals (Q*P)t
+QP = Q.gemm(P)
+matches P.gemm(Q, null, null, true, true), 2, 2, [QP.getElem(0,0),QP.getElem(1,0),QP.getElem(0,1),QP.getElem(1,1)], "TT equals (Q*P) transposed"
+
+print
+print "-- gemm: null B is the level-1 path --"
+X = Matrix.fromList([[1,2],[3,4]])
+matches X.gemm(null), 2, 2, [1,2,3,4], "clone: gemm(null)"
+ok X.gemm(null) != X, "...returns a distinct matrix"
+matches X.gemm(null, null, null, true), 2, 2, [1,3,2,4], "transposed: gemm(null,...,transA)"
+R32 = Matrix.fromList([[1,2,3],[4,5,6]]).gemm(null, null, null, true)
+matches R32, 3, 2, [1,4,2,5,3,6], "transpose of a non-square matrix"
+matches X.gemm(null, null, null, false, false, -1), 2, 2, [-1,-2,-3,-4], "negated: alpha = -1"
+matches X.gemm(null, null, null, false, false, 2), 2, 2, [2,4,6,8], "scaled: alpha = 2"
+matches X.gemm(null, X), 2, 2, [2,4,6,8], "plus: A + A"
+matches X.gemm(null, X, null, false, false, 1, -1), 2, 2, [0,0,0,0], "minus: A - A"
+matches X.gemm(null, X, null, false, false, 1, 3), 2, 2, [4,8,12,16], "addScaled: A + 3A"
+
+print
+print "-- gemm: addend forms and broadcasting --"
+C22 = Matrix.fromList([[10,20],[30,40]])
+matches X.gemm(null, C22), 2, 2, [11,22,33,44], "a full m x n addend"
+matches X.gemm(null, 100), 2, 2, [101,102,103,104], "a scalar addend"
+matches X.gemm(null, Matrix.fromList([[10,20]])), 2, 2, [11,22,13,24], "a 1 x n addend broadcasts down the rows"
+matches X.gemm(null, Matrix.fromList([[10],[20]])), 2, 2, [11,12,23,24], "an m x 1 addend broadcasts across the columns"
+matches X.gemm(null, Matrix.fromList([[7]])), 2, 2, [8,9,10,11], "a 1 x 1 addend acts as a scalar"
+matches X.gemm(null, [[10,20],[30,40]]), 2, 2, [11,22,33,44], "a 2D list addend"
+matches X.gemm(null, [10,20]), 2, 2, [11,22,13,24], "a 1D list addend broadcasts as a row"
+ok isErr(X.gemm(null, Matrix.fromList([[1,2,3]]))), "an addend that cannot broadcast is an error"
+// beta must not read the addend when it is zero.
+matches X.gemm(null, C22, null, false, false, 1, 0), 2, 2, [1,2,3,4], "beta = 0 ignores the addend entirely"
+
+print
+print "-- gemm: the dense NN layer, in one call --"
+// y = x*W + b, with b broadcast over the batch.
+xb = Matrix.fromList([[1,2],[3,4],[5,6]])     // batch 3, 2 features
+W = Matrix.fromList([[1,0,2],[0,1,3]])        // 2 -> 3
+bias = Matrix.fromList([[10,20,30]])          // 1 x 3
+matches xb.gemm(W, bias), 3, 3, [11,22,38,13,24,48,15,26,58], "x*W + b in one kernel pass"
+
+print
+print "-- gemm: the out parameter --"
+dest = Matrix.ofSize(1, 1)
+res = X.gemm(null, null, dest)
+ok refEquals(res, dest), "gemm returns the same map it was given as out"
+matches dest, 2, 2, [1,2,3,4], "out is resized to fit the result"
+eq dest.rows, 2, "...and its rows entry is updated"
+eq dest.columns, 2, "...and its columns entry too"
+big = Matrix.ofSize(10, 10)
+cap = big.capacity
+X.gemm null, null, big
+matches big, 2, 2, [1,2,3,4], "out shrinks to the result shape"
+eq big.capacity, cap, "...without giving back capacity"
+ok isErr(X.gemm(null, null, 5)), "a non-Matrix out is an error"
+
+print
+print "-- gemm: aliasing --"
+// out aliases the addend: the accumulate case.
+acc = Matrix.fromList([[1,1],[1,1]])
+X.gemm null, acc, acc
+matches acc, 2, 2, [2,3,4,5], "out == addend accumulates in place"
+// out aliases A.
+sa = Matrix.fromList([[1,2],[3,4]])
+sa.gemm null, null, sa, false, false, 3
+matches sa, 2, 2, [3,6,9,12], "out == A scales in place"
+// out aliases A with a transpose, which also changes the shape.
+st = Matrix.fromList([[1,2,3],[4,5,6]])
+st.gemm null, null, st, true
+matches st, 3, 2, [1,4,2,5,3,6], "out == A transposes in place"
+// out aliases A in a real product.
+sq = Matrix.fromList([[1,2],[3,4]])
+sq.gemm sq, null, sq
+matches sq, 2, 2, [7,10,15,22], "out == A == B squares in place"
+// out aliases B only.
+lb = Matrix.fromList([[1,2],[3,4]])
+Matrix.fromList([[2,0],[0,2]]).gemm lb, null, lb
+matches lb, 2, 2, [2,4,6,8], "out == B works too"
+// addend aliases A (read-only, no copy needed).
+ra = Matrix.fromList([[1,2],[3,4]])
+matches ra.gemm(null, ra), 2, 2, [2,4,6,8], "addend == A is fine"
+
+print
+print "-- gemm: empty and degenerate shapes --"
+matches Matrix.ofSize(0,3).gemm(Matrix.ofSize(3,4)), 0, 4, [], "zero rows gives a zero-row result"
+matches Matrix.ofSize(2,0).gemm(Matrix.ofSize(0,3)), 2, 3, [0,0,0,0,0,0], "a zero-length inner dimension sums to zero"
+matches Matrix.ofSize(2,0).gemm(Matrix.ofSize(0,3), 5), 2, 3, [5,5,5,5,5,5], "...and still takes the addend"
+matches Matrix.ofSize(0,0).gemm(null), 0, 0, [], "gemm on a 0x0 works"
+
+print
+print "-- gemm: consistency between paths --"
+// A*B computed three ways must agree.
+G = Matrix.fromList([[1,2,3],[4,5,6],[7,8,9]])
+H = Matrix.fromList([[9,8,7],[6,5,4],[3,2,1]])
+direct = G.gemm(H)
+viaT = G.gemm(H.gemm(null, null, null, true), null, null, false, true)
+ok direct.equals(viaT), "A*B == A*(Bt)t via the NT path"
+Gt = G.gemm(null, null, null, true)
+viaTN = Gt.gemm(H, null, null, true)
+ok direct.equals(viaTN), "A*B == (At)t*B via the TN path"
+
+print
+print "-- elementwise --"
+E = Matrix.fromList([[1,2],[3,4]])
+E.elemMultiplyBy 2
+matches E, 2, 2, [2,4,6,8], "elemMultiplyBy a scalar"
+E.elemDivideBy 2
+matches E, 2, 2, [1,2,3,4], "elemDivideBy a scalar"
+E.elemMultiplyBy Matrix.fromList([[10,100],[1000,10000]])
+matches E, 2, 2, [10,200,3000,40000], "elemMultiplyBy a Matrix is the Hadamard product"
+H = Matrix.fromList([[1,2],[3,4]])
+H.elemMultiplyBy [[2,3],[4,5]]
+matches H, 2, 2, [2,6,12,20], "a 2D list operand works"
+// Broadcasting, same rules as gemm's addend.
+B1 = Matrix.fromList([[1,2,3],[4,5,6]])
+B1.elemMultiplyBy Matrix.fromList([[10,20,30]])
+matches B1, 2, 3, [10,40,90,40,100,180], "a 1 x n operand broadcasts down the rows"
+B2 = Matrix.fromList([[1,2,3],[4,5,6]])
+B2.elemMultiplyBy Matrix.fromList([[10],[100]])
+matches B2, 2, 3, [10,20,30,400,500,600], "an m x 1 operand broadcasts across the columns"
+ok isErr(B2.elemMultiplyBy(Matrix.fromList([[1,2]]))), "an operand that cannot broadcast is an error"
+ok isErr(B2.elemMultiplyBy("x")), "a non-numeric operand is an error"
+// Division by zero follows IEEE rather than erroring.
+dz = Matrix.fromList([[1,0]])
+dz.elemDivideBy 0
+ok dz.getElem(0,0) > 1e300, "1/0 is +inf, not an error"
+// MiniScript follows IEEE here: NaN is the one value not equal to itself.
+isNaN = function(v)
+	return v != v
+end function
+ok isNaN(dz.getElem(0,1)), "0/0 is NaN"
+
+print
+print "-- pow / abs / sqrt --"
+P2 = Matrix.fromList([[2,3],[4,5]])
+P2.pow 2
+matches P2, 2, 2, [4,9,16,25], "pow squares"
+P2.sqrt
+matches P2, 2, 2, [2,3,4,5], "sqrt undoes it"
+AB = Matrix.fromList([[-1,2],[-3,-4]])
+AB.abs
+matches AB, 2, 2, [1,2,3,4], "abs"
+PB = Matrix.fromList([[2,2],[2,2]])
+PB.pow Matrix.fromList([[1,2],[3,4]])
+matches PB, 2, 2, [2,4,8,16], "pow broadcasts an exponent matrix"
+ng = Matrix.fromList([[-4]])
+ng.sqrt
+ok isNaN(ng.getElem(0,0)), "sqrt of a negative is NaN, as in numpy"
+
+print
+print "-- round --"
+R1 = Matrix.fromList([[1.234, 5.678],[-1.235, -5.6]])
+R1.round 2
+matches R1, 2, 2, [1.23, 5.68, -1.24, -5.6], "round to 2 places"
+R2 = Matrix.fromList([[1.5, 2.5],[-1.5, -2.5]])
+R2.round
+// MiniScript rounds half away from zero; numpy would give 2 and 2 here.
+matches R2, 2, 2, [2, 3, -2, -3], "half rounds away from zero, matching MiniScript's round()"
+eq round(2.5), 3, "...which is what the language's own round() does"
+R3 = Matrix.fromList([[1234, 5678]])
+R3.round -2
+matches R3, 1, 2, [1200, 5700], "negative places round to tens/hundreds"
+
+print
+print "-- clamp --"
+C1 = Matrix.fromList([[-5,0],[5,10]])
+C1.clamp 0, 6
+matches C1, 2, 2, [0,0,5,6], "clamp both ends"
+C2 = Matrix.fromList([[-5,0],[5,10]])
+C2.clamp 0, null
+matches C2, 2, 2, [0,0,5,10], "null hi clamps from below only (this is relu)"
+C3 = Matrix.fromList([[-5,0],[5,10]])
+C3.clamp null, 1
+matches C3, 2, 2, [-5,0,1,1], "null lo clamps from above only"
+ok isErr(Matrix.fromList([[1]]).clamp(5, 1)), "lo above hi is an error"
+
+print
+print "-- reductions: whole matrix --"
+S = Matrix.fromList([[1,2,3],[4,5,6]])
+eq S.sum, 21, "sum of everything"
+eq S.sumOfSquares, 91, "sum of squares"
+eq S.max, 6, "max"
+eq S.min, 1, "min"
+eq S.argmax, 5, "argmax is a FLAT index, as in numpy"
+eq S.argmin, 0, "argmin likewise"
+eq Matrix.ofSize(0,0).sum, 0, "sum of an empty matrix is 0"
+eq Matrix.ofSize(0,0).sumOfSquares, 0, "...and so is sumOfSquares"
+ok isErr(Matrix.ofSize(0,0).max), "max of an empty matrix is an error"
+ok isErr(Matrix.ofSize(0,0).argmax), "...and so is argmax"
+
+print
+print "-- reductions: by axis --"
+matches S.sum(0), 1, 3, [5,7,9], "sum(0) reduces down the columns to 1 x n"
+matches S.sum(1), 2, 1, [6,15], "sum(1) reduces across the rows to m x 1"
+matches S.max(0), 1, 3, [4,5,6], "max(0)"
+matches S.max(1), 2, 1, [3,6], "max(1)"
+matches S.min(0), 1, 3, [1,2,3], "min(0)"
+matches S.min(1), 2, 1, [1,4], "min(1)"
+matches S.argmax(0), 1, 3, [1,1,1], "argmax(0) gives row indices"
+matches S.argmax(1), 2, 1, [2,2], "argmax(1) gives column indices"
+matches S.sumOfSquares(1), 2, 1, [14,77], "sumOfSquares by row"
+ok isErr(S.sum(2)), "an axis other than 0, 1 or null is an error"
+ok isErr(S.sum("x")), "a non-numeric axis is an error"
+
+print
+print "-- reductions: ties and NaN --"
+T = Matrix.fromList([[1,5,5,2]])
+eq T.argmax, 1, "argmax breaks ties toward the first, as numpy does"
+T2 = Matrix.fromList([[3,1,1,4]])
+eq T2.argmin, 1, "argmin likewise"
+N = Matrix.fromList([[0,2],[3,4]])
+N.elemDivideBy Matrix.fromList([[0,1],[1,1]])    // 0/0 at (0,0) is NaN
+ok isNaN(N.getElem(0,0)), "the test matrix really does hold a NaN"
+ok isNaN(N.max), "a NaN makes max NaN, as in numpy (nanmax is separate there)"
+ok isNaN(N.min), "...and min too"
+ok not isNaN(N.getElem(0,1)), "a non-NaN element is not reported as NaN"
+eq N.argmax, 0, "argmax reports the first NaN's index, as in numpy"
+
+print
+print "-- reductions: degenerate shapes --"
+Z1 = Matrix.ofSize(0, 3)
+matches Z1.sum(0), 1, 3, [0,0,0], "sum down a zero-length axis is zeros"
+ok isErr(Z1.max(0)), "max down a zero-length axis is an error"
+matches Matrix.ofSize(2,0).sum(1), 2, 1, [0,0], "sum across a zero-length axis is zeros"
+
+print
+print "-- format --"
+F = Matrix.fromList([[1,2],[3,4]])
+ok F.format isa string, "format returns a string rather than printing"
+eq F.format(0, 0, ",", ";"), "1,2;3,4", "no padding, explicit separators"
+eq F.format(3, 0, "", ";"), "  1  2;  3  4", "fieldWidth right-aligns"
+eq F.format(0, 2, ",", ";"), "1.00,2.00;3.00,4.00", "precision gives fixed-point"
+eq F.format(0, 0, "", "\n"), "12\n34", "an explicit newline rowSep"
+eq Matrix.fromList([[1.5]]).format(0, 0, "", ""), "2", "precision 0 rounds"
+// Default rowSep is a newline; check by splitting.
+eq F.format(0, 0, ",").split(char(10)).len, 2, "the default rowSep is a newline"
+eq F.format(0, 0, ",").split(char(10))[1], "3,4", "...and rows come out in order"
+
+print
+print "-- format: small values (the old E- hack is gone) --"
+tiny = Matrix.fromList([[0.000000000000001, 1.5]])
+// Without a precision the true magnitude is reported, not silently zeroed.
+ok tiny.format(0).indexOf("E-") != null, "without precision, a tiny value keeps its exponent"
+// With a precision, fixed-point renders it as zero to that many places, which
+// is the honest answer rather than a string-matching hack.
+eq tiny.format(0, 3, ",", ""), "0.000,1.500", "with precision, a tiny value renders as 0.000"
+// The old hack would have zeroed this legitimately small value too.
+small = Matrix.fromList([[0.000015]])
+eq small.format(0, 6, "", ""), "0.000015", "a legitimately small value survives"
+
+print
+print "-- format: special values --"
+sp = Matrix.fromList([[1,2],[3,4]])
+sp.setElem 0, 0, 0
+sp.elemDivideBy Matrix.fromList([[0,1],[0,1]])
+eq sp.format(0, 1, ",", ";").split(";")[0].split(",")[0], "NaN", "NaN is spelled the way MiniScript spells it"
+eq sp.format(0, 1, ",", ";").split(";")[1].split(",")[0], "Inf", "and so is Inf"
+neg = Matrix.fromList([[-1]])
+neg.elemDivideBy 0
+eq neg.format(0, 1, "", ""), "-Inf", "negative infinity too"
+
+print
+print "-- format: edges and errors --"
+eq Matrix.ofSize(0,0).format, "", "a 0x0 formats as the empty string"
+eq Matrix.ofSize(2,0).format(0,0,"",";"), ";", "a zero-column matrix is just the row separators"
+eq Matrix.fromList([[1]]).format(4, 0, "", ""), "   1", "single element padded to fieldWidth"
+// A value that would fill or overflow the field is truncated to fieldWidth-1
+// and then padded back out, so there is always at least one space between
+// columns even with the default empty columnSep.  Only values with a fractional
+// part are ever truncated, so an integer magnitude is never falsified.
+wide = Matrix.fromList([[123.456789, 1]])
+r = wide.format(6, 4, "", "")
+eq r.len, 12, "each field occupies exactly fieldWidth characters"
+eq r[0:6], " 123.4", "a too-wide value truncates and keeps a separating space"
+eq r[6:12], " 1.000", "...as does one that would exactly fill the field"
+// Integers are never truncated, however wide.
+eq Matrix.fromList([[1234567]]).format(4, 0, "", ""), "1234567", "an integer is never truncated"
+ok isErr(F.format(-1)), "a negative fieldWidth is an error"
+ok isErr(F.format(10, -1)), "a negative precision is an error"
+ok isErr(F.format(10, 20)), "a precision above 15 is an error"
+ok isErr(F.format("x")), "a non-numeric fieldWidth is an error"
+
+print
+print "-- str(m) no longer dumps the class --"
+s = str(Matrix.ofSize(2,3))
+ok s.indexOf("Matrix") != null, "str names the class"
+ok s.indexOf("getElem") == null, "...without listing every method"
+ok s.len < 100, "...and stays short  (" + s.len + " chars)"
+
+print
 print "-- storage is reclaimed --"
 before = hostMemory
 big = []

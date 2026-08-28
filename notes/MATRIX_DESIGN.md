@@ -481,10 +481,24 @@ m.readRawData(rd, dtype="auto", startPos=0)                        // -> ending 
 m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null)   // -> string
 ```
 
-`str(m)` gets a **truncating** default (dimensions plus a few elements) so a 1000x1000
-matrix doesn't dump 10⁶ numbers into the console. Drop the old
-`if s.indexOf("E-") != null then s = "0"` hack (`matrixUtil.ms:281`) in favor of proper
-small-value handling, or at minimum make it an option.
+`m.str` (a script wrapper) gets a **truncating** default — dimensions plus a few
+elements — so a 1000x1000 matrix doesn't dump 10⁶ numbers into the console.
+
+It is `m.str` rather than the global `str(m)` because MiniScript has no hook for a
+map to override its own string form: `Value.CodeForm` stringifies a map by walking
+its entries, with no per-map override to consult. What the global `str(m)` *does*
+get is a readable `__isa`: the C++ side registers the class with
+`Intrinsic::AddShortName`, which `CodeForm` consults for `__isa` entries, so
+`str(m)` yields `{"__isa": Matrix, "_handle": <value>, "rows": 2, "columns": 3}`
+instead of dumping every method in the class. (Every intrinsic class in the host
+does this now, not just Matrix.) Should MiniScript ever gain a per-map `_str` hook,
+pointing it at `m.str` is a one-line change.
+
+**The old `if s.indexOf("E-") != null then s = "0"` hack (`matrixUtil.ms:281`) is
+gone**, not made optional: it also silently zeroed legitimately small values like
+`1.5e-5`. `format` handles the real case properly instead — with a `precision`,
+fixed-point notation renders `1e-17` as `0.000` because that genuinely is its value
+to three places, while the default stays honest about magnitude.
 
 ---
 
@@ -579,6 +593,7 @@ form is the one that can afford to be slower.
 | `m.softmaxCrossEntropyGrad(t)` | `yHat.minus(t)` |
 | `m.relu` / `m.relued` | `clamp(0, null)` / `clamped(0, null)` |
 | `m.print` | `format` |
+| `m.str` | `format`, truncated to a few rows/columns plus the dimensions |
 
 `softmaxCrossEntropyGrad` never needed to be C++ — it is documented as exactly
 `yHat - targets`.
@@ -657,8 +672,8 @@ expressions); **we deliberately chose mutable-in-place** for game-loop performan
 Taking both gets the worst of each.
 
 Secondary costs: every intrinsic needs a materialize-if-needed prologue; errors surface
-far from their cause; lazy chains pin their inputs alive; `str(m)` in a debugger triggers
-computation; performance acquires cliffs at unpredictable points.
+far from their cause; lazy chains pin their inputs alive; printing a matrix in a
+debugger triggers computation; performance acquires cliffs at unpredictable points.
 
 **What we do instead:** expose the full `gemm` as the single product intrinsic and name
 its common specializations with script wrappers (see "Matrix product"). That captures

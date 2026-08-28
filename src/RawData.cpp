@@ -697,6 +697,10 @@ ValueDict& RawDataClass() {
     // write a UTF-8 string at the given byte offset; returns bytes written
     rawDataClass.SetValue(String("setUtf8"), f.GetFunc());
 
+    // Register the class under a short name, so str(rd) reports
+    // {"__isa": RawData, ...} rather than dumping every method.
+    Intrinsic::AddShortName(StaticMap(rawDataClass), String("RawData"));
+
     return rawDataClass;
 }
 
