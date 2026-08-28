@@ -9,6 +9,11 @@ way and would agree.  numpy was written by other people from the same maths.  Th
 checks use scipy (expit / softmax / log_softmax) for the same reason: those are
 independent implementations, not the same formula typed twice.
 
+The serialization checks are the same idea applied to the wire format: numpy's
+`astype(dtype).tobytes()` is an independent statement of what each dtype's bytes
+should be, in both byte orders, so a mistaken shift or a sign-extension bug
+cannot agree with itself across our writer and our reader.
+
 The generated file has the expected values baked in, so running the tests needs
 no Python.  Regenerate with:
 
@@ -441,6 +446,114 @@ emit("softmaxCrossEntropy where a naive log(softmax) would take log(0)",
 # The gradient identity the design doc pairs the loss with.
 emit("softmax(logits) is the probs half of the gradient probs - targets",
      "Matrix.fromList(%s).softmax" % lit(Z), softmax(Z, axis=1))
+
+# ---- serialization: numpy's own bytes, both directions and both byte orders ----
+#
+# Fixtures travel as byte lists rather than as files, so running the tests needs
+# no data files alongside the script and no filesystem at all.
+lines.append("")
+lines.append("""
+rawFrom = function(bytes)
+	rd = new RawData
+	rd.resize bytes.len
+	for i in indexes(bytes)
+		rd.setByte i, bytes[i]
+	end for
+	return rd
+end function
+
+cmpBytes = function(rd, want, label, startPos=0)
+	outer.checks = outer.checks + 1
+	bad = null
+	if rd.len - startPos != want.len then
+		bad = "length " + (rd.len - startPos) + ", want " + want.len
+	else
+		for i in indexes(want)
+			if rd.byte(startPos + i) != want[i] then
+				bad = "byte " + i + ": got " + rd.byte(startPos+i) + ", want " + want[i]
+				break
+			end if
+		end for
+	end if
+	if bad == null then
+		print "ok   " + label
+	else
+		outer.failures = outer.failures + 1
+		print "FAIL " + label + "  (" + bad + ")"
+	end if
+end function
+""")
+lines.append('print "-- numpy oracle: RawData serialization --"')
+
+
+def bytelist(raw):
+    return "[" + ",".join(str(b) for b in raw) + "]"
+
+
+def fixture(name):
+    """Values that survive the dtype exactly, so the comparison is about bytes.
+
+    Deliberately integral for the integer formats: numpy's astype truncates
+    toward zero where ours rounds, and that difference is a documented choice
+    tested in matrix_test.ms.  Mixing it in here would only obscure whether the
+    *encoding* agrees.
+    """
+    if name == "float64":
+        return rand(3, 4)
+    if name == "float32":
+        return np.float64(np.float32(rand(3, 4)))
+    lo, hi = {
+        "int8": (-100, 100), "uint8": (0, 200),
+        "int16": (-30000, 30000), "uint16": (0, 60000),
+        "int32": (-2000000000, 2000000000), "uint32": (0, 4000000000),
+        "int64": (-(2 ** 50), 2 ** 50),
+    }[name]
+    return rng.integers(lo, hi, size=(3, 4)).astype(np.float64)
+
+
+SPECS = [("float64", "f8"), ("float32", "f4"), ("int8", "i1"), ("uint8", "u1"),
+         ("int16", "i2"), ("uint16", "u2"), ("int32", "i4"), ("uint32", "u4"),
+         ("int64", "i8")]
+
+for name, code in SPECS:
+    A = fixture(name)
+    width = int(code[1:])
+    orders = [("<", "little")] + ([(">", "big")] if width > 1 else [])
+    for order, ordname in orders:
+        raw = A.astype(np.dtype(order + code)).tobytes()
+        big = (order == ">")
+
+        # Read: numpy wrote the bytes, we have to make the same matrix of them.
+        lines.append("rd = rawFrom(%s)" % bytelist(raw))
+        if big:
+            lines.append("rd.littleEndian = false")
+        emit("read %s (%s-endian) written by numpy" % (name, ordname),
+             'Matrix.fromRawData(rd, "%s", 0, 3, 4)' % name, A)
+
+        # Write: we produce the bytes, numpy says what they should have been.
+        lines.append("rd = new RawData")
+        if big:
+            lines.append("rd.littleEndian = false")
+        lines.append('Matrix.fromList(%s).toRawData rd, "%s", 0, false' % (lit(A), name))
+        lines.append('cmpBytes rd, %s, "write %s (%s-endian) matches numpy"'
+                     % (bytelist(raw), name, ordname))
+        checks += 1
+
+# The header must not disturb the payload: the elements behind it are still
+# exactly what numpy would have written.
+A = rand(5, 3)
+raw = A.astype("<f8").tobytes()
+lines.append("rd = new RawData")
+lines.append('Matrix.fromList(%s).toRawData rd' % lit(A))
+lines.append('cmpBytes rd, %s, "the payload behind a header is unchanged", 16' % bytelist(raw))
+checks += 1
+
+# A headerless read of foreign data, inferring the row count from the length --
+# how you would actually pick up a block somebody else produced.
+A = rand(8, 3)
+lines.append("rd = rawFrom(%s)" % bytelist(A.astype("<f4").tobytes()))
+emit("headerless float32 with the row count inferred",
+     'Matrix.fromRawData(rd, "float32", 0, null, 3)', np.float64(np.float32(A)))
 
 lines.append("")
 lines.append('print')

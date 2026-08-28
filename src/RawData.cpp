@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <new>
 
 namespace MiniScript {
 
@@ -729,6 +730,41 @@ BinaryData* ValueToRawData(Value value) {
         data->littleEndian = leVal.BoolValue();
     }
 
+    return data;
+}
+
+BinaryData* RawDataEnsureSize(Value value, int size, String* outErr) {
+    if (value.Type() != ValueType::Map) {
+        *outErr = "RawData required";
+        return nullptr;
+    }
+    ValueDict map = value.GetDict();
+    BinaryData* data = HandleData(map.Lookup(kHandle(), Value::Null));
+
+    if (data == nullptr) {
+        // A bare `new RawData` has no buffer at all.  Make one the same way the
+        // resize intrinsic does, handle and all, so the two paths cannot drift.
+        try {
+            data = new BinaryData(size);
+        } catch (std::bad_alloc&) {
+            *outErr = "out of memory";
+            return nullptr;
+        }
+        map.SetValue(kHandle(), MakeHandle(data));
+    } else if (data->length < size) {
+        if (!data->ownsBuffer) {
+            *outErr = "cannot grow a RawData buffer that we don't own";
+            return nullptr;
+        }
+        try {
+            data->Resize(size);
+        } catch (std::bad_alloc&) {
+            *outErr = "out of memory";
+            return nullptr;
+        }
+    }
+
+    data->littleEndian = map.Lookup(kLittleEndian(), Value::one).BoolValue();
     return data;
 }
 

@@ -81,6 +81,15 @@ ValueDict& RawDataClass();
 Value RawDataToValue(BinaryData* data);
 BinaryData* ValueToRawData(Value value);
 
+// Make sure a RawData value has a buffer of at least `size` bytes, creating one
+// (for a bare `new RawData`, which has none) or growing one as needed.  A
+// buffer we merely borrow is never reallocated: growing that would free memory
+// its real owner still holds, so this reports an error instead.
+//
+// Returns the BinaryData with its littleEndian flag refreshed from the map, or
+// null with *outErr set to a message the caller can wrap in its own error.
+BinaryData* RawDataEnsureSize(Value value, int size, String* outErr);
+
 } // namespace MiniScript
 
 #endif // RAWDATA_H

@@ -498,17 +498,41 @@ m.readRawData(rd, dtype="auto", startPos=0)                        // -> ending 
 
 - `dtype`: `float64`, `float32`, plus the integer formats (`int8`/`uint8`, `int16`/`uint16`,
   `int32`/`uint32`, `int64`) for completeness — `uint8` and `int16` matter for image and
-  quantized-weight data.  We'll define truncation and NaN handling behavior (TBD).
+  quantized-weight data.
 - **`dtype="auto"` on read means "the data starts with a header."** Specifying an explicit
   dtype instead means "no header, read raw from `startPos`." This is the key affordance:
   it lets you load data produced by something other than us.
 - Headerless read gets its shape from the receiver (`readRawData`) or from explicit
-  `rows`/`columns` (`fromRawData`).
+  `rows`/`columns` (`fromRawData`).  `fromRawData` will infer whichever of the two you
+  leave null from how much data remains after `startPos`, so `Matrix.fromRawData(rd,
+  "float32", 0, null, 3)` loads "however many 3-vectors are in there".  The division must
+  come out even; a leftover tail means the data is not the shape you think it is, and
+  that is worth an error rather than a quietly truncated matrix.  With `dtype="auto"`,
+  passing `rows`/`columns` at all is an error — the header is the authority on shape, and
+  accepting both would mean deciding what to do when they disagree.
 - Both directions **return the ending position**, so loading a whole network's weights
   out of one blob is a clean sequential loop.
-- Header: magic, version, dtype code, rows, columns — room to extend to N-D or new
-  dtypes without breaking old files.
-- **Little-endian**, stated explicitly; these files will move between platforms.
+- `toRawData` **grows the RawData** to fit what it is writing (allocating one for a bare
+  `new RawData`).  The alternative — making the caller size the buffer first — means
+  restating this file's own layout rules in script.  A buffer we merely borrow rather
+  than own is never reallocated; that is an error instead.
+- Header: 16 bytes — magic `MSMX`, uint16 version, uint16 dtype code, int32 rows, int32
+  columns.  Room to extend to N-D or new dtypes without breaking old files, and 16 keeps
+  `float64` payload 8-byte aligned behind it.  Dtype codes are part of the format and are
+  never reused for a different type.
+- **Little-endian**, stated explicitly; these files will move between platforms.  More
+  precisely, byte order follows the RawData object's own `littleEndian` flag, which
+  defaults to little-endian.  The flag has to be honored so that headerless *foreign* data
+  of the other byte order can be read at all, and it would be strange for it to govern
+  `rd.int` but not matrix data in the same buffer.
+
+**Integer conversion:** writing to an integer format rounds to nearest with ties away
+from zero (matching MiniScript's `round`) and **saturates** at the ends of the range; NaN
+stores as 0.  This is a deliberate departure from numpy's `astype`, which truncates
+toward zero and leaves out-of-range conversion undefined — in practice wrapping, so 300
+becomes 44 in a `uint8`.  For what these formats are actually for, a clamped bright pixel
+is a small error and a wrapped one is garbage.  Reading back is exact for every format
+except `int64` beyond 2^53, where the double itself is the limit.
 
 ### Formatting
 

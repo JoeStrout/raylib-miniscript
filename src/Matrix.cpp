@@ -8,12 +8,14 @@
 //
 
 #include "Matrix.h"
+#include "RawData.h"
 #include "miniscript.h"
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <string>
 #include <cstdio>
+#include <cstdint>
 
 namespace MiniScript {
 
@@ -1523,6 +1525,339 @@ static MatrixData* SoftmaxCrossEntropy(const MatrixData* logits, Value vTargets,
 }
 
 //--------------------------------------------------------------------------------
+// Serialization (RawData)
+//--------------------------------------------------------------------------------
+
+// The element formats a matrix can be stored in.  float64 is lossless and the
+// default; the rest exist so that a matrix can meet data produced by something
+// else -- uint8 for images, int8/int16 for quantized weights, float32 for the
+// common on-disk halving of size.
+//
+// `code` is what goes in the header, so these numbers are part of the file
+// format and must never be reused for a different type.  Add new types at the
+// end.
+struct DType {
+	const char* name;
+	int code;
+	int size;
+	bool isFloat;
+	double lo, hi;      // representable range, for the integer formats
+};
+
+static const DType kDTypes[] = {
+	{"float64", 1, 8, true,  0.0, 0.0},
+	{"float32", 2, 4, true,  0.0, 0.0},
+	{"int8",    3, 1, false, -128.0, 127.0},
+	{"uint8",   4, 1, false, 0.0, 255.0},
+	{"int16",   5, 2, false, -32768.0, 32767.0},
+	{"uint16",  6, 2, false, 0.0, 65535.0},
+	{"int32",   7, 4, false, -2147483648.0, 2147483647.0},
+	{"uint32",  8, 4, false, 0.0, 4294967295.0},
+	// The int64 bounds are the nearest doubles to the true limits.  -2^63 is
+	// exact; +2^63-1 is not, so the high bound is 2^63 exclusive -- see
+	// StoreElem, which clamps against it with >=.
+	{"int64",   9, 8, false, -9223372036854775808.0, 9223372036854775808.0},
+};
+static const int kDTypeCount = (int)(sizeof(kDTypes) / sizeof(kDTypes[0]));
+
+// Header: 16 bytes, which keeps float64 data 8-byte aligned behind it.
+//
+//   0..3   magic "MSMX"
+//   4..5   uint16 version
+//   6..7   uint16 dtype code
+//   8..11  int32  rows
+//   12..15 int32  columns
+//
+// Rows and columns are stored even though the dtype alone would let a reader
+// infer a length: shape is the thing a caller most often gets wrong, and a
+// header that carries it turns a silent misread into a clean error.
+static const int kHeaderSize = 16;
+static const int kHeaderVersion = 1;
+static const unsigned char kMagic[4] = { 'M', 'S', 'M', 'X' };
+
+// Multi-byte integers follow the RawData object's own `littleEndian` flag
+// rather than being fixed little-endian.  The default is little-endian, and
+// that is the canonical format for our files; the flag is there so that
+// headerless foreign data of the other byte order can still be read, and it
+// would be strange for it to govern rd.int but not rd-backed matrix data.
+static void PutUInt(unsigned char* p, uint64_t bits, int width, bool le) {
+	for (int i = 0; i < width; i++) {
+		int shift = 8 * (le ? i : width - 1 - i);
+		p[i] = (unsigned char)((bits >> shift) & 0xFF);
+	}
+}
+
+static uint64_t GetUInt(const unsigned char* p, int width, bool le) {
+	uint64_t bits = 0;
+	for (int i = 0; i < width; i++) {
+		int shift = 8 * (le ? i : width - 1 - i);
+		bits |= (uint64_t)p[i] << shift;
+	}
+	return bits;
+}
+
+// Store one element in the given format.
+//
+// The integer formats round to nearest (ties away from zero, matching
+// MiniScript's `round`) and *saturate* at the ends of the range; NaN stores 0.
+// This departs from numpy's astype, which truncates toward zero and leaves
+// out-of-range conversions undefined -- in practice wrapping, so 300 lands as
+// 44 in a uint8.  For the two things these formats are actually for, images and
+// quantized weights, a clamped bright pixel is a small error and a wrapped one
+// is garbage, so saturation is the behavior worth having here.
+static void StoreElem(unsigned char* p, const DType* dt, double v, bool le) {
+	if (dt->isFloat) {
+		if (dt->size == 8) {
+			uint64_t bits;
+			memcpy(&bits, &v, 8);
+			PutUInt(p, bits, 8, le);
+		} else {
+			float f = (float)v;
+			uint32_t bits;
+			memcpy(&bits, &f, 4);
+			PutUInt(p, bits, 4, le);
+		}
+		return;
+	}
+	double r = std::round(v);
+	int64_t i;
+	if (v != v) {
+		i = 0;                                  // NaN has no integer meaning
+	} else if (r <= dt->lo) {
+		i = (dt->lo == -9223372036854775808.0) ? INT64_MIN : (int64_t)dt->lo;
+	} else if (r >= dt->hi) {
+		i = (dt->hi == 9223372036854775808.0) ? INT64_MAX : (int64_t)dt->hi;
+	} else {
+		i = (int64_t)r;
+	}
+	PutUInt(p, (uint64_t)i, dt->size, le);
+}
+
+// Read one element back.  Signed formats are sign-extended from their width;
+// int64 values beyond 2^53 lose precision on the way into a double, which is
+// inherent in the element type and not something we can flag per value.
+static double LoadElem(const unsigned char* p, const DType* dt, bool le) {
+	uint64_t bits = GetUInt(p, dt->size, le);
+	if (dt->isFloat) {
+		if (dt->size == 8) {
+			double d;
+			memcpy(&d, &bits, 8);
+			return d;
+		}
+		uint32_t b32 = (uint32_t)bits;
+		float f;
+		memcpy(&f, &b32, 4);
+		return (double)f;
+	}
+	if (dt->lo < 0.0) {
+		// Sign-extend: shift the sign bit of this width up to bit 63 and back.
+		int shift = 64 - 8 * dt->size;
+		return (double)((int64_t)(bits << shift) >> shift);
+	}
+	return (double)bits;
+}
+
+// Look up a dtype by name.  With `allowAuto`, the name "auto" yields a null
+// dtype and true -- "read the header for it", which is only meaningful on read.
+static bool ParseDType(Value v, bool allowAuto, const char* who,
+                       const DType** out, Value* outErr) {
+	if (v.Type() != ValueType::String) {
+		*outErr = ErrorTypes::TypeError("string", v);
+		return false;
+	}
+	String name = v.ToString();
+	if (allowAuto && name == "auto") { *out = nullptr; return true; }
+	for (int i = 0; i < kDTypeCount; i++) {
+		if (name == kDTypes[i].name) { *out = &kDTypes[i]; return true; }
+	}
+	*outErr = ErrorTypes::RuntimeError(
+		String("Matrix.") + who + ": unknown dtype \"" + name + "\"");
+	return false;
+}
+
+static const DType* DTypeByCode(int code) {
+	for (int i = 0; i < kDTypeCount; i++) {
+		if (kDTypes[i].code == code) return &kDTypes[i];
+	}
+	return nullptr;
+}
+
+// Common front end for all three entry points: fetch the RawData argument and
+// validate startPos against it.  `rd` may still have no buffer at all (length
+// 0), which is fine for a write that is about to grow it.
+static bool RawDataArg(Context context, const char* who,
+                       Value* outValue, BinaryData** outData, int* outStart,
+                       Value* outErr) {
+	Value v = context.GetVar("rd");
+	BinaryData* data = ValueToRawData(v);
+	if (data == nullptr && v.Type() != ValueType::Map) {
+		*outErr = ErrorTypes::RuntimeError(String("Matrix.") + who + ": RawData required");
+		return false;
+	}
+	Value vs = context.GetVar("startPos");
+	if (vs.Type() != ValueType::Number) {
+		*outErr = ErrorTypes::TypeError("number", vs);
+		return false;
+	}
+	int start = vs.IntValue();
+	if (start < 0) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": startPos must be >= 0");
+		return false;
+	}
+	*outValue = v;
+	*outData = data;
+	*outStart = start;
+	return true;
+}
+
+// Read and validate a header at `p`, which the caller has already bounds-checked.
+static bool ReadHeader(const unsigned char* p, bool le, const char* who,
+                       const DType** outDt, int* outRows, int* outCols, Value* outErr) {
+	if (memcmp(p, kMagic, 4) != 0) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": no matrix header at that position"
+			" (pass an explicit dtype to read headerless data)");
+		return false;
+	}
+	int version = (int)GetUInt(p + 4, 2, le);
+	if (version != kHeaderVersion) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": unsupported matrix format version "
+			+ String::Format(version));
+		return false;
+	}
+	const DType* dt = DTypeByCode((int)GetUInt(p + 6, 2, le));
+	if (dt == nullptr) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": unknown dtype code in header");
+		return false;
+	}
+	int rows = (int)(int32_t)GetUInt(p + 8, 4, le);
+	int cols = (int)(int32_t)GetUInt(p + 12, 4, le);
+	if (rows < 0 || cols < 0 || (long)rows * (long)cols > kMaxMatrixElems) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": bad shape in matrix header");
+		return false;
+	}
+	*outDt = dt;
+	*outRows = rows;
+	*outCols = cols;
+	return true;
+}
+
+// Reshape without preserving contents.  Only for the read path, which then
+// overwrites every element; the resize intrinsic's row-by-row relayout would
+// be wasted work here.
+static bool SetShapeDiscarding(MatrixData* m, int rows, int columns) {
+	long needed = (long)rows * (long)columns;
+	if (needed > kMaxMatrixElems) return false;
+	if (!EnsureCapacity(m, needed)) return false;
+	m->rows = rows;
+	m->columns = columns;
+	return true;
+}
+
+// Write `m` at `p` -- header (if asked) followed by rows*columns elements.
+static void WriteElems(const MatrixData* m, unsigned char* p, const DType* dt,
+                       bool header, bool le) {
+	if (header) {
+		memcpy(p, kMagic, 4);
+		PutUInt(p + 4, (uint64_t)kHeaderVersion, 2, le);
+		PutUInt(p + 6, (uint64_t)dt->code, 2, le);
+		PutUInt(p + 8, (uint64_t)(uint32_t)m->rows, 4, le);
+		PutUInt(p + 12, (uint64_t)(uint32_t)m->columns, 4, le);
+		p += kHeaderSize;
+	}
+	long n = m->LiveElems();
+	for (long i = 0; i < n; i++) {
+		StoreElem(p, dt, m->data[i], le);
+		p += dt->size;
+	}
+}
+
+// The reverse: fill an already-shaped `m` from `p`.
+static void ReadElems(MatrixData* m, const unsigned char* p, const DType* dt, bool le) {
+	long n = m->LiveElems();
+	for (long i = 0; i < n; i++) {
+		m->data[i] = LoadElem(p, dt, le);
+		p += dt->size;
+	}
+}
+
+// The whole of toRawData, once the caller has unpacked its arguments.  Grows
+// the RawData if what we are writing runs past its end -- the alternative,
+// making the caller compute the byte count itself, means duplicating this
+// file's own layout rules in script.
+//
+// Returns the ending position, or -1 with *outErr set.
+static int MatrixToRawData(const MatrixData* m, Value rdValue, const DType* dt,
+                           int startPos, bool includeHeader, Value* outErr) {
+	long bytes = (includeHeader ? kHeaderSize : 0) + m->LiveElems() * dt->size;
+	long end = (long)startPos + bytes;
+	if (end > 0x7FFFFFFFL) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.toRawData: result would exceed 2GB");
+		return -1;
+	}
+	String growErr;
+	BinaryData* rd = RawDataEnsureSize(rdValue, (int)end, &growErr);
+	if (rd == nullptr) {
+		*outErr = ErrorTypes::RuntimeError(String("Matrix.toRawData: ") + growErr);
+		return -1;
+	}
+	// Nothing to write at all (an empty matrix, headerless) leaves rd->bytes
+	// possibly null, and null + 0 is not a pointer we are entitled to form.
+	if (bytes > 0) {
+		WriteElems(m, rd->bytes + startPos, dt, includeHeader, rd->littleEndian);
+	}
+	return (int)end;
+}
+
+// The shared back end of readRawData and fromRawData.
+//
+// `dt` null means "the data starts with a header", which supplies both the
+// dtype and the shape.  Otherwise the shape comes from `rows`/`columns`, which
+// the callers fill in from the receiver or from their own arguments.
+//
+// Returns the ending position, or -1 with *outErr set.  `m` is only modified
+// on success.
+static int MatrixFromRawData(MatrixData* m, BinaryData* rd, const DType* dt,
+                             int startPos, int rows, int columns,
+                             const char* who, Value* outErr) {
+	// rd is null for a RawData that has no buffer yet: an empty read from one
+	// is legal (it asks for nothing), so treat it as a zero-length buffer
+	// rather than rejecting it, and never form a pointer into it.
+	const unsigned char* base = (rd == nullptr) ? nullptr : rd->bytes;
+	int length = (rd == nullptr) ? 0 : rd->length;
+	bool le = (rd == nullptr) ? true : rd->littleEndian;
+	int pos = startPos;
+
+	if (dt == nullptr) {
+		if (length - pos < kHeaderSize) {
+			*outErr = ErrorTypes::RuntimeError(
+				String("Matrix.") + who + ": not enough data for a matrix header");
+			return -1;
+		}
+		if (!ReadHeader(base + pos, le, who, &dt, &rows, &columns, outErr)) return -1;
+		pos += kHeaderSize;
+	}
+
+	long bytes = (long)rows * (long)columns * dt->size;
+	if ((long)length - pos < bytes) {
+		*outErr = ErrorTypes::RuntimeError(
+			String("Matrix.") + who + ": not enough data for a "
+			+ String::Format(rows) + " x " + String::Format(columns) + " matrix");
+		return -1;
+	}
+	if (!SetShapeDiscarding(m, rows, columns)) {
+		*outErr = ErrorTypes::RuntimeError(String("Matrix.") + who + ": out of memory");
+		return -1;
+	}
+	if (bytes > 0) ReadElems(m, base + pos, dt, le);
+	return (int)(pos + bytes);
+}
+
+//--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
 
@@ -1647,6 +1982,89 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(MatrixToValue(m));
 	});
 	matrixClass.SetValue(String("fromList"), f.GetFunc());
+
+	// Matrix.fromRawData(rd, dtype="auto", startPos=0, rows=null, columns=null)
+	//   -> new Matrix
+	//
+	// With the default dtype the data carries a header and supplies its own
+	// dtype and shape, so rows/columns must be left out.  With an explicit
+	// dtype the data is headerless and the shape is yours to give: name both,
+	// or name one and let the other follow from how much data is left.
+	f = Intrinsic::Create("");
+	f.AddParam("rd");
+	f.AddParam("dtype", "auto");
+	f.AddParam("startPos", 0);
+	f.AddParam("rows", Value::Null);
+	f.AddParam("columns", Value::Null);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		Value rdValue; BinaryData* rd; int startPos;
+		if (!RawDataArg(context, "fromRawData", &rdValue, &rd, &startPos, &err)) {
+			return IntrinsicResult(err);
+		}
+		const DType* dt;
+		if (!ParseDType(context.GetVar("dtype"), true, "fromRawData", &dt, &err)) {
+			return IntrinsicResult(err);
+		}
+		Value vr = context.GetVar("rows"), vc = context.GetVar("columns");
+		int rows = 0, columns = 0;
+		if (dt == nullptr) {
+			// The header is the authority on shape; accepting rows/columns too
+			// would mean deciding what to do when they disagree with it.
+			if (!vr.IsNull() || !vc.IsNull()) {
+				return IntrinsicResult(ErrorTypes::RuntimeError(
+					"Matrix.fromRawData: rows/columns cannot be given with dtype \"auto\""
+					" (the header supplies the shape)"));
+			}
+		} else {
+			if (!vr.IsNull() && vr.Type() != ValueType::Number) {
+				return IntrinsicResult(ErrorTypes::TypeError("number", vr));
+			}
+			if (!vc.IsNull() && vc.Type() != ValueType::Number) {
+				return IntrinsicResult(ErrorTypes::TypeError("number", vc));
+			}
+			if (vr.IsNull() && vc.IsNull()) {
+				return IntrinsicResult(ErrorTypes::RuntimeError(
+					"Matrix.fromRawData: headerless data needs rows and/or columns"));
+			}
+			rows = vr.IsNull() ? -1 : vr.IntValue();
+			columns = vc.IsNull() ? -1 : vc.IntValue();
+			if (rows < -1 || columns < -1) {
+				return IntrinsicResult(ErrorTypes::RuntimeError(
+					"Matrix.fromRawData: rows and columns must be >= 0"));
+			}
+			if (rows < 0 || columns < 0) {
+				// Infer the missing extent from what is left in the buffer.
+				// Division must be exact: a leftover tail means the data is not
+				// the shape the caller thinks it is, which is worth an error
+				// rather than a silently truncated matrix.
+				int length = (rd == nullptr) ? 0 : rd->length;
+				long avail = ((long)length - startPos) / dt->size;
+				int known = (rows < 0) ? columns : rows;
+				if (known == 0) {
+					rows = columns = 0;
+				} else if (avail % known != 0) {
+					return IntrinsicResult(ErrorTypes::RuntimeError(
+						"Matrix.fromRawData: the remaining data is not a whole"
+						" number of rows/columns at that size"));
+				} else if (rows < 0) {
+					rows = (int)(avail / known);
+				} else {
+					columns = (int)(avail / known);
+				}
+			}
+		}
+
+		MatrixData* m = NewMatrixData(0, 0);
+		if (m == nullptr) {
+			return IntrinsicResult(ErrorTypes::RuntimeError("Matrix.fromRawData: out of memory"));
+		}
+		int end = MatrixFromRawData(m, rd, dt, startPos, rows, columns,
+		                            "fromRawData", &err);
+		if (end < 0) { delete m; return IntrinsicResult(err); }
+		return IntrinsicResult(MatrixToValue(m));
+	});
+	matrixClass.SetValue(String("fromRawData"), f.GetFunc());
 
 	// m.toFlatList -> a plain list of every element, row by row.
 	// Index it as r*columns + c.  There is no 2D form here on purpose: a flat
@@ -2653,6 +3071,69 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(MatrixToValue(losses));
 	});
 	matrixClass.SetValue(String("softmaxCrossEntropy"), f.GetFunc());
+
+	// m.toRawData(rd, dtype="float64", startPos=0, includeHeader=true)
+	//   -> the position just past what was written
+	//
+	// The RawData grows to fit if it needs to, so writing a network's weights
+	// into one blob is a loop over `pos = m.toRawData(rd, "float32", pos)`.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("rd");
+	f.AddParam("dtype", "float64");
+	f.AddParam("startPos", 0);
+	f.AddParam("includeHeader", Value::one);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value rdValue; BinaryData* rd; int startPos;
+		if (!RawDataArg(context, "toRawData", &rdValue, &rd, &startPos, &err)) {
+			return IntrinsicResult(err);
+		}
+		const DType* dt;
+		if (!ParseDType(context.GetVar("dtype"), false, "toRawData", &dt, &err)) {
+			return IntrinsicResult(err);
+		}
+		bool header = context.GetVar("includeHeader").BoolValue();
+		int end = MatrixToRawData(m, rdValue, dt, startPos, header, &err);
+		if (end < 0) return IntrinsicResult(err);
+		return IntrinsicResult(Value(end));
+	});
+	matrixClass.SetValue(String("toRawData"), f.GetFunc());
+
+	// m.readRawData(rd, dtype="auto", startPos=0)
+	//   -> the position just past what was read
+	//
+	// Reads into the receiver, reshaping it.  With the default dtype the data
+	// must start with a header, which supplies both dtype and shape; an
+	// explicit dtype means headerless data, whose shape is the receiver's
+	// current one -- so `Matrix.ofSize(28, 28).readRawData(rd, "uint8")` is how
+	// you pull an image out of a blob somebody else wrote.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("rd");
+	f.AddParam("dtype", "auto");
+	f.AddParam("startPos", 0);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value rdValue; BinaryData* rd; int startPos;
+		if (!RawDataArg(context, "readRawData", &rdValue, &rd, &startPos, &err)) {
+			return IntrinsicResult(err);
+		}
+		const DType* dt;
+		if (!ParseDType(context.GetVar("dtype"), true, "readRawData", &dt, &err)) {
+			return IntrinsicResult(err);
+		}
+		int end = MatrixFromRawData(m, rd, dt, startPos, m->rows, m->columns,
+		                            "readRawData", &err);
+		if (end < 0) return IntrinsicResult(err);
+		SyncShape(context.GetVar("self"), m);
+		return IntrinsicResult(Value(end));
+	});
+	matrixClass.SetValue(String("readRawData"), f.GetFunc());
 
 	// m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null) -> string
 	//

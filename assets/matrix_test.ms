@@ -1009,6 +1009,142 @@ ok isErr((new Matrix).softmaxCrossEntropy([0])), "softmaxCrossEntropy needs stor
 matches Matrix.ofSize(0,3).softmaxCrossEntropy(Matrix.ofSize(0,3)), 0, 1, [], "no samples gives a 0x1"
 
 print
+print "-- serialization: headered round trips --"
+m = Matrix.fromList([[1,2,3],[4,5,6]])
+rd = new RawData
+eq m.toRawData(rd), 16 + 6*8, "float64 with header ends at 64"
+eq rd.len, 64, "a bare RawData grew to fit"
+matches Matrix.fromRawData(rd), 2, 3, [1,2,3,4,5,6], "float64 header round trip"
+
+// Sequential loading: several matrices in one blob, read back with the
+// returned position.  This is the shape of loading a network's weights.
+a = Matrix.fromList([[1,2],[3,4]])
+b = Matrix.fromList([[5,6,7]])
+rd = new RawData
+pos = a.toRawData(rd)
+pos = b.toRawData(rd, "float64", pos)
+eq pos, (16 + 32) + (16 + 24), "two matrices written back to back"
+x = Matrix.ofSize(0, 0)
+pos = x.readRawData(rd)
+matches x, 2, 2, [1,2,3,4], "first matrix read back"
+eq pos, 48, "read stops where the first matrix ends"
+pos = x.readRawData(rd, "auto", pos)
+matches x, 1, 3, [5,6,7], "second matrix reshapes the receiver"
+eq pos, 88, "sequential read ends at the end of the blob"
+eq x.rows, 1, "the instance map's shape was synced too"
+
+z = Matrix.ofSize(0, 0)
+rd = new RawData
+eq z.toRawData(rd), 16, "an empty matrix is just a header"
+matches Matrix.fromRawData(rd), 0, 0, [], "empty round trip"
+
+print
+print "-- serialization: element formats --"
+// float32 keeps about 7 digits, which is the whole point of choosing it.
+m = Matrix.fromList([[0.1, -3.25, 12345.678]])
+rd = new RawData
+m.toRawData rd, "float32"
+f32 = Matrix.fromRawData(rd)
+near f32.getElem(0,0), 0.1, "float32 keeps ~7 digits", 1e-7
+eq f32.getElem(0,1), -3.25, "an exact binary fraction survives float32"
+near f32.getElem(0,2), 12345.678, "float32 large value", 1e-3
+
+// Integer formats round away from zero on ties and saturate at the ends.
+rd = new RawData
+Matrix.fromList([[-5, 3.5, 2.5, 300, 255]]).toRawData rd, "uint8"
+matches Matrix.fromRawData(rd), 1, 5, [0, 4, 3, 255, 255], "uint8 rounds and clamps"
+rd = new RawData
+Matrix.fromList([[-200, -3.5, 127.6]]).toRawData rd, "int8"
+matches Matrix.fromRawData(rd), 1, 3, [-128, -4, 127], "int8 clamps both ends"
+rd = new RawData
+Matrix.fromList([[-32768, 32767, 40000]]).toRawData rd, "int16"
+matches Matrix.fromRawData(rd), 1, 3, [-32768, 32767, 32767], "int16 range"
+rd = new RawData
+Matrix.fromList([[0, 65535, 70000]]).toRawData rd, "uint16"
+matches Matrix.fromRawData(rd), 1, 3, [0, 65535, 65535], "uint16 range"
+rd = new RawData
+Matrix.fromList([[-123456789, 2147483647, 3e9]]).toRawData rd, "int32"
+matches Matrix.fromRawData(rd), 1, 3, [-123456789, 2147483647, 2147483647], "int32 range"
+rd = new RawData
+Matrix.fromList([[0, 4294967295, -1]]).toRawData rd, "uint32"
+matches Matrix.fromRawData(rd), 1, 3, [0, 4294967295, 0], "uint32 range"
+rd = new RawData
+Matrix.fromList([[-1099511627776, 1099511627776]]).toRawData rd, "int64"
+matches Matrix.fromRawData(rd), 1, 2, [-1099511627776, 1099511627776], "int64 holds 2^40"
+
+// NaN has no integer meaning, so it stores as zero rather than as whatever
+// the cast happens to produce.
+nan = Matrix.fromList([[-1]]).sqrt
+ok isNaN(nan.getElem(0,0)), "sqrt(-1) is NaN"
+rd = new RawData
+nan.toRawData rd, "uint8"
+eq Matrix.fromRawData(rd).getElem(0,0), 0, "NaN stores as 0 in an integer format"
+rd = new RawData
+nan.toRawData rd, "float64"
+ok isNaN(Matrix.fromRawData(rd).getElem(0,0)), "NaN survives float64"
+
+print
+print "-- serialization: headerless --"
+m = Matrix.fromList([[1,2],[3,4]])
+rd = new RawData
+eq m.toRawData(rd, "int16", 0, false), 8, "headerless int16 is 8 bytes"
+t = Matrix.ofSize(2, 2)
+eq t.readRawData(rd, "int16"), 8, "headerless read returns the ending position"
+matches t, 2, 2, [1,2,3,4], "headerless read takes its shape from the receiver"
+matches Matrix.fromRawData(rd, "int16", 0, 2, 2), 2, 2, [1,2,3,4], "explicit shape"
+matches Matrix.fromRawData(rd, "int16", 0, null, 2), 2, 2, [1,2,3,4], "rows inferred from length"
+matches Matrix.fromRawData(rd, "int16", 0, 1), 1, 4, [1,2,3,4], "columns inferred from length"
+ok isErr(Matrix.fromRawData(rd, "int16", 0, 3)), "an inexact inferred shape is an error"
+ok isErr(Matrix.fromRawData(rd, "int16")), "headerless needs a shape"
+ok isErr(Matrix.fromRawData(rd, "auto", 0, 2, 2)), "a shape with dtype auto is an error"
+
+// Writing at an offset leaves what is already there alone.
+rd = new RawData
+rd.resize 4
+rd.setUint 0, 12345
+eq m.toRawData(rd, "float64", 4, false), 36, "offset write ends past the offset"
+eq rd.uint(0), 12345, "the bytes before startPos are untouched"
+matches Matrix.fromRawData(rd, "float64", 4, 2, 2), 2, 2, [1,2,3,4], "read back from the offset"
+
+print
+print "-- serialization: byte order follows the RawData --"
+rd = new RawData
+Matrix.fromList([[1]]).toRawData rd, "int32", 0, false
+eq rd.byte(0), 1, "little-endian by default"
+rd.littleEndian = false
+Matrix.fromList([[1]]).toRawData rd, "int32", 0, false
+eq rd.byte(3), 1, "big-endian when the RawData says so"
+matches Matrix.fromRawData(rd, "int32", 0, 1, 1), 1, 1, [1], "big-endian headerless round trip"
+rd = new RawData
+rd.littleEndian = false
+Matrix.fromList([[1.5, 2.5]]).toRawData rd
+matches Matrix.fromRawData(rd), 1, 2, [1.5, 2.5], "big-endian headered round trip"
+
+print
+print "-- serialization: errors --"
+m = Matrix.fromList([[1,2,3],[4,5,6]])
+rd = new RawData
+m.toRawData rd
+ok isErr(m.toRawData(rd, "auto")), "auto is not a dtype you can write"
+ok isErr(m.toRawData(rd, "float16")), "unknown dtype"
+ok isErr(m.toRawData(rd, "float64", -1)), "negative startPos"
+ok isErr(m.toRawData(7)), "a non-RawData is an error"
+ok isErr((new Matrix).toRawData(rd)), "toRawData needs storage"
+ok isErr(m.readRawData(new RawData)), "no header in an empty RawData"
+ok isErr(Matrix.fromRawData(new RawData)), "fromRawData on an empty RawData"
+rd2 = new RawData
+rd2.resize 64
+ok isErr(Matrix.fromRawData(rd2)), "zeros are not a valid header"
+rd.resize 60
+ok isErr(Matrix.fromRawData(rd)), "truncated element data is an error"
+ok isErr(Matrix.ofSize(2,2).readRawData(rd, "float64", 40)), "not enough data at that offset"
+
+// A RawData with no buffer at all is a zero-length buffer, not a crash: an
+// empty read asks for nothing and gets it.
+matches Matrix.fromRawData(new RawData, "float64", 0, 0, 5), 0, 5, [], "empty headerless read of an empty RawData"
+eq Matrix.ofSize(0,4).toRawData(new RawData, "float64", 0, false), 0, "empty headerless write allocates nothing"
+
+print
 print "-- storage is reclaimed --"
 // Allocate inside a function that then RETURNS.  The VM's root scan includes the
 // current frame's registers, so a matrix that is dead but still sitting in a
