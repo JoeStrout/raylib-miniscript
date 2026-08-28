@@ -241,6 +241,125 @@ lines.append('cmpNum Matrix.fromList(%s).argmax, %s, "argmax tie goes to the fir
 emit("argmax(axis=1) with ties", "Matrix.fromList(%s).argmax(1)" % lit(T),
      np.expand_dims(T.argmax(axis=1), 1).astype(float))
 
+# ---- linear algebra ----
+#
+# numpy earns its keep most here.  A determinant or an inverse written twice by
+# the same author from the same formula will agree with itself even when the
+# cofactor signs are wrong; LAPACK will not.  The closed-form 1x1..4x4 paths and
+# the LU path above them are both exercised.
+lines.append("")
+lines.append('print "-- numpy oracle: linear algebra --"')
+lines.append("""
+cmpNear = function(got, want, label)
+	outer.checks = outer.checks + 1
+	if got isa error then
+		outer.failures = outer.failures + 1
+		print "FAIL " + label + "  (error: " + got + ")"
+		return
+	end if
+	scale = want
+	if scale < 0 then scale = -scale
+	if scale < 1 then scale = 1
+	d = got - want
+	if d < 0 then d = -d
+	if d <= 1e-9 * scale then
+		print "ok   " + label
+	else
+		outer.failures = outer.failures + 1
+		print "FAIL " + label + "  (got " + got + ", want " + want + ")"
+	end if
+end function
+""")
+
+
+def well_conditioned(n):
+    """Random, but diagonally dominant so it is far from singular -- otherwise
+    the comparison measures conditioning rather than correctness."""
+    a = rand(n, n, -3, 3)
+    a[np.diag_indices(n)] += n + 3
+    return np.round(a, 4)
+
+
+for n in (1, 2, 3, 4, 5, 7):
+    a = well_conditioned(n)
+    checks += 1
+    lines.append('cmpNear Matrix.fromList(%s).determinant, %s, "%dx%d determinant"'
+                 % (lit(a), num(np.linalg.det(a)), n, n))
+    emit("%dx%d inverse" % (n, n), "Matrix.fromList(%s).inverse" % lit(a), np.linalg.inv(a))
+
+# A matrix whose leading entry is zero: correct only with partial pivoting.
+piv = well_conditioned(5)
+piv[0, 0] = 0.0
+checks += 1
+lines.append('cmpNear Matrix.fromList(%s).determinant, %s, "determinant with a zero leading pivot"'
+             % (lit(piv), num(np.linalg.det(piv))))
+emit("inverse with a zero leading pivot", "Matrix.fromList(%s).inverse" % lit(piv),
+     np.linalg.inv(piv))
+
+# A row swap must flip the sign, exactly as it does for numpy.
+sw = well_conditioned(6)
+swapped = sw[[1, 0, 2, 3, 4, 5], :]
+checks += 1
+lines.append('cmpNear Matrix.fromList(%s).swapRows(0, 1).determinant, %s, '
+             '"determinant after a row swap"' % (lit(sw), num(np.linalg.det(swapped))))
+
+# solve: one right-hand side, then several at once.
+for n in (2, 4, 6):
+    a = well_conditioned(n)
+    b1 = rand(n, 1)
+    emit("%dx%d solve, one right-hand side" % (n, n),
+         "Matrix.fromList(%s).solve(%s)" % (lit(a), lit(b1)), np.linalg.solve(a, b1))
+    b3 = rand(n, 3)
+    emit("%dx%d solve, three right-hand sides" % (n, n),
+         "Matrix.fromList(%s).solve(%s)" % (lit(a), lit(b3)), np.linalg.solve(a, b3))
+
+# A flat list of n numbers is a column vector, which is how numpy reads a 1-D b.
+a = well_conditioned(4)
+bv = rand(4, 1)
+emit("solve with a flat-list right-hand side",
+     "Matrix.fromList(%s).solve(%s)" % (lit(a), flat(bv)),
+     np.linalg.solve(a, bv))
+
+# Least squares through the normal equations, the motivating use.
+X = rand(8, 3)
+y = rand(8, 1)
+emit("least squares via transposedTimes + solve",
+     "Matrix.fromList(%s).gemm(Matrix.fromList(%s), null, null, true)"
+     ".solve(Matrix.fromList(%s).gemm(Matrix.fromList(%s), null, null, true))"
+     % (lit(X), lit(X), lit(X), lit(y)),
+     np.linalg.solve(X.T @ X, X.T @ y))
+
+# ---- per-row vector ops ----
+#
+# The cross product is all sign convention, and a sign convention is exactly the
+# kind of thing a self-written reference reproduces wrongly with total
+# confidence.  np.cross settles it.
+lines.append("")
+lines.append('print "-- numpy oracle: rowCross --"')
+
+u = rand(6, 3)
+w = rand(6, 3)
+emit("rowCross, one operand row per row",
+     "Matrix.fromList(%s).rowCross(Matrix.fromList(%s))" % (lit(u), lit(w)),
+     np.cross(u, w))
+emit("rowCross is anticommutative",
+     "Matrix.fromList(%s).rowCross(Matrix.fromList(%s))" % (lit(w), lit(u)),
+     np.cross(w, u))
+
+# A single row crossed with every row.  numpy broadcasts a (3,) against an
+# (n,3) the same way, which is what makes this comparable.
+axis = rand(1, 3)
+emit("rowCross broadcasting a single row",
+     "Matrix.fromList(%s).rowCross(%s)" % (lit(u), flat(axis)),
+     np.cross(u, axis[0]))
+
+# Torque = r x F, the motivating physics case, on a full frame's worth of rows.
+r = rand(32, 3)
+force = rand(32, 3)
+emit("torque = r x F over 32 bodies",
+     "Matrix.fromList(%s).rowCross(Matrix.fromList(%s))" % (lit(r), lit(force)),
+     np.cross(r, force))
+
 lines.append("")
 lines.append('print')
 lines.append('print checks + " numpy-oracle checks, " + failures + " failures"')

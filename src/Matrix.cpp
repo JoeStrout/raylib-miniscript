@@ -60,6 +60,15 @@ static MatrixData* NewMatrixData(int rows, int columns) {
 	return m;
 }
 
+// Build a size x size identity.  Returns null on the same terms as
+// NewMatrixData, which does the zero-filling; only the diagonal is left.
+static MatrixData* NewIdentity(int size) {
+	MatrixData* m = NewMatrixData(size, size);
+	if (m == nullptr) return nullptr;
+	for (int i = 0; i < size; i++) m->data[(long)i * size + i] = 1.0;
+	return m;
+}
+
 // Make sure at least `needed` elements are addressable, growing if not.
 //
 // Growth policy: newCap = max(2*oldCap, needed), so repeatedly appending rows
@@ -501,6 +510,164 @@ static void KernelMatmul(double* out, int m, int n, int k,
 	}
 }
 
+// The whole of gemm, once the caller has unpacked its arguments:
+//
+//     out := alpha * op(A) * op(B) + beta * addend
+//
+// B may be null (the level-1 path).  `addend` is still a Value here because it
+// alone may be a list; every other operand arrives resolved.  `out` may be null,
+// which allocates a fresh result; otherwise it is reshaped and written in place.
+//
+// Returns the result (the given `out`, when one was given), or nullptr with
+// *outErr set.
+static MatrixData* Gemm(MatrixData* A, MatrixData* B, Value vAdd, MatrixData* out,
+                        bool transA, bool transB, double alpha, double beta,
+                        Value* outErr) {
+	// ---- the result shape ----
+	int m = transA ? A->columns : A->rows;
+	int kA = transA ? A->rows : A->columns;
+	int n, k = 0;
+	if (B != nullptr) {
+		int kB = transB ? B->columns : B->rows;
+		n = transB ? B->rows : B->columns;
+		if (kA != kB) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.gemm: inner dimensions do not match");
+			return nullptr;
+		}
+		k = kA;
+	} else {
+		n = kA;
+	}
+
+	// ---- addend, and how it broadcasts onto m x n ----
+	AddendMode mode = kAddendNone;
+	double addScalar = 0.0;
+	MatrixData* addM = nullptr;
+	ValueList addList;
+	bool addNested = false;
+	int addRows = 0, addCols = 0;
+	if (!vAdd.IsNull() && beta != 0.0) {
+		if (vAdd.Type() == ValueType::Number) {
+			mode = kAddendScalar;
+			addScalar = vAdd.DoubleValue();
+		} else {
+			if (vAdd.Type() == ValueType::List) {
+				addList = vAdd.GetList();
+				if (!ListShape(addList, &addNested, &addRows, &addCols, "gemm", outErr)) return nullptr;
+			} else {
+				addM = ValueToMatrix(vAdd);
+				if (addM == nullptr) {
+					*outErr = ErrorTypes::RuntimeError(
+						"Matrix.gemm: addend must be null, a number, a Matrix, or a list");
+					return nullptr;
+				}
+				addRows = addM->rows;
+				addCols = addM->columns;
+			}
+			if (addRows == 1 && addCols == 1) {
+				// A 1x1 operand is a scalar wearing a matrix's clothes.  Read
+				// the value out here; the scalar path never looks at opAdd.data.
+				mode = kAddendScalar;
+				addScalar = addM != nullptr ? addM->data[0]
+				                            : ListElem(addList, addNested, 0, 0);
+			}
+			else if (addRows == m && addCols == n)          mode = kAddendFull;
+			else if (addRows == 1 && addCols == n)          mode = kAddendRow;
+			else if (addRows == m && addCols == 1)          mode = kAddendCol;
+			else {
+				*outErr = ErrorTypes::RuntimeError(
+					"Matrix.gemm: addend does not match or broadcast to the result shape");
+				return nullptr;
+			}
+		}
+	}
+
+	// ---- snapshot anything that aliases `out` ----
+	//
+	// An operand aliases `out` only by being the same MatrixData (storage is
+	// never shared otherwise), and then reshaping `out` would move its data
+	// and rewrite its dimensions.  So copy first, and record the dimensions
+	// as they are NOW.  A list addend is copied here too, which lets the
+	// prefill treat every addend uniformly as contiguous doubles.
+	Operand opA, opB, opAdd;
+	opA.rows = A->rows; opA.columns = A->columns;
+	if (B != nullptr) { opB.rows = B->rows; opB.columns = B->columns; }
+	opAdd.rows = addRows; opAdd.columns = addCols;
+
+	bool addIsList = !addList.Empty();
+	bool copyA = (out != nullptr && A == out);
+	bool copyB = (B != nullptr && out != nullptr && B == out);
+	bool copyAdd = (mode != kAddendNone && mode != kAddendScalar)
+	               && (addIsList || (addM != nullptr && out != nullptr && addM == out));
+
+	long needA = copyA ? opA.Elems() : 0;
+	long needB = copyB ? opB.Elems() : 0;
+	long needAdd = copyAdd ? opAdd.Elems() : 0;
+	long total = needA + needB + needAdd;
+	double* scratch = nullptr;
+	if (total > 0) {
+		scratch = Scratch(total);
+		if (scratch == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.gemm: out of memory");
+			return nullptr;
+		}
+	}
+	long at = 0;
+	if (copyA) { memcpy(scratch + at, A->data, (size_t)needA * sizeof(double)); opA.data = scratch + at; at += needA; }
+	else opA.data = A->data;
+	if (B != nullptr) {
+		if (copyB) { memcpy(scratch + at, B->data, (size_t)needB * sizeof(double)); opB.data = scratch + at; at += needB; }
+		else opB.data = B->data;
+	}
+	if (copyAdd) {
+		double* dst = scratch + at;
+		if (addIsList) {
+			for (int r = 0; r < addRows; r++) {
+				for (int c = 0; c < addCols; c++) {
+					dst[(long)r * addCols + c] = ListElem(addList, addNested, r, c);
+				}
+			}
+		} else {
+			memcpy(dst, addM->data, (size_t)needAdd * sizeof(double));
+		}
+		opAdd.data = dst;
+		at += needAdd;
+	} else if (addM != nullptr) {
+		opAdd.data = addM->data;
+	}
+
+	// ---- shape the destination ----
+	if (out == nullptr) {
+		if ((long)m * n > kMaxMatrixElems) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.gemm: result exceeds the maximum matrix size");
+			return nullptr;
+		}
+		out = NewMatrixData(m, n);
+		if (out == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.gemm: out of memory");
+			return nullptr;
+		}
+	} else {
+		if (!EnsureCapacity(out, (long)m * n)) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.gemm: out of memory");
+			return nullptr;
+		}
+		out->rows = m;
+		out->columns = n;
+	}
+
+	// ---- compute ----
+	if ((long)m * n > 0) {
+		Prefill(out->data, m, n, opAdd, mode, beta, addScalar);
+		if (B == nullptr) {
+			KernelAxpby(out->data, m, n, opA, transA, alpha);
+		} else {
+			KernelMatmul(out->data, m, n, k, opA, transA, opB, transB, alpha);
+		}
+	}
+	return out;
+}
+
 // A second operand that must match, or broadcast to, an m x n matrix: a number,
 // a Matrix, or a list (read exactly as Matrix.fromList would read it).
 //
@@ -545,9 +712,11 @@ static bool ResolveBroadcast(Value v, int m, int n, const char* who,
 				*outErr = ErrorTypes::RuntimeError(String("Matrix.") + who + ": out of memory");
 				return false;
 			}
-			for (int r = 0; r < rows; r++)
-				for (int c = 0; c < cols; c++)
+			for (int r = 0; r < rows; r++) {
+				for (int c = 0; c < cols; c++) {
 					buf[(long)r * cols + c] = ListElem(list, nested, r, c);
+				}
+			}
 			data = buf;
 		}
 	} else {
@@ -713,6 +882,454 @@ static std::string FormatElem(double v, bool hasPrecision, int precision) {
 }
 
 //--------------------------------------------------------------------------------
+// Linear algebra
+//--------------------------------------------------------------------------------
+
+// Pivot bookkeeping, kept separate from Scratch so one routine can hold both at
+// once.  Same grow-only, never-shrink, thread-local discipline.
+static int* ScratchInts(int count) {
+	static thread_local int* buf = nullptr;
+	static thread_local int cap = 0;
+	if (count <= cap) return buf;
+	int* p = (int*)realloc(buf, (size_t)count * sizeof(int));
+	if (p == nullptr) {
+		GCManager::CollectGarbage();
+		p = (int*)realloc(buf, (size_t)count * sizeof(int));
+		if (p == nullptr) return nullptr;
+	}
+	buf = p;
+	cap = count;
+	return buf;
+}
+
+// ---- Closed forms for 1x1 .. 4x4 ----
+//
+// Not merely an optimization.  These sizes are what game code actually asks
+// for -- a 4x4 transform inverted every frame -- and cofactor expansion beats
+// pivoted elimination on both counts there: fewer operations, and no pivot
+// search to make the cost depend on the values.  Above 4x4 the operation count
+// of cofactor expansion explodes and LU takes over.
+
+// The six 2x2 minors of the top two rows and the six of the bottom two rows.
+// Shared by Det4 and Inverse4: the determinant is a combination of them, and so
+// is every entry of the adjugate, so computing the inverse costs barely more
+// than computing the determinant alone.
+struct Minors4 {
+	double s[6];
+	double c[6];
+	double det;
+};
+
+static Minors4 Compute4(const double* a) {
+	Minors4 r;
+	r.s[0] = a[0]*a[5]  - a[4]*a[1];
+	r.s[1] = a[0]*a[6]  - a[4]*a[2];
+	r.s[2] = a[0]*a[7]  - a[4]*a[3];
+	r.s[3] = a[1]*a[6]  - a[5]*a[2];
+	r.s[4] = a[1]*a[7]  - a[5]*a[3];
+	r.s[5] = a[2]*a[7]  - a[6]*a[3];
+	r.c[0] = a[8]*a[13] - a[12]*a[9];
+	r.c[1] = a[8]*a[14] - a[12]*a[10];
+	r.c[2] = a[8]*a[15] - a[12]*a[11];
+	r.c[3] = a[9]*a[14] - a[13]*a[10];
+	r.c[4] = a[9]*a[15] - a[13]*a[11];
+	r.c[5] = a[10]*a[15] - a[14]*a[11];
+	r.det = r.s[0]*r.c[5] - r.s[1]*r.c[4] + r.s[2]*r.c[3]
+	      + r.s[3]*r.c[2] - r.s[4]*r.c[1] + r.s[5]*r.c[0];
+	return r;
+}
+
+static double DetSmall(const double* a, int n) {
+	switch (n) {
+		case 0: return 1.0;                       // the empty product, as in numpy
+		case 1: return a[0];
+		case 2: return a[0]*a[3] - a[1]*a[2];
+		case 3: return a[0] * (a[4]*a[8] - a[5]*a[7])
+		             - a[1] * (a[3]*a[8] - a[5]*a[6])
+		             + a[2] * (a[3]*a[7] - a[4]*a[6]);
+		default: return Compute4(a).det;
+	}
+}
+
+// Write the inverse of the n x n `a` (n <= 4) into `out`.  Returns false when
+// the determinant is exactly zero; a near-zero determinant is the caller's
+// problem, as it is with any adjugate formula.
+static bool InverseSmall(const double* a, int n, double* out) {
+	if (n == 0) return true;
+	if (n == 1) {
+		if (a[0] == 0.0) return false;
+		out[0] = 1.0 / a[0];
+		return true;
+	}
+	if (n == 2) {
+		double det = a[0]*a[3] - a[1]*a[2];
+		if (det == 0.0) return false;
+		double f = 1.0 / det;
+		out[0] =  a[3]*f; out[1] = -a[1]*f;
+		out[2] = -a[2]*f; out[3] =  a[0]*f;
+		return true;
+	}
+	if (n == 3) {
+		double m0 = a[4]*a[8] - a[5]*a[7];
+		double m1 = a[3]*a[8] - a[5]*a[6];
+		double m2 = a[3]*a[7] - a[4]*a[6];
+		double det = a[0]*m0 - a[1]*m1 + a[2]*m2;
+		if (det == 0.0) return false;
+		double f = 1.0 / det;
+		out[0] =  m0 * f;
+		out[1] = -(a[1]*a[8] - a[2]*a[7]) * f;
+		out[2] =  (a[1]*a[5] - a[2]*a[4]) * f;
+		out[3] = -m1 * f;
+		out[4] =  (a[0]*a[8] - a[2]*a[6]) * f;
+		out[5] = -(a[0]*a[5] - a[2]*a[3]) * f;
+		out[6] =  m2 * f;
+		out[7] = -(a[0]*a[7] - a[1]*a[6]) * f;
+		out[8] =  (a[0]*a[4] - a[1]*a[3]) * f;
+		return true;
+	}
+	Minors4 k = Compute4(a);
+	if (k.det == 0.0) return false;
+	double f = 1.0 / k.det;
+	const double* s = k.s;
+	const double* c = k.c;
+	out[0]  = ( a[5]*c[5] - a[6]*c[4] + a[7]*c[3]) * f;
+	out[1]  = (-a[1]*c[5] + a[2]*c[4] - a[3]*c[3]) * f;
+	out[2]  = ( a[13]*s[5] - a[14]*s[4] + a[15]*s[3]) * f;
+	out[3]  = (-a[9]*s[5] + a[10]*s[4] - a[11]*s[3]) * f;
+	out[4]  = (-a[4]*c[5] + a[6]*c[2] - a[7]*c[1]) * f;
+	out[5]  = ( a[0]*c[5] - a[2]*c[2] + a[3]*c[1]) * f;
+	out[6]  = (-a[12]*s[5] + a[14]*s[2] - a[15]*s[1]) * f;
+	out[7]  = ( a[8]*s[5] - a[10]*s[2] + a[11]*s[1]) * f;
+	out[8]  = ( a[4]*c[4] - a[5]*c[2] + a[7]*c[0]) * f;
+	out[9]  = (-a[0]*c[4] + a[1]*c[2] - a[3]*c[0]) * f;
+	out[10] = ( a[12]*s[4] - a[13]*s[2] + a[15]*s[0]) * f;
+	out[11] = (-a[8]*s[4] + a[9]*s[2] - a[11]*s[0]) * f;
+	out[12] = (-a[4]*c[3] + a[5]*c[1] - a[6]*c[0]) * f;
+	out[13] = ( a[0]*c[3] - a[1]*c[1] + a[2]*c[0]) * f;
+	out[14] = (-a[12]*s[3] + a[13]*s[1] - a[14]*s[0]) * f;
+	out[15] = ( a[8]*s[3] - a[9]*s[1] + a[10]*s[0]) * f;
+	return true;
+}
+
+// ---- LU with partial pivoting, for everything above 4x4 ----
+
+// Factor the n x n `a` in place: unit-lower L below the diagonal, U on and
+// above it.  perm[i] is the original row now sitting at row i, and *outSign is
+// the parity of that permutation (+1 or -1), which the determinant needs.
+//
+// Returns false when some column was entirely zero at and below the diagonal --
+// i.e. the matrix is singular.  The factorization still completes, with a zero
+// on the diagonal, so a determinant can be read off it either way.
+static bool LUDecompose(double* a, int n, int* perm, double* outSign) {
+	double sign = 1.0;
+	bool ok = true;
+	for (int i = 0; i < n; i++) perm[i] = i;
+	for (int col = 0; col < n; col++) {
+		int best = col;
+		double bestAbs = std::fabs(a[(long)col * n + col]);
+		for (int r = col + 1; r < n; r++) {
+			double v = std::fabs(a[(long)r * n + col]);
+			if (v > bestAbs) { bestAbs = v; best = r; }
+		}
+		if (!(bestAbs > 0.0)) {
+			// All zero (or NaN) in this column: nothing to eliminate with.
+			ok = false;
+			continue;
+		}
+		if (best != col) {
+			double* rowA = a + (long)col * n;
+			double* rowB = a + (long)best * n;
+			for (int j = 0; j < n; j++) {
+				double t = rowA[j]; rowA[j] = rowB[j]; rowB[j] = t;
+			}
+			int t = perm[col]; perm[col] = perm[best]; perm[best] = t;
+			sign = -sign;
+		}
+		const double* prow = a + (long)col * n;
+		double pivot = prow[col];
+		for (int r = col + 1; r < n; r++) {
+			double* rrow = a + (long)r * n;
+			double factor = rrow[col] / pivot;
+			rrow[col] = factor;
+			if (factor == 0.0) continue;
+			for (int j = col + 1; j < n; j++) rrow[j] -= factor * prow[j];
+		}
+	}
+	*outSign = sign;
+	return ok;
+}
+
+// Solve A*X = B given A's factorization, for all k columns of B at once.  B
+// arrives in `b` (n x k) and leaves holding X.  `work` is n*k scratch used to
+// apply the row permutation.
+//
+// Doing every right-hand side in one pass is what makes `inverse` a single
+// factorization plus one solve against the identity, rather than n solves.
+static void LUSolve(const double* lu, int n, const int* perm, double* b, int k, double* work) {
+	for (int i = 0; i < n; i++) {
+		memcpy(work + (long)i * k, b + (long)perm[i] * k, (size_t)k * sizeof(double));
+	}
+	memcpy(b, work, (size_t)n * k * sizeof(double));
+
+	for (int i = 1; i < n; i++) {                 // forward: L has a unit diagonal
+		double* brow = b + (long)i * k;
+		const double* lrow = lu + (long)i * n;
+		for (int j = 0; j < i; j++) {
+			double factor = lrow[j];
+			if (factor == 0.0) continue;
+			const double* bj = b + (long)j * k;
+			for (int c = 0; c < k; c++) brow[c] -= factor * bj[c];
+		}
+	}
+	for (int i = n - 1; i >= 0; i--) {            // back: divide through by U's diagonal
+		double* brow = b + (long)i * k;
+		const double* urow = lu + (long)i * n;
+		for (int j = i + 1; j < n; j++) {
+			double factor = urow[j];
+			if (factor == 0.0) continue;
+			const double* bj = b + (long)j * k;
+			for (int c = 0; c < k; c++) brow[c] -= factor * bj[c];
+		}
+		double d = urow[i];
+		for (int c = 0; c < k; c++) brow[c] /= d;
+	}
+}
+
+// ---- The three operations the intrinsics wrap ----
+
+// m.determinant.  A singular matrix has determinant 0; that is an answer, not
+// an error, and numpy agrees.
+static bool Determinant(const MatrixData* m, double* out, Value* outErr) {
+	int n = m->rows;
+	if (m->columns != n) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.determinant: matrix must be square");
+		return false;
+	}
+	if (n <= 4) {
+		*out = DetSmall(m->data, n);
+		return true;
+	}
+	double* lu = Scratch((long)n * n);
+	int* perm = ScratchInts(n);
+	if (lu == nullptr || perm == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.determinant: out of memory");
+		return false;
+	}
+	memcpy(lu, m->data, (size_t)n * n * sizeof(double));
+	double sign = 1.0;
+	LUDecompose(lu, n, perm, &sign);
+	double det = sign;
+	for (int i = 0; i < n; i++) det *= lu[(long)i * n + i];
+	*out = det;
+	return true;
+}
+
+// m.inverse -> a new Matrix, or nullptr with *outErr set.
+//
+// Singular is an error value here rather than a quiet NaN-filled result, which
+// is what numpy does (LinAlgError) and what a caller almost always wants: an
+// un-invertible transform is a bug upstream, not a value to propagate.
+static MatrixData* Inverse(const MatrixData* m, Value* outErr) {
+	int n = m->rows;
+	if (m->columns != n) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.inverse: matrix must be square");
+		return nullptr;
+	}
+	MatrixData* out = NewMatrixData(n, n);
+	if (out == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.inverse: out of memory");
+		return nullptr;
+	}
+	bool ok;
+	if (n <= 4) {
+		ok = InverseSmall(m->data, n, out->data);
+	} else {
+		// One factorization, then a single multi-column solve against I.
+		long need = (long)n * n * 2;
+		double* lu = Scratch(need);
+		int* perm = ScratchInts(n);
+		if (lu == nullptr || perm == nullptr) {
+			delete out;
+			*outErr = ErrorTypes::RuntimeError("Matrix.inverse: out of memory");
+			return nullptr;
+		}
+		double* work = lu + (long)n * n;
+		memcpy(lu, m->data, (size_t)n * n * sizeof(double));
+		double sign = 1.0;
+		ok = LUDecompose(lu, n, perm, &sign);
+		if (ok) {
+			for (int i = 0; i < n; i++) out->data[(long)i * n + i] = 1.0;
+			LUSolve(lu, n, perm, out->data, n, work);
+		}
+	}
+	if (!ok) {
+		delete out;
+		*outErr = ErrorTypes::RuntimeError("Matrix.inverse: matrix is singular");
+		return nullptr;
+	}
+	return out;
+}
+
+// m.solve(b) -> a new n x k Matrix X with A*X = b.
+//
+// `b` may be a Matrix or a list.  A *flat* list of n numbers is read as a
+// column vector, not as the 1 x n that fromList would make of it: `solve` is
+// the one place where a bare list of numbers unambiguously means "the
+// right-hand side of n equations", and numpy reads a 1-D b the same way.  A
+// nested list, or a Matrix, must already be n x k.
+static MatrixData* Solve(const MatrixData* A, Value vB, Value* outErr) {
+	int n = A->rows;
+	if (A->columns != n) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.solve: matrix must be square");
+		return nullptr;
+	}
+
+	MatrixData* bM = nullptr;
+	ValueList bList;
+	bool bNested = false;
+	int bRows = 0, bCols = 0;
+	if (vB.Type() == ValueType::List) {
+		bList = vB.GetList();
+		if (!ListShape(bList, &bNested, &bRows, &bCols, "solve", outErr)) return nullptr;
+		if (!bNested) { bRows = bCols; bCols = 1; }
+	} else {
+		bM = ValueToMatrix(vB);
+		if (bM == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.solve: b must be a Matrix or a list");
+			return nullptr;
+		}
+		bRows = bM->rows;
+		bCols = bM->columns;
+	}
+	if (bRows != n) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.solve: b must have one row per equation");
+		return nullptr;
+	}
+
+	int k = bCols;
+	MatrixData* out = NewMatrixData(n, k);
+	if (out == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.solve: out of memory");
+		return nullptr;
+	}
+	if (bM != nullptr) {
+		memcpy(out->data, bM->data, (size_t)n * k * sizeof(double));
+	} else if (bNested) {
+		for (int r = 0; r < n; r++) {
+			for (int c = 0; c < k; c++) out->data[(long)r * k + c] = ListElem(bList, true, r, c);
+		}
+	} else {
+		for (int r = 0; r < n; r++) out->data[r] = ListElem(bList, false, 0, r);
+	}
+
+	bool ok = true;
+	if (n > 0) {
+		double* lu = Scratch((long)n * n + (long)n * k);
+		int* perm = ScratchInts(n);
+		if (lu == nullptr || perm == nullptr) {
+			delete out;
+			*outErr = ErrorTypes::RuntimeError("Matrix.solve: out of memory");
+			return nullptr;
+		}
+		double* work = lu + (long)n * n;
+		memcpy(lu, A->data, (size_t)n * n * sizeof(double));
+		double sign = 1.0;
+		ok = LUDecompose(lu, n, perm, &sign);
+		if (ok && k > 0) LUSolve(lu, n, perm, out->data, k, work);
+	}
+	if (!ok) {
+		delete out;
+		*outErr = ErrorTypes::RuntimeError("Matrix.solve: matrix is singular");
+		return nullptr;
+	}
+	return out;
+}
+
+//--------------------------------------------------------------------------------
+// Per-row vector ops
+//--------------------------------------------------------------------------------
+
+// m.rowCross(m2) -> a new n x 3 Matrix holding the per-row 3-D cross product.
+//
+// Both operands need exactly 3 columns.  `m2` may have one row per row of self,
+// or exactly one row, which is then crossed with every row -- the common game
+// case, every velocity crossed against one fixed axis.  That is the same row
+// broadcasting the arithmetic ops already do.
+//
+// Divergence from numpy, deliberate: np.cross broadcasts in both directions, so
+// a 1x3 crossed with an nx3 yields n rows.  Here the result always has SELF's
+// row count.  `a.rowCross(b)` reads as "for each of my rows", and a method that
+// silently returned more rows than the receiver has would be a trap.
+//
+// The result is freshly allocated, so it can never alias an operand -- which
+// matters, because each output row is a function of all three input components.
+static MatrixData* RowCross(const MatrixData* A, Value vB, Value* outErr) {
+	if (A->columns != 3) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.rowCross: matrix must have exactly 3 columns");
+		return nullptr;
+	}
+
+	const MatrixData* bM = nullptr;
+	ValueList bList;
+	bool bNested = false;
+	int bRows = 0, bCols = 0;
+	if (vB.Type() == ValueType::List) {
+		bList = vB.GetList();
+		if (!ListShape(bList, &bNested, &bRows, &bCols, "rowCross", outErr)) return nullptr;
+	} else {
+		bM = ValueToMatrix(vB);
+		if (bM == nullptr) {
+			*outErr = ErrorTypes::RuntimeError(
+				"Matrix.rowCross: expected a Matrix or a list");
+			return nullptr;
+		}
+		bRows = bM->rows;
+		bCols = bM->columns;
+	}
+	if (bCols != 3) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.rowCross: operand must have exactly 3 columns");
+		return nullptr;
+	}
+	if (bRows != A->rows && bRows != 1) {
+		*outErr = ErrorTypes::RuntimeError(
+			"Matrix.rowCross: operand must have one row per row, or exactly one row");
+		return nullptr;
+	}
+
+	// Flatten a list operand once, so the kernel below has a single form.
+	const double* bData = (bM != nullptr) ? bM->data : nullptr;
+	if (bM == nullptr && bRows > 0) {
+		double* buf = Scratch((long)bRows * 3);
+		if (buf == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.rowCross: out of memory");
+			return nullptr;
+		}
+		for (int r = 0; r < bRows; r++) {
+			for (int c = 0; c < 3; c++) buf[(long)r * 3 + c] = ListElem(bList, bNested, r, c);
+		}
+		bData = buf;
+	}
+
+	MatrixData* out = NewMatrixData(A->rows, 3);
+	if (out == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.rowCross: out of memory");
+		return nullptr;
+	}
+	long bStep = (bRows == 1) ? 0 : 3;
+	for (int i = 0; i < A->rows; i++) {
+		const double* a = A->data + (long)i * 3;
+		const double* b = bData + (long)i * bStep;
+		double* o = out->data + (long)i * 3;
+		o[0] = a[1]*b[2] - a[2]*b[1];
+		o[1] = a[2]*b[0] - a[0]*b[2];
+		o[2] = a[0]*b[1] - a[1]*b[0];
+	}
+	return out;
+}
+
+//--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
 
@@ -779,6 +1396,30 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(MatrixToValue(m));
 	});
 	matrixClass.SetValue(String("ofSize"), f.GetFunc());
+
+	// Matrix.identity(size) -> new size x size Matrix, ones on the main diagonal
+	f = Intrinsic::Create("");
+	f.AddParam("size");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		int size = 0;
+		if (!IntArg(context, "size", &size, &err)) return IntrinsicResult(err);
+		if (size < 0) {
+			return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.identity: size must be >= 0"));
+		}
+		if ((long)size * (long)size > kMaxMatrixElems) {
+			return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.identity: requested size exceeds the maximum matrix size"));
+		}
+		MatrixData* m = NewIdentity(size);
+		if (m == nullptr) {
+			return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.identity: out of memory"));
+		}
+		return IntrinsicResult(MatrixToValue(m));
+	});
+	matrixClass.SetValue(String("identity"), f.GetFunc());
 
 	// Matrix.fromList(sourceList)
 	//   1D list of numbers -> 1 x n row vector
@@ -1410,12 +2051,7 @@ ValueDict& MatrixClass() {
 		Value vBeta = context.GetVar("beta");
 		if (vAlpha.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vAlpha));
 		if (vBeta.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vBeta));
-		double alpha = vAlpha.DoubleValue();
-		double beta = vBeta.DoubleValue();
-		bool transA = context.GetVar("transA").BoolValue();
-		bool transB = context.GetVar("transB").BoolValue();
 
-		// ---- B, and the result shape ----
 		Value vB = context.GetVar("B");
 		MatrixData* B = nullptr;
 		if (!vB.IsNull()) {
@@ -1423,61 +2059,7 @@ ValueDict& MatrixClass() {
 			if (B == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
 				"Matrix.gemm: B must be a Matrix or null"));
 		}
-		int m = transA ? A->columns : A->rows;
-		int kA = transA ? A->rows : A->columns;
-		int n, k = 0;
-		if (B != nullptr) {
-			int kB = transB ? B->columns : B->rows;
-			n = transB ? B->rows : B->columns;
-			if (kA != kB) return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.gemm: inner dimensions do not match"));
-			k = kA;
-		} else {
-			n = kA;
-		}
 
-		// ---- addend, and how it broadcasts onto m x n ----
-		Value vAdd = context.GetVar("addend");
-		AddendMode mode = kAddendNone;
-		double addScalar = 0.0;
-		MatrixData* addM = nullptr;
-		ValueList addList;
-		bool addNested = false;
-		int addRows = 0, addCols = 0;
-		if (!vAdd.IsNull() && beta != 0.0) {
-			if (vAdd.Type() == ValueType::Number) {
-				mode = kAddendScalar;
-				addScalar = vAdd.DoubleValue();
-			} else {
-				if (vAdd.Type() == ValueType::List) {
-					addList = vAdd.GetList();
-					if (!ListShape(addList, &addNested, &addRows, &addCols, "gemm", &err)) {
-						return IntrinsicResult(err);
-					}
-				} else {
-					addM = ValueToMatrix(vAdd);
-					if (addM == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
-						"Matrix.gemm: addend must be null, a number, a Matrix, or a list"));
-					addRows = addM->rows;
-					addCols = addM->columns;
-				}
-				if (addRows == 1 && addCols == 1) {
-					// A 1x1 operand is a scalar wearing a matrix's clothes.
-					// Read the value out here; the scalar path never looks at
-					// opAdd.data.
-					mode = kAddendScalar;
-					addScalar = addM != nullptr ? addM->data[0]
-					                            : ListElem(addList, addNested, 0, 0);
-				}
-				else if (addRows == m && addCols == n)          mode = kAddendFull;
-				else if (addRows == 1 && addCols == n)          mode = kAddendRow;
-				else if (addRows == m && addCols == 1)          mode = kAddendCol;
-				else return IntrinsicResult(ErrorTypes::RuntimeError(
-					"Matrix.gemm: addend does not match or broadcast to the result shape"));
-			}
-		}
-
-		// ---- resolve `out` ----
 		Value vOut = context.GetVar("out");
 		MatrixData* out = nullptr;
 		if (!vOut.IsNull()) {
@@ -1486,83 +2068,12 @@ ValueDict& MatrixClass() {
 				"Matrix.gemm: out must be a Matrix or null"));
 		}
 
-		// ---- snapshot anything that aliases `out` ----
-		//
-		// An operand aliases `out` only by being the same MatrixData (storage is
-		// never shared otherwise), and then reshaping `out` would move its data
-		// and rewrite its dimensions.  So copy first, and record the dimensions
-		// as they are NOW.  A list addend is copied here too, which lets the
-		// prefill treat every addend uniformly as contiguous doubles.
-		Operand opA, opB, opAdd;
-		opA.rows = A->rows; opA.columns = A->columns;
-		if (B != nullptr) { opB.rows = B->rows; opB.columns = B->columns; }
-		opAdd.rows = addRows; opAdd.columns = addCols;
+		MatrixData* result = Gemm(A, B, context.GetVar("addend"), out,
+			context.GetVar("transA").BoolValue(), context.GetVar("transB").BoolValue(),
+			vAlpha.DoubleValue(), vBeta.DoubleValue(), &err);
+		if (result == nullptr) return IntrinsicResult(err);
 
-		bool copyA = (out != nullptr && A == out);
-		bool copyB = (B != nullptr && out != nullptr && B == out);
-		bool copyAdd = (mode != kAddendNone && mode != kAddendScalar)
-		               && (!addList.Empty() || (addM != nullptr && out != nullptr && addM == out));
-		bool addIsList = !addList.Empty();
-		if (addIsList) copyAdd = (mode != kAddendNone && mode != kAddendScalar);
-
-		long needA = copyA ? opA.Elems() : 0;
-		long needB = copyB ? opB.Elems() : 0;
-		long needAdd = copyAdd ? opAdd.Elems() : 0;
-		long total = needA + needB + needAdd;
-		double* scratch = nullptr;
-		if (total > 0) {
-			scratch = Scratch(total);
-			if (scratch == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.gemm: out of memory"));
-		}
-		long at = 0;
-		if (copyA) { memcpy(scratch + at, A->data, (size_t)needA * sizeof(double)); opA.data = scratch + at; at += needA; }
-		else opA.data = A->data;
-		if (B != nullptr) {
-			if (copyB) { memcpy(scratch + at, B->data, (size_t)needB * sizeof(double)); opB.data = scratch + at; at += needB; }
-			else opB.data = B->data;
-		}
-		if (copyAdd) {
-			double* dst = scratch + at;
-			if (addIsList) {
-				for (int r = 0; r < addRows; r++)
-					for (int c = 0; c < addCols; c++)
-						dst[(long)r * addCols + c] = ListElem(addList, addNested, r, c);
-			} else {
-				memcpy(dst, addM->data, (size_t)needAdd * sizeof(double));
-			}
-			opAdd.data = dst;
-			at += needAdd;
-		} else if (addM != nullptr) {
-			opAdd.data = addM->data;
-		}
-
-		// ---- shape the destination ----
-		bool freshOut = (out == nullptr);
-		if (freshOut) {
-			if ((long)m * n > kMaxMatrixElems) return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.gemm: result exceeds the maximum matrix size"));
-			out = NewMatrixData(m, n);
-			if (out == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.gemm: out of memory"));
-		} else {
-			if (!EnsureCapacity(out, (long)m * n)) return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.gemm: out of memory"));
-			out->rows = m;
-			out->columns = n;
-		}
-
-		// ---- compute ----
-		if ((long)m * n > 0) {
-			Prefill(out->data, m, n, opAdd, mode, beta, addScalar);
-			if (B == nullptr) {
-				KernelAxpby(out->data, m, n, opA, transA, alpha);
-			} else {
-				KernelMatmul(out->data, m, n, k, opA, transA, opB, transB, alpha);
-			}
-		}
-
-		if (freshOut) return IntrinsicResult(MatrixToValue(out));
+		if (out == nullptr) return IntrinsicResult(MatrixToValue(result));
 		SyncShape(vOut, out);
 		return IntrinsicResult(vOut);
 	});
@@ -1586,8 +2097,9 @@ ValueDict& MatrixClass() {
 		MatrixData* m = SelfMatrix(context, &err);
 		if (m == nullptr) return IntrinsicResult(err);
 		Broadcast b;
-		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemMultiplyBy", &b, &err))
+		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemMultiplyBy", &b, &err)) {
 			return IntrinsicResult(err);
+		}
 		for (int i = 0; i < m->rows; i++) {
 			double* row = m->data + (long)i * m->columns;
 			for (int j = 0; j < m->columns; j++) row[j] *= b.At(i, j);
@@ -1608,8 +2120,9 @@ ValueDict& MatrixClass() {
 		MatrixData* m = SelfMatrix(context, &err);
 		if (m == nullptr) return IntrinsicResult(err);
 		Broadcast b;
-		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemDivideBy", &b, &err))
+		if (!ResolveBroadcast(context.GetVar("x"), m->rows, m->columns, "elemDivideBy", &b, &err)) {
 			return IntrinsicResult(err);
+		}
 		for (int i = 0; i < m->rows; i++) {
 			double* row = m->data + (long)i * m->columns;
 			for (int j = 0; j < m->columns; j++) row[j] /= b.At(i, j);
@@ -1627,8 +2140,9 @@ ValueDict& MatrixClass() {
 		MatrixData* m = SelfMatrix(context, &err);
 		if (m == nullptr) return IntrinsicResult(err);
 		Broadcast b;
-		if (!ResolveBroadcast(context.GetVar("k"), m->rows, m->columns, "pow", &b, &err))
+		if (!ResolveBroadcast(context.GetVar("k"), m->rows, m->columns, "pow", &b, &err)) {
 			return IntrinsicResult(err);
+		}
 		for (int i = 0; i < m->rows; i++) {
 			double* row = m->data + (long)i * m->columns;
 			for (int j = 0; j < m->columns; j++) row[j] = std::pow(row[j], b.At(i, j));
@@ -1749,6 +2263,110 @@ ValueDict& MatrixClass() {
 			matrixClass.SetValue(String(regs[i].name), f.GetFunc());
 		}
 	}
+
+	// ---- Linear algebra ----
+
+	// m.determinant -> number.  Square only; singular gives 0.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		double det = 0.0;
+		if (!Determinant(m, &det, &err)) return IntrinsicResult(err);
+		return IntrinsicResult(Value(det));
+	});
+	matrixClass.SetValue(String("determinant"), f.GetFunc());
+
+	// m.inverse -> new Matrix, or an error value if singular.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		MatrixData* inv = Inverse(m, &err);
+		if (inv == nullptr) return IntrinsicResult(err);
+		return IntrinsicResult(MatrixToValue(inv));
+	});
+	matrixClass.SetValue(String("inverse"), f.GetFunc());
+
+	// m.solve(b) -> new Matrix X with m*X = b.  LU with partial pivoting.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("b");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		MatrixData* x = Solve(m, context.GetVar("b"), &err);
+		if (x == nullptr) return IntrinsicResult(err);
+		return IntrinsicResult(MatrixToValue(x));
+	});
+	matrixClass.SetValue(String("solve"), f.GetFunc());
+
+	// m.swapRows(row1, row2) -> self.  Negative indices count from the end.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("row1");
+	f.AddParam("row2");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int r1 = 0, r2 = 0;
+		if (!ResolveIndex(context.GetVar("row1"), m->rows, "row", &r1, &err)) return IntrinsicResult(err);
+		if (!ResolveIndex(context.GetVar("row2"), m->rows, "row", &r2, &err)) return IntrinsicResult(err);
+		if (r1 != r2) {
+			double* a = m->data + (long)r1 * m->columns;
+			double* b = m->data + (long)r2 * m->columns;
+			for (int j = 0; j < m->columns; j++) {
+				double t = a[j]; a[j] = b[j]; b[j] = t;
+			}
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("swapRows"), f.GetFunc());
+
+	// m.swapColumns(column1, column2) -> self.  Negative indices count from the end.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("column1");
+	f.AddParam("column2");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int c1 = 0, c2 = 0;
+		if (!ResolveIndex(context.GetVar("column1"), m->columns, "column", &c1, &err)) return IntrinsicResult(err);
+		if (!ResolveIndex(context.GetVar("column2"), m->columns, "column", &c2, &err)) return IntrinsicResult(err);
+		if (c1 != c2) {
+			for (int i = 0; i < m->rows; i++) {
+				double* row = m->data + (long)i * m->columns;
+				double t = row[c1]; row[c1] = row[c2]; row[c2] = t;
+			}
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("swapColumns"), f.GetFunc());
+
+	// ---- Per-row vector ops ----
+
+	// m.rowCross(m2) -> new n x 3 Matrix.  Both need 3 columns; a single-row
+	// operand is crossed with every row.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("m2");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		MatrixData* result = RowCross(m, context.GetVar("m2"), &err);
+		if (result == nullptr) return IntrinsicResult(err);
+		return IntrinsicResult(MatrixToValue(result));
+	});
+	matrixClass.SetValue(String("rowCross"), f.GetFunc());
 
 	// m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null) -> string
 	//

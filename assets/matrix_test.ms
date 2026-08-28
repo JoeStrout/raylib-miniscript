@@ -145,6 +145,26 @@ ok isErr(Matrix.fromList([1,"x"])), "non-numeric element is an error"
 ok isErr(Matrix.fromList(3)), "a non-list is an error"
 
 print
+print "-- identity --"
+matches Matrix.identity(1), 1, 1, [1], "1x1 identity"
+matches Matrix.identity(3), 3, 3, [1,0,0, 0,1,0, 0,0,1], "3x3 identity"
+matches Matrix.identity(0), 0, 0, [], "identity(0) is a clean 0x0"
+// The defining property, checked against a matrix that is nothing like I.
+P = Matrix.fromList([[1,2,3],[4,5,6]])
+ok P.gemm(Matrix.identity(3)).equals(P), "M * I == M"
+ok Matrix.identity(2).gemm(P).equals(P), "I * M == M"
+eq Matrix.identity(4).determinant, 1, "identity has determinant 1"
+ok Matrix.identity(5).inverse.equals(Matrix.identity(5)), "identity is its own inverse"
+// Each call is a fresh matrix, not a shared prototype.
+i1 = Matrix.identity(2)
+i2 = Matrix.identity(2)
+i1.setElem 0, 0, 99
+eq i2.getElem(0,0), 1, "each identity is independently allocated"
+ok isErr(Matrix.identity(-1)), "a negative size is an error"
+ok isErr(Matrix.identity("x")), "a non-numeric size is an error"
+ok isErr(Matrix.identity(1e9)), "an identity too big to allocate is an error"
+
+print
 print "-- reshape (O(1), same elements) --"
 r = Matrix.fromList([[1,2,3],[4,5,6]])
 r.reshape 3, 2
@@ -667,6 +687,160 @@ s = str(Matrix.ofSize(2,3))
 ok s.indexOf("Matrix") != null, "str names the class"
 ok s.indexOf("getElem") == null, "...without listing every method"
 ok s.len < 100, "...and stays short  (" + s.len + " chars)"
+
+print
+print "-- determinant --"
+eq Matrix.fromList([[7]]).determinant, 7, "1x1 determinant"
+eq Matrix.fromList([[1,2],[3,4]]).determinant, -2, "2x2 determinant"
+eq Matrix.fromList([[6,1,1],[4,-2,5],[2,8,7]]).determinant, -306, "3x3 determinant"
+eq Matrix.ofSize(3,3).determinant, 0, "an all-zero matrix is singular"
+eq Matrix.fromList([[2,0,0],[0,3,0],[0,0,4]]).determinant, 24, "diagonal determinant is the product"
+// 4x4: closed form.
+eq Matrix.fromList([[1,0,0,0],[0,2,0,0],[0,0,3,0],[0,0,0,4]]).determinant, 24, "4x4 diagonal"
+eq Matrix.fromList([[3,2,0,1],[4,0,1,2],[3,0,2,1],[9,2,3,1]]).determinant, 24, "4x4 determinant"
+// 5x5 and up take the LU path; a triangular matrix has an obvious answer.
+T5 = Matrix.ofSize(5,5)
+for i in range(0,4)
+	for j in range(i,4)
+		T5.setElem i, j, i + j + 1
+	end for
+end for
+eq T5.determinant, 1*3*5*7*9, "5x5 upper-triangular determinant (LU path)"
+// Swapping two rows negates the determinant.
+D = Matrix.fromList([[6,1,1],[4,-2,5],[2,8,7]])
+eq D.swapRows(0,1).determinant, 306, "a row swap negates the determinant"
+eq Matrix.ofSize(0,0).determinant, 1, "determinant of an empty matrix is 1 (the empty product)"
+ok isErr(Matrix.ofSize(2,3).determinant), "determinant of a non-square matrix is an error"
+ok isErr((new Matrix).determinant), "determinant needs storage"
+
+print
+print "-- inverse --"
+// The definitive check for any size: A * inverse == I.
+identityCheck = function(A, label)
+	I = Matrix.identity(A.rows)
+	inv = A.inverse
+	if inv isa error then
+		ok false, label + "  (" + inv + ")"
+		return
+	end if
+	ok A.gemm(inv).equals(I, 1e-9), label
+	ok inv.gemm(A).equals(I, 1e-9), label + " (other side)"
+end function
+
+identityCheck Matrix.fromList([[4]]), "1x1 inverse"
+identityCheck Matrix.fromList([[1,2],[3,4]]), "2x2 inverse"
+identityCheck Matrix.fromList([[6,1,1],[4,-2,5],[2,8,7]]), "3x3 inverse"
+identityCheck Matrix.fromList([[3,2,0,1],[4,0,1,2],[3,0,2,1],[9,2,3,1]]), "4x4 inverse"
+identityCheck Matrix.fromList([[2,0,0,3],[0,1,0,0],[0,0,1,0],[0,0,0,1]]), "4x4 transform-shaped inverse"
+identityCheck T5, "5x5 inverse (LU path)"
+
+// A pivot of zero in the first column must be pivoted around, not divided by.
+identityCheck Matrix.fromList([[0,1,0,0,0],[1,0,0,0,0],[0,0,0,2,0],[0,0,3,0,0],[0,0,0,0,5]]),
+  "5x5 needing row pivots"
+
+matches Matrix.fromList([[1,2],[3,4]]).inverse, 2, 2, [-2, 1, 1.5, -0.5], "2x2 inverse is exact"
+ok isErr(Matrix.ofSize(3,3).inverse), "a singular matrix has no inverse"
+ok isErr(Matrix.fromList([[1,2],[2,4]]).inverse), "singular 2x2"
+ok isErr(Matrix.fromList([[1,2,3],[4,5,6],[7,8,9]]).inverse), "singular 3x3"
+ok isErr(Matrix.fromList([[1,2],[3,4],[5,6]]).inverse), "inverse of a non-square matrix is an error"
+matches Matrix.ofSize(0,0).inverse, 0, 0, [], "inverse of an empty matrix is empty"
+// The inverse is a fresh matrix; mutating it must not touch the original.
+A = Matrix.fromList([[1,2],[3,4]])
+A.inverse.setElem 0, 0, 99
+matches A, 2, 2, [1,2,3,4], "inverse does not alias its input"
+
+print
+print "-- solve --"
+// A flat list of numbers is the right-hand side of n equations: a column.
+S = Matrix.fromList([[2,1],[1,3]])
+x = S.solve([5, 10])
+matches x, 2, 1, [1, 3], "solve with a flat-list right-hand side"
+matches S.solve(Matrix.fromList([[5],[10]])), 2, 1, [1, 3], "...same as a column Matrix"
+matches S.solve([[5],[10]]), 2, 1, [1, 3], "...same as a nested list"
+
+// Multiple right-hand sides at once: each column solved independently.
+X = S.solve(Matrix.fromList([[5, 3],[10, 4]]))
+ok X.rows == 2 and X.columns == 2, "solve returns one column per right-hand side"
+ok S.gemm(X).equals([[5,3],[10,4]], 1e-9), "...and every column checks out"
+
+// Round-trip against a bigger system, LU path with pivoting.
+A6 = Matrix.fromList([
+  [0, 2, 1, 4, 0, 1],
+  [3, 1, 0, 2, 5, 0],
+  [1, 0, 4, 1, 1, 2],
+  [2, 3, 1, 0, 0, 4],
+  [0, 1, 2, 3, 4, 1],
+  [5, 0, 1, 1, 2, 0]])
+b6 = Matrix.fromList([[1],[2],[3],[4],[5],[6]])
+x6 = A6.solve(b6)
+ok A6.gemm(x6).equals(b6, 1e-9), "6x6 solve round-trips"
+ok A6.inverse.gemm(b6).equals(x6, 1e-9), "...and agrees with inverse * b"
+
+// Least squares falls out of solve + gemm, which is one of the motivating uses.
+// Fit y = 2x + 1 through exact points: (A'A) c = A'y.
+Ad = Matrix.fromList([[1,1],[2,1],[3,1],[4,1]])
+yd = Matrix.fromList([[3],[5],[7],[9]])
+coef = Ad.gemm(Ad, null, null, true).solve(Ad.gemm(yd, null, null, true))
+ok coef.equals([[2],[1]], 1e-9), "least squares via transposedTimes + solve"
+
+ok isErr(S.solve([1,2,3])), "a right-hand side of the wrong height is an error"
+ok isErr(S.solve("x")), "a non-matrix right-hand side is an error"
+ok isErr(Matrix.ofSize(2,3).solve([1,2])), "solve on a non-square matrix is an error"
+ok isErr(Matrix.ofSize(2,2).solve([1,2])), "a singular system has no solution"
+
+print
+print "-- swapRows / swapColumns --"
+W = Matrix.fromList([[1,2,3],[4,5,6],[7,8,9]])
+matches W.swapRows(0,2), 3, 3, [7,8,9,4,5,6,1,2,3], "swapRows swaps in place"
+ok W.swapRows(0,0) != null, "swapping a row with itself is a no-op"
+matches W, 3, 3, [7,8,9,4,5,6,1,2,3], "...and changed nothing"
+matches W.swapRows(-1,-3), 3, 3, [1,2,3,4,5,6,7,8,9], "swapRows takes negative indices"
+matches W.swapColumns(0,1), 3, 3, [2,1,3,5,4,6,8,7,9], "swapColumns swaps in place"
+matches W.swapColumns(-1,0), 3, 3, [3,1,2,6,4,5,9,7,8], "swapColumns takes negative indices"
+ok W.swapRows(1,2) == W, "swapRows returns self"
+ok isErr(W.swapRows(0,3)), "swapRows bounds-checks"
+ok isErr(W.swapColumns(3,0)), "swapColumns bounds-checks"
+ok isErr(W.swapRows(0,"x")), "swapRows type-checks"
+
+print
+print "-- rowCross --"
+// The defining cases: the unit basis vectors cycle x -> y -> z -> x.
+basis = Matrix.identity(3)
+matches basis.rowCross(Matrix.fromList([[0,1,0],[0,0,1],[1,0,0]])), 3, 3,
+  [0,0,1, 1,0,0, 0,1,0], "x*y=z, y*z=x, z*x=y"
+// Anticommutative, and a vector crossed with itself is zero.
+u = Matrix.fromList([[1,2,3],[4,5,6]])
+v = Matrix.fromList([[7,8,9],[1,0,2]])
+c = u.rowCross(v)
+matches c, 2, 3, [-6,12,-6, 10,-2,-5], "per-row cross products"
+d = v.rowCross(u)
+ok d.equals(c.gemm(null, null, null, false, false, -1)), "rowCross is anticommutative"
+matches u.rowCross(u), 2, 3, [0,0,0, 0,0,0], "a row crossed with itself is zero"
+// The result is perpendicular to both inputs (dot == 0), which no sign error survives.
+// (elemMultiplyBy is the in-place form, so dot these on copies.)
+eq u.gemm(null).elemMultiplyBy(c).sum, 0, "the result is perpendicular to the first operand"
+eq v.gemm(null).elemMultiplyBy(c).sum, 0, "...and to the second"
+
+// A single row broadcasts across every row -- the fixed-axis case.
+matches u.rowCross(Matrix.fromList([[0,0,1]])), 2, 3, [2,-1,0, 5,-4,0], "a 1x3 Matrix broadcasts"
+matches u.rowCross([0,0,1]), 2, 3, [2,-1,0, 5,-4,0], "a flat list is that same 1x3"
+matches u.rowCross([[0,0,1]]), 2, 3, [2,-1,0, 5,-4,0], "a nested single row too"
+matches u.rowCross([[0,0,1],[1,0,0]]), 2, 3, [2,-1,0, 0,6,-5], "a full nested list"
+
+// Shape rules.
+matches Matrix.ofSize(0,3).rowCross(Matrix.ofSize(0,3)), 0, 3, [], "no rows is a clean 0x3"
+matches Matrix.ofSize(0,3).rowCross([1,2,3]), 0, 3, [], "...and still broadcasts"
+// Self drives the result shape; we do NOT broadcast the other way as numpy does.
+ok isErr(Matrix.fromList([[1,2,3]]).rowCross(u)), "a 1x3 receiver does not broadcast up"
+ok isErr(u.rowCross(Matrix.fromList([[1,2,3],[4,5,6],[7,8,9]]))), "a mismatched row count is an error"
+ok isErr(Matrix.fromList([[1,2]]).rowCross([1,2])), "a receiver without 3 columns is an error"
+ok isErr(u.rowCross([1,2])), "an operand without 3 columns is an error"
+ok isErr(u.rowCross(7)), "a scalar operand is an error"
+ok isErr(u.rowCross("x")), "a non-matrix operand is an error"
+ok isErr((new Matrix).rowCross([1,2,3])), "rowCross needs storage"
+// Operands are untouched.
+matches u, 2, 3, [1,2,3,4,5,6], "rowCross leaves the receiver alone"
+matches v, 2, 3, [7,8,9,1,0,2], "...and the operand"
 
 print
 print "-- storage is reclaimed --"

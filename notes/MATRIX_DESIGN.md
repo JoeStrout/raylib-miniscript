@@ -361,12 +361,26 @@ m.sumOfSquares(axis=null)
 ```
 m.determinant
 m.inverse                          // error value if singular
-m.solve(b)                         // LU with partial pivot
-m.swapRows(a, b), m.swapColumns(a, b)
+m.solve(b)                         // LU with partial pivot; -> n x k Matrix
+m.swapRows(row1, row2), m.swapColumns(column1, column2)
 m.equals(m2, tolerance=1e-9)       // Matrix or 2D list
 ```
 
-Closed-form fast paths for 2x2 / 3x3 / 4x4 determinant and inverse.
+Closed-form fast paths for 1x1 / 2x2 / 3x3 / 4x4 determinant and inverse — not merely
+an optimization, since a 4x4 transform inverted every frame is the common case, and
+cofactor expansion at that size costs less than a pivot search. Above 4x4 both go
+through one LU factorization with partial pivoting; `inverse` is that factorization plus
+a single multi-column solve against the identity, not n separate solves.
+
+A **singular** matrix has determinant 0 — an answer, not an error — but `inverse` and
+`solve` return an error value, matching numpy's `LinAlgError`: an un-invertible transform
+is a bug upstream, not a value worth propagating as NaN.
+
+`solve`'s `b` is a Matrix or a list. A *flat* list of n numbers is read as a **column**
+vector rather than the 1 x n that `fromList` would make of it: this is the one place where
+a bare list of numbers unambiguously means "the right-hand side of n equations", and numpy
+reads a 1-D `b` the same way. A nested list or a Matrix must already be n x k. All k
+right-hand sides are solved from one factorization.
 
 `transpose` / `transposed` are not here: they fall out of `gemm` with a null `B` operand.
 
@@ -378,6 +392,17 @@ m.rowCross(m2)                     // n x 3, requires 3 columns
 
 `rowLengths`, `normalizeRows`/`normalizedRows`, and `rowDot` are wrappers; only the
 3-component cross product needs its own kernel.
+
+Both operands need exactly 3 columns. `m2` may have one row per row of `m`, or exactly
+one row, which is then crossed with every row — the fixed-axis case (`vel.rowCross(up)`),
+and the same row broadcasting the arithmetic ops do. A flat list of 3 numbers is that
+single row.
+
+Deliberate divergence from numpy: `np.cross` broadcasts in *both* directions, so a 1x3
+crossed with an nx3 yields n rows. Here the result always has **self's** row count.
+`a.rowCross(b)` reads as "for each of my rows", and a method that silently returned more
+rows than the receiver has would be a trap. A 1x3 receiver against an nx3 operand is an
+error, not an upcast.
 
 ### Neural network primitives
 
