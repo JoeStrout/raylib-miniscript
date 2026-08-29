@@ -52,15 +52,6 @@ palettes = [
 	[[220, 255, 220], [ 40, 220, 110]],   // verdant
 	[[255, 255, 255], [255, 190,  40]] ]  // gold
 
-// A uniform deviate in [0,1).  This is `rnd` and nothing more; it exists
-// because Matrix's callbacks (`ofSize`'s function form, `apply`, `apply1`)
-// cannot yet call an *intrinsic* function reference -- `@rnd` comes back null
-// -- so the callback has to be a script function.
-// ToDo: fix this in MiniScript2.
-uniform = function
-	return rnd
-end function
-
 //----------------------------------------------------------------------
 // The pool
 //----------------------------------------------------------------------
@@ -111,7 +102,7 @@ Pool.burst = function(x, y, count, palette, speed)
 	nv = Matrix.ofSize(count, 2)
 	nv.randomize 0, 1
 	nv.normalizeRows
-	sp = Matrix.ofSize(count, 1, @uniform)
+	sp = Matrix.ofSize(count, 1, @rnd)
 	sp.sqrt
 	sp.multiplyBy speed
 	nv.elemMultiplyBy sp
@@ -124,7 +115,7 @@ Pool.burst = function(x, y, count, palette, speed)
 	nc.add [[core[0], core[1], core[2], 255]]
 	delta = Matrix.fromList([[edge[0] - core[0], edge[1] - core[1],
 	   edge[2] - core[2], -110]])
-	t = Matrix.ofSize(count, 1, @uniform)
+	t = Matrix.ofSize(count, 1, @rnd)
 	t.gemm delta, nc, nc
 
 	self.pos.appendRows np
