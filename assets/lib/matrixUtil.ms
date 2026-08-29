@@ -82,13 +82,12 @@ Matrix.plusScaled = function(C, beta)
 	return self.gemm(null, C, null, false, false, 1, beta)
 end function
 
-// A.addScaled(C, beta): A += beta*C, in place -> self.  The level-1 accumulate;
-// this is `vel.addScaled acc, dt` in a physics loop, and allocates nothing.
+// A.addScaled(C, beta): A += beta*C, in place -> self.
 Matrix.addScaled = function(C, beta)
 	return self.gemm(null, C, self, false, false, 1, beta)
 end function
 
-// C.addProduct(A, B): C += A·B, in place -> self.  The level-3 accumulate.
+// C.addProduct(A, B): C += A·B, in place -> self.
 Matrix.addProduct = function(A, B)
 	A = _asMatrix(A)
 	if A isa error then return A
