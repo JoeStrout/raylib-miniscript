@@ -633,6 +633,101 @@ matches C3, 2, 2, [-5,0,1,1], "null lo clamps from above only"
 ok isErr(Matrix.fromList([[1]]).clamp(5, 1)), "lo above hi is an error"
 
 print
+print "-- fill --"
+F1 = Matrix.fromList([[1,2],[3,4]])
+ok refEquals(F1.fill(7), F1), "fill returns self, for chaining"
+matches F1, 2, 2, [7,7,7,7], "fill overwrites every element"
+matches F1.fill, 2, 2, [0,0,0,0], "the value defaults to 0"
+// Only the live region is touched, and growth after a fill still sees zeros
+// rather than the fill value left in spare capacity.
+F2 = Matrix.ofSize(1, 2)
+F2.reserve 4
+F2.fill 9
+F2.resize 2, 2
+matches F2, 2, 2, [9,9,0,0], "fill does not reach into spare capacity"
+matches Matrix.ofSize(0,3).fill(5), 0, 3, [], "filling an empty matrix does nothing"
+ok isErr(Matrix.ofSize(2,2).fill("x")), "a non-number is a type error"
+
+print
+print "-- randomize --"
+// The interpreter's own PRNG, so rnd(seed) makes weight init reproducible.
+rnd 42
+N1 = Matrix.ofSize(4, 5).randomize
+rnd 42
+N2 = Matrix.ofSize(4, 5).randomize
+ok N1.toFlatList == N2.toFlatList, "the same seed gives the same matrix"
+rnd 43
+N3 = Matrix.ofSize(4, 5).randomize
+ok N3.toFlatList != N1.toFlatList, "a different seed does not"
+// Box-Muller fills in pairs; an odd element count must not drop or duplicate.
+N4 = Matrix.ofSize(3, 3).randomize
+eq N4.toFlatList.len, 9, "an odd element count is filled completely"
+ok N4.toFlatList.indexOf(0) == null, "...with nine distinct draws, none left at zero"
+// Statistics, on a sample big enough that the bounds below are not flaky.
+BIG = Matrix.ofSize(200, 100).randomize(5, 2)
+mu = BIG.sum / 20000
+ok abs(mu - 5) < 0.05, "sample mean tracks the requested mean  (got " + mu + ")"
+sd = sqrt(BIG.sumOfSquares / 20000 - mu * mu)
+ok abs(sd - 2) < 0.1, "sample sd tracks the requested sd  (got " + sd + ")"
+matches Matrix.ofSize(2,2).randomize(3, 0), 2, 2, [3,3,3,3], "an sd of 0 fills with the mean"
+ok isErr(Matrix.ofSize(2,2).randomize(0, -1)), "a negative sd is an error"
+ok isErr(Matrix.ofSize(2,2).randomize("x")), "a non-number mean is a type error"
+
+print
+print "-- apply / apply1 --"
+double = function(x)
+	return x * 2
+end function
+A1 = Matrix.fromList([[1,2],[3,4]])
+ok refEquals(A1.apply(@double), A1), "apply returns self"
+matches A1, 2, 2, [2,4,6,8], "apply runs in place, row-major"
+scale = function(x, k)
+	return x * k
+end function
+matches Matrix.fromList([[1,2],[3,4]]).apply1(@scale, 10), 2, 2, [10,20,30,40], "apply1 passes the extra argument"
+matches Matrix.ofSize(0,0).apply(@double), 0, 0, [], "applying to an empty matrix calls nothing"
+ok isErr(Matrix.ofSize(2,2).apply(42)), "a non-function is a type error"
+
+// Order is row-major, and the callback sees the value only -- no index.
+seen = []
+watch = function(x)
+	globals.seen.push x
+	return x
+end function
+Matrix.fromList([[1,2,3],[4,5,6]]).apply @watch
+ok seen == [1,2,3,4,5,6], "elements are visited in row-major order"
+
+// An error VALUE returned by the callback comes back to the caller unchanged,
+// exactly as it does for ofSize's initialValue callback.
+myError = function(x)
+	return Matrix.ofSize(1,1).getElem(5, 5)     // an error value, not a raise
+end function
+e = Matrix.ofSize(2,2).apply(@myError)
+ok isErr(e), "an error value from the callback is what the caller gets"
+// A callback returning something non-numeric -- including the null of a
+// function with no explicit return -- fails loudly rather than storing garbage.
+noReturn = function(x)
+end function
+ok isErr(Matrix.ofSize(2,2).apply(@noReturn)), "a callback that returns nothing is a type error"
+
+// Re-entrancy: the callback may do anything ordinary code can, including
+// allocating matrices and calling apply again on one of them.
+nested = function(x)
+	inner = Matrix.ofSize(2, 2, 3)
+	inner.apply @double
+	return x + inner.sum
+end function
+matches Matrix.fromList([[1,2]]).apply(@nested), 1, 2, [25,26], "apply may nest inside apply"
+
+// ...but it may NOT resize the matrix being applied to: that reallocs the
+// storage under the loop.  Caught and reported, not written through.
+victim = Matrix.fromList([[1,2],[3,4]])
+grow = function(x)
+	victim.resize 8, 8
+	return x
+end function
+ok isErr(victim.apply(@grow)), "resizing the matrix from inside the callback is an error"
+print
 print "-- reductions: whole matrix --"
 S = Matrix.fromList([[1,2,3],[4,5,6]])
 eq S.sum, 21, "sum of everything"

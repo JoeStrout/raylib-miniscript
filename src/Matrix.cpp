@@ -10,6 +10,7 @@
 #include "Matrix.h"
 #include "RawData.h"
 #include "miniscript.h"
+#include "PRNG.g.h"
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -1897,6 +1898,48 @@ static bool FillFromCallback(Context context, MatrixData* m, long elems,
 	return true;
 }
 
+// Drive `fn` over every element of a LIVE matrix, in row-major order, replacing
+// each element with what the call returns.  `arg1` is passed as a second
+// argument when `hasArg1` -- the apply1 form.
+//
+// Unlike FillFromCallback, the matrix here is already a GC object reachable
+// from `self`, so the callback can reach it too, and can resize it -- which
+// reallocs m->data out from under us.  Hence the reentrancy restriction the
+// design notes call for: the shape is rechecked after every call, and a
+// callback that changed it stops the loop with an error rather than writing
+// through a stale pointer or past a new, shorter end.  m->data is re-read every
+// iteration for the same reason, since reserve/trim can move the buffer without
+// changing the shape.
+//
+// Returns true on success; *outErr on failure follows FillFromCallback's rules
+// (the callback's own error value, a TypeError, or null when the callback
+// raised and the VM has already stopped).
+static bool ApplyCallback(Context context, MatrixData* m, Value fn,
+						  bool hasArg1, Value arg1, const char* who, Value* outErr) {
+	*outErr = Value::Null;
+	int rows = m->rows, columns = m->columns;
+	long n = m->LiveElems();
+	for (long i = 0; i < n; i++) {
+		ValueList args;
+		args.Add(Value(m->data[i]));
+		if (hasArg1) args.Add(arg1);
+		Value v = context.vm.RunFunction(fn, args);
+		if (!context.vm.IsRunning) return false;
+		if (v.IsError()) { *outErr = v; return false; }
+		if (v.Type() != ValueType::Number) {
+			*outErr = ErrorTypes::TypeError("number", v);
+			return false;
+		}
+		if (m->rows != rows || m->columns != columns) {
+			*outErr = ErrorTypes::RuntimeError(String("Matrix.") + who +
+				": the matrix was resized by the callback");
+			return false;
+		}
+		m->data[i] = v.DoubleValue();
+	}
+	return true;
+}
+
 //--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
@@ -2886,6 +2929,107 @@ ValueDict& MatrixClass() {
 		return IntrinsicResult(context.GetVar("self"));
 	});
 	matrixClass.SetValue(String("clamp"), f.GetFunc());
+
+	// ---- Bulk transforms ----
+
+	// m.fill(value=0) -> self
+	//
+	// Not routed through gemm: the alpha*A term always READS A, and a fill must
+	// not -- spare capacity brought into the live region may hold anything, and
+	// 0 * NaN is NaN.  So this is the one op that needs its own write-only pass.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("value", Value::zero);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value v = context.GetVar("value");
+		if (v.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", v));
+		double x = v.DoubleValue();
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i++) m->data[i] = x;
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("fill"), f.GetFunc());
+
+	// m.randomize(mean=0, sd=1) -> self
+	//
+	// Normal (Gaussian) deviates, drawn from the interpreter's own PRNG -- the
+	// same stream rnd() uses -- so rnd(seed) makes weight initialization
+	// reproducible across runs and platforms.
+	//
+	// Box-Muller, filling two elements per transform: the sine and cosine
+	// outputs are both usable deviates, and an odd element count simply drops
+	// the second.  sd of 0 is legal and fills with the mean.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("mean", Value::zero);
+	f.AddParam("sd", Value::one);
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value vmean = context.GetVar("mean");
+		Value vsd = context.GetVar("sd");
+		if (vmean.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vmean));
+		if (vsd.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vsd));
+		double mean = vmean.DoubleValue(), sd = vsd.DoubleValue();
+		if (sd < 0) return IntrinsicResult(ErrorTypes::RuntimeError(
+			"Matrix.randomize: sd must be >= 0"));
+		const double kTwoPi = 6.28318530717958647692;
+		long n = m->LiveElems();
+		for (long i = 0; i < n; i += 2) {
+			// PRNG::Next() is [0,1); 1-u moves the log's argument to (0,1], so
+			// the -inf case is unreachable rather than merely unlikely.
+			double r = sd * std::sqrt(-2.0 * std::log(1.0 - PRNG::Next()));
+			double theta = kTwoPi * PRNG::Next();
+			m->data[i] = mean + r * std::cos(theta);
+			if (i + 1 < n) m->data[i + 1] = mean + r * std::sin(theta);
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("randomize"), f.GetFunc());
+
+	// m.apply(func) -> self          func(value) -> value
+	// m.apply1(func, arg1) -> self   func(value, arg1) -> value
+	//
+	// In place, row-major, like list.apply / list.apply1.  Index-dependent
+	// initialization is deliberately not offered: the callback sees the value
+	// and nothing else (build a list and use fromList if you need the index).
+	// See ApplyCallback for what a callback may and may not do to the matrix.
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("func");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value fn = context.GetVar("func");
+		if (fn.Type() != ValueType::Function) return IntrinsicResult(ErrorTypes::TypeError("function", fn));
+		if (!ApplyCallback(context, m, fn, false, Value::Null, "apply", &err)) {
+			return IntrinsicResult(err);
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("apply"), f.GetFunc());
+
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("func");
+	f.AddParam("arg1");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value fn = context.GetVar("func");
+		if (fn.Type() != ValueType::Function) return IntrinsicResult(ErrorTypes::TypeError("function", fn));
+		if (!ApplyCallback(context, m, fn, true, context.GetVar("arg1"), "apply1", &err)) {
+			return IntrinsicResult(err);
+		}
+		return IntrinsicResult(context.GetVar("self"));
+	});
+	matrixClass.SetValue(String("apply1"), f.GetFunc());
 
 	// m.sum(axis=null) / sumOfSquares / max / min / argmax / argmin
 	//
