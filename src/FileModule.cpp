@@ -59,23 +59,10 @@ static const Value& _handleKey() { static Value k("_handle"); return k; }
 static ValueDict fileModule;
 static ValueDict fileHandleClass;
 
-// The FileHandle class map, registered under a short name on first use.
-//
-// The registration MUST be lazy.  Intrinsic::EnsureAllBuilt (which runs when the
-// first program is compiled, after all host setup) ends by calling
-// CoreIntrinsics::InvalidateTypeMaps, which clears the short-name registry --
-// so anything registered during AddFileModuleIntrinsics is silently wiped
-// before a script ever runs.  Registering here, on a path only reached during
-// execution, puts the entry in after that clear.  Without the short name,
-// str(f) dumps every method of the class instead of `{"__isa": FileHandle, ...}`.
+// The FileHandle class map.  StaticMap caches on the dictionary's address, so
+// this is one rooted map with a stable identity, however often it is called.
 static Value FileHandleClassMap() {
-	Value m = StaticMap(fileHandleClass);
-	static bool named = false;
-	if (!named) {
-		named = true;
-		Intrinsic::AddShortName(m, String("FileHandle"));
-	}
-	return m;
+	return StaticMap(fileHandleClass);
 }
 
 // Pull the fs::OpenFile out of a FileHandle instance, or null if it is not one.
@@ -753,6 +740,8 @@ void AddFileModuleIntrinsics() {
 
 	// Register the class under a short name, so str(f) reports
 	// {"__isa": FileHandle, ...} rather than dumping every method.
+	Intrinsic::AddShortName(FileHandleClassMap(), String("FileHandle"));
+
 	// Register global 'file' and 'FileHandle' intrinsics
 	Intrinsic f;
 	f = Intrinsic::Create("file");
