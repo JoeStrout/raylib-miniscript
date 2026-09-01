@@ -817,6 +817,7 @@
 |env | |Get a map of all environment variables |
 |run |**path**="" |Load and run a MiniScript file in the current interpreter context |
 |resourceCounts | |Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.) |
+|hostMemory | |see HostBytesInUse above. |
 
 ## file module
 

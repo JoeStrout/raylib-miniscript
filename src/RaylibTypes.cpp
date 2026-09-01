@@ -26,7 +26,7 @@ const Value& ImageClass() {
 		map.SetValue(String("format"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Image"));
+		Intrinsic::AddShortName(classValue, String("raylib.Image"));
 	}
 	return classValue;
 }
@@ -43,7 +43,7 @@ const Value& TextureClass() {
 		map.SetValue(String("format"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Texture"));
+		Intrinsic::AddShortName(classValue, String("raylib.Texture"));
 	}
 	return classValue;
 }
@@ -59,7 +59,7 @@ const Value& FontClass() {
 		map.SetValue(String("glyphPadding"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Font"));
+		Intrinsic::AddShortName(classValue, String("raylib.Font"));
 	}
 	return classValue;
 }
@@ -75,7 +75,7 @@ const Value& WaveClass() {
 		map.SetValue(String("channels"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Wave"));
+		Intrinsic::AddShortName(classValue, String("raylib.Wave"));
 	}
 	return classValue;
 }
@@ -89,7 +89,7 @@ const Value& MusicClass() {
 		map.SetValue(String("looping"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Music"));
+		Intrinsic::AddShortName(classValue, String("raylib.Music"));
 	}
 	return classValue;
 }
@@ -102,7 +102,7 @@ const Value& SoundClass() {
 		map.SetValue(String("frameCount"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Sound"));
+		Intrinsic::AddShortName(classValue, String("raylib.Sound"));
 	}
 	return classValue;
 }
@@ -117,7 +117,7 @@ const Value& AudioStreamClass() {
 		map.SetValue(String("channels"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("AudioStream"));
+		Intrinsic::AddShortName(classValue, String("raylib.AudioStream"));
 	}
 	return classValue;
 }
@@ -131,7 +131,7 @@ const Value& RenderTextureClass() {
 		map.SetValue(String("texture"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("RenderTexture"));
+		Intrinsic::AddShortName(classValue, String("raylib.RenderTexture"));
 	}
 	return classValue;
 }
@@ -144,7 +144,7 @@ const Value& ShaderClass() {
 		map.SetValue(String("id"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Shader"));
+		Intrinsic::AddShortName(classValue, String("raylib.Shader"));
 	}
 	return classValue;
 }
@@ -158,7 +158,7 @@ const Value& MeshClass() {
 		map.SetValue(String("triangleCount"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Mesh"));
+		Intrinsic::AddShortName(classValue, String("raylib.Mesh"));
 	}
 	return classValue;
 }
@@ -174,7 +174,7 @@ const Value& MaterialClass() {
 		map.SetValue(String("_arrayIndex"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Material"));
+		Intrinsic::AddShortName(classValue, String("raylib.Material"));
 	}
 	return classValue;
 }
@@ -188,7 +188,7 @@ const Value& ModelClass() {
 		map.SetValue(String("materialCount"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Model"));
+		Intrinsic::AddShortName(classValue, String("raylib.Model"));
 	}
 	return classValue;
 }
@@ -206,7 +206,7 @@ const Value& ModelAnimationClass() {
 		map.SetValue(String("_arrayIndex"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("ModelAnimation"));
+		Intrinsic::AddShortName(classValue, String("raylib.ModelAnimation"));
 	}
 	return classValue;
 }
@@ -222,7 +222,7 @@ const Value& Camera3DClass() {
 		map.SetValue(String("projection"), Value(CAMERA_PERSPECTIVE));
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
-		Intrinsic::AddShortName(classValue, String("Camera3D"));
+		Intrinsic::AddShortName(classValue, String("raylib.Camera3D"));
 	}
 	return classValue;
 }

@@ -12,6 +12,13 @@ using namespace MiniScript;
 // ValueDict is what keeps the per-instance `__isa` assignments below a plain
 // read -- StaticMap would cost a hashtable lookup per object created -- and it
 // gives each class the single stable identity `isa` compares against.
+//
+// Each is registered under the short name `raylib.Image`, `raylib.Sound`, and
+// so on -- qualified, because that is how script names them now that they live
+// in the raylib module rather than in globals.  An unqualified short name would
+// print `{"__isa": Image, ...}` for both a raylib image and a script's own
+// class of the same name (soda's Image, asteroids' Sound), which is exactly the
+// confusion that moving them into the module was meant to end.
 const Value& ImageClass();
 const Value& TextureClass();
 const Value& FontClass();
