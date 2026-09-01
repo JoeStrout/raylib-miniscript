@@ -320,10 +320,11 @@ static BinaryData* GetBinaryData(Context context) {
     return data;
 }
 
-ValueDict& RawDataClass() {
+const Value& RawDataClass() {
     static ValueDict rawDataClass;
+    static Value classValue;   // wrapped and GC-rooted at the end of the build
 
-    if (rawDataClass.Count() > 0) return rawDataClass;
+    if (!classValue.IsNull()) return classValue;
 
     rawDataClass.SetValue(kHandle(), Value::Null);
     rawDataClass.SetValue(kLittleEndian(), Value::one);
@@ -700,16 +701,18 @@ ValueDict& RawDataClass() {
 
     // Register the class under a short name, so str(rd) reports
     // {"__isa": RawData, ...} rather than dumping every method.
-    Intrinsic::AddShortName(StaticMap(rawDataClass), String("RawData"));
+    classValue = GCManager::NewMapFromDict(rawDataClass);   // shares rawDataClass's storage
+    GCManager::AddRoot(classValue);
+    Intrinsic::AddShortName(classValue, String("RawData"));
 
-    return rawDataClass;
+    return classValue;
 }
 
 Value RawDataToValue(BinaryData* data) {
     if (data == nullptr) return Value::Null;
 
 	ValueDict instance;
-	instance.SetValue(Value::magicIsA, StaticMap(RawDataClass()));
+	instance.SetValue(Value::magicIsA, RawDataClass());
     instance.SetValue(kHandle(), MakeHandle(data));
 	instance.SetValue(kLittleEndian(), Value(data->littleEndian ? 1.0 : 0.0));
     return DynamicMap(instance);

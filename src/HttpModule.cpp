@@ -414,8 +414,14 @@ static IntrinsicResult intrinsic_http_post(Context context, IntrinsicResult part
 
 static ValueDict httpMap;
 
+// The module as a Value: wrapped and GC-rooted once, where httpMap is filled
+// (see AddHttpIntrinsics).  A host ValueDict is not reachable by the GC on its
+// own, so wrapping it only on the first script access would leave its contents
+// collectable in between.
+static Value httpMapValue;
+
 static IntrinsicResult intrinsic_http(Context context, IntrinsicResult partialResult) {
-	return IntrinsicResult(StaticMap(httpMap));
+	return IntrinsicResult(httpMapValue);
 }
 
 void AddHttpIntrinsics() {
@@ -428,6 +434,10 @@ void AddHttpIntrinsics() {
 	i.AddParam("headers");
 	i.set_Code(intrinsic_http_post);
 	httpMap.SetValue(String("post"), i.GetFunc());
+
+	// Wrap and root the module now that it is built (see httpMapValue above).
+	httpMapValue = GCManager::NewMapFromDict(httpMap);
+	GCManager::AddRoot(httpMapValue);
 
 	Intrinsic httpFunc = Intrinsic::Create("http");
 	httpFunc.set_Code(intrinsic_http);

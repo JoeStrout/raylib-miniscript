@@ -51,18 +51,28 @@
 using namespace MiniScript;
 
 // A GC-backed string Value cannot be constructed at static-init time (before
-// GCManager exists), so build the "_handle" key lazily on first use.  The
-// string is interned (< 128 bytes) and therefore immortal, so it is safe to
-// hold as a long-lived map key.
-static const Value& _handleKey() { static Value k("_handle"); return k; }
+// GCManager exists), so build the "_handle" key lazily on first use.  Interned
+// strings (under 128 bytes) are only SEMI-immortal -- a full collection sweeps
+// them -- and this key lives on no rooted prototype, so root it explicitly.
+static const Value& _handleKey() {
+	static Value k = [] { Value v("_handle"); GCManager::AddRoot(v); return v; }();
+	return k;
+}
 
 static ValueDict fileModule;
 static ValueDict fileHandleClass;
 
-// The FileHandle class map.  StaticMap caches on the dictionary's address, so
-// this is one rooted map with a stable identity, however often it is called.
+// The module and the FileHandle class prototype, as Values: each wrapped and
+// GC-rooted once, where its dictionary is filled (see AddFileModuleIntrinsics).
+// A host ValueDict is not reachable by the GC on its own, so wrapping one only
+// on the first script access would leave its contents collectable in between.
+// Holding the Value also means the accessors below -- and the per-instance
+// __isa assignment in file.open -- are plain reads, with nothing to look up.
+static Value fileModuleValue;
+static Value fileHandleClassValue;
+
 static Value FileHandleClassMap() {
-	return StaticMap(fileHandleClass);
+	return fileHandleClassValue;
 }
 
 // Pull the fs::OpenFile out of a FileHandle instance, or null if it is not one.
@@ -523,7 +533,7 @@ static IntrinsicResult intrinsic_FileHandle(Context context, IntrinsicResult par
 }
 
 static IntrinsicResult intrinsic_File(Context context, IntrinsicResult partialResult) {
-	return IntrinsicResult(StaticMap(fileModule));
+	return IntrinsicResult(fileModuleValue);
 }
 
 void AddFileModuleIntrinsics() {
@@ -737,6 +747,12 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("self");
 	i.set_Code(&intrinsic_feof);
 	fileHandleClass.SetValue("atEnd", i.GetFunc());
+
+	// Wrap and root both maps now that they are built (see the Values above).
+	fileModuleValue = GCManager::NewMapFromDict(fileModule);
+	GCManager::AddRoot(fileModuleValue);
+	fileHandleClassValue = GCManager::NewMapFromDict(fileHandleClass);
+	GCManager::AddRoot(fileHandleClassValue);
 
 	// Register the class under a short name, so str(f) reports
 	// {"__isa": FileHandle, ...} rather than dumping every method.

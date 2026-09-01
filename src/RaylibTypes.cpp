@@ -15,151 +15,188 @@ int rcMaterial = 0;
 int rcModel = 0;
 int rcModelAnimation = 0;
 
-ValueDict& ImageClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& ImageClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("width"), Value::zero);
 		map.SetValue(String("height"), Value::zero);
 		map.SetValue(String("mipmaps"), Value::zero);
 		map.SetValue(String("format"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Image"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Image"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& TextureClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& TextureClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("id"), Value::zero);
 		map.SetValue(String("width"), Value::zero);
 		map.SetValue(String("height"), Value::zero);
 		map.SetValue(String("mipmaps"), Value::zero);
 		map.SetValue(String("format"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Texture"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Texture"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& FontClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& FontClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("texture"), Value::Null);
 		map.SetValue(String("baseSize"), Value::zero);
 		map.SetValue(String("glyphCount"), Value::zero);
 		map.SetValue(String("glyphPadding"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Font"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Font"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& WaveClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& WaveClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
 		map.SetValue(String("channels"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Wave"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Wave"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& MusicClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& MusicClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("looping"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Music"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Music"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& SoundClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& SoundClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Sound"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Sound"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& AudioStreamClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& AudioStreamClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
 		map.SetValue(String("channels"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("AudioStream"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("AudioStream"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& RenderTextureClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& RenderTextureClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("id"), Value::zero);
 		map.SetValue(String("texture"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("RenderTexture"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("RenderTexture"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& ShaderClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& ShaderClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("id"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Shader"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Shader"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& MeshClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& MeshClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("vertexCount"), Value::zero);
 		map.SetValue(String("triangleCount"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Mesh"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Mesh"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& MaterialClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& MaterialClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("shaderId"), Value::zero);
 		map.SetValue(String("_arrayHandle"), Value::zero);
 		map.SetValue(String("_arrayCount"), Value::zero);
 		map.SetValue(String("_arrayIndex"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Material"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Material"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& ModelClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& ModelClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("meshCount"), Value::zero);
 		map.SetValue(String("materialCount"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("Model"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Model"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& ModelAnimationClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& ModelAnimationClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("name"), Value::Null);
 		map.SetValue(String("boneCount"), Value::zero);
@@ -167,22 +204,44 @@ ValueDict& ModelAnimationClass() {
 		map.SetValue(String("_arrayHandle"), Value::zero);
 		map.SetValue(String("_arrayCount"), Value::zero);
 		map.SetValue(String("_arrayIndex"), Value::zero);
-		Intrinsic::AddShortName(StaticMap(map), String("ModelAnimation"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("ModelAnimation"));
 	}
-	return map;
+	return classValue;
 }
 
-ValueDict& Camera3DClass() {
-	static ValueDict map;
-	if (map.Count() == 0) {
+const Value& Camera3DClass() {
+	static Value classValue;
+	if (classValue.IsNull()) {
+		ValueDict map;
 		map.SetValue(String("position"), Vector3ToValue(Vector3{0, 10, 10}));
 		map.SetValue(String("target"), Vector3ToValue(Vector3{0, 0, 0}));
 		map.SetValue(String("up"), Vector3ToValue(Vector3{0, 1, 0}));
 		map.SetValue(String("fovy"), Value(45.0));
 		map.SetValue(String("projection"), Value(CAMERA_PERSPECTIVE));
-		Intrinsic::AddShortName(StaticMap(map), String("Camera3D"));
+		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
+		GCManager::AddRoot(classValue);
+		Intrinsic::AddShortName(classValue, String("Camera3D"));
 	}
-	return map;
+	return classValue;
+}
+
+void AddTypeClasses(ValueDict& raylibModule) {
+	raylibModule.SetValue("Image", ImageClass());
+	raylibModule.SetValue("Texture", TextureClass());
+	raylibModule.SetValue("Font", FontClass());
+	raylibModule.SetValue("Wave", WaveClass());
+	raylibModule.SetValue("Music", MusicClass());
+	raylibModule.SetValue("Sound", SoundClass());
+	raylibModule.SetValue("AudioStream", AudioStreamClass());
+	raylibModule.SetValue("RenderTexture", RenderTextureClass());
+	raylibModule.SetValue("Shader", ShaderClass());
+	raylibModule.SetValue("Mesh", MeshClass());
+	raylibModule.SetValue("Material", MaterialClass());
+	raylibModule.SetValue("Model", ModelClass());
+	raylibModule.SetValue("ModelAnimation", ModelAnimationClass());
+	raylibModule.SetValue("Camera3D", Camera3DClass());
 }
 
 // Convert a Raylib Texture to a MiniScript map
@@ -190,7 +249,7 @@ ValueDict& Camera3DClass() {
 Value TextureToValue(Texture texture) {
 	Texture* texPtr = new Texture(texture);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(TextureClass()));
+	map.SetValue(Value::magicIsA, TextureClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)texPtr));
 	map.SetValue(String("id"), Value((int)texture.id));
 	map.SetValue(String("width"), Value(texture.width));
@@ -221,7 +280,7 @@ Texture ValueToTexture(Value value) {
 Value ImageToValue(Image image) {
 	Image* imgPtr = new Image(image);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(ImageClass()));
+	map.SetValue(Value::magicIsA, ImageClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)imgPtr));
 	map.SetValue(String("width"), Value(image.width));
 	map.SetValue(String("height"), Value(image.height));
@@ -265,7 +324,7 @@ void UpdateImageValue(Value value) {
 Value FontToValue(Font font) {
 	Font* fontPtr = new Font(font);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(FontClass()));
+	map.SetValue(Value::magicIsA, FontClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)fontPtr));
 	map.SetValue(String("texture"), TextureToValue(font.texture));
 	map.SetValue(String("baseSize"), Value(font.baseSize));
@@ -302,7 +361,7 @@ Font ValueToFont(Value value) {
 Value WaveToValue(Wave wave) {
 	Wave* wavePtr = new Wave(wave);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(WaveClass()));
+	map.SetValue(Value::magicIsA, WaveClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)wavePtr));
 	map.SetValue(String("frameCount"), Value((int)wave.frameCount));
 	map.SetValue(String("sampleRate"), Value((int)wave.sampleRate));
@@ -329,7 +388,7 @@ Wave ValueToWave(Value value) {
 Value MusicToValue(Music music) {
 	Music* musicPtr = new Music(music);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(MusicClass()));
+	map.SetValue(Value::magicIsA, MusicClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)musicPtr));
 	map.SetValue(String("frameCount"), Value((int)music.frameCount));
 	map.SetValue(String("looping"), Value(music.looping ? 1 : 0));
@@ -354,7 +413,7 @@ Music ValueToMusic(Value value) {
 Value SoundToValue(Sound sound) {
 	Sound* soundPtr = new Sound(sound);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(SoundClass()));
+	map.SetValue(Value::magicIsA, SoundClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)soundPtr));
 	map.SetValue(String("frameCount"), Value((int)sound.frameCount));
 	return DynamicMap(map);
@@ -378,7 +437,7 @@ Sound ValueToSound(Value value) {
 Value AudioStreamToValue(AudioStream stream) {
 	AudioStream* streamPtr = new AudioStream(stream);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(AudioStreamClass()));
+	map.SetValue(Value::magicIsA, AudioStreamClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)streamPtr));
 	map.SetValue(String("sampleRate"), Value((int)stream.sampleRate));
 	map.SetValue(String("sampleSize"), Value((int)stream.sampleSize));
@@ -405,7 +464,7 @@ AudioStream ValueToAudioStream(Value value) {
 Value RenderTextureToValue(RenderTexture2D renderTexture) {
 	RenderTexture2D* rtPtr = new RenderTexture2D(renderTexture);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(RenderTextureClass()));
+	map.SetValue(Value::magicIsA, RenderTextureClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)rtPtr));
 	map.SetValue(String("id"), Value((int)renderTexture.id));
 	map.SetValue(String("texture"), TextureToValue(renderTexture.texture));
@@ -431,7 +490,7 @@ RenderTexture2D ValueToRenderTexture(Value value) {
 Value ShaderToValue(Shader shader) {
 	Shader* shaderPtr = new Shader(shader);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(ShaderClass()));
+	map.SetValue(Value::magicIsA, ShaderClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)shaderPtr));
 	map.SetValue(String("id"), Value((int)shader.id));
 	return DynamicMap(map);
@@ -602,7 +661,7 @@ Value Vector2ToValue(Vector2 vec) {
 Value MeshToValue(Mesh mesh) {
 	Mesh* meshPtr = new Mesh(mesh);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(MeshClass()));
+	map.SetValue(Value::magicIsA, MeshClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)meshPtr));
 	map.SetValue(String("vertexCount"), Value(mesh.vertexCount));
 	map.SetValue(String("triangleCount"), Value(mesh.triangleCount));
@@ -621,7 +680,7 @@ Mesh ValueToMesh(Value value) {
 Value MaterialToValue(Material material) {
 	Material* materialPtr = new Material(material);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(MaterialClass()));
+	map.SetValue(Value::magicIsA, MaterialClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)materialPtr));
 	map.SetValue(String("shaderId"), Value((int)material.shader.id));
 	map.SetValue(String("_arrayHandle"), Value::zero);
@@ -642,7 +701,7 @@ Material ValueToMaterial(Value value) {
 Value ModelToValue(Model model) {
 	Model* modelPtr = new Model(model);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(ModelClass()));
+	map.SetValue(Value::magicIsA, ModelClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)modelPtr));
 	map.SetValue(String("meshCount"), Value(model.meshCount));
 	map.SetValue(String("materialCount"), Value(model.materialCount));
@@ -661,7 +720,7 @@ Model ValueToModel(Value value) {
 Value ModelAnimationToValue(ModelAnimation anim) {
 	ModelAnimation* animPtr = new ModelAnimation(anim);
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(ModelAnimationClass()));
+	map.SetValue(Value::magicIsA, ModelAnimationClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)animPtr));
 	map.SetValue(String("name"), Value(String(anim.name)));
 	map.SetValue(String("boneCount"), Value(anim.boneCount));
@@ -753,7 +812,7 @@ Camera3D ValueToCamera3D(Value value) {
 
 Value Camera3DToValue(Camera3D camera) {
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(Camera3DClass()));
+	map.SetValue(Value::magicIsA, Camera3DClass());
 	map.SetValue(String("position"), Vector3ToValue(camera.position));
 	map.SetValue(String("target"), Vector3ToValue(camera.target));
 	map.SetValue(String("up"), Vector3ToValue(camera.up));

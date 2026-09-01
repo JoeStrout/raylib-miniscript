@@ -43,7 +43,7 @@ struct MatrixData {
 extern const long kMaxMatrixElems;
 
 // The Matrix class map (an intrinsic MiniScript class).
-ValueDict& MatrixClass();
+const Value& MatrixClass();
 
 // Wrap storage in a fresh Matrix instance map.  Takes ownership: the returned
 // value's handle finalizer deletes `data`.

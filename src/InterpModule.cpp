@@ -200,9 +200,10 @@ static int SeedGlobals(InterpHandle* h, Value src) {
 // The Interp class
 //--------------------------------------------------------------------------------
 
-ValueDict& InterpClass() {
+const Value& InterpClass() {
 	static ValueDict interpClass;
-	if (interpClass.Count() > 0) return interpClass;
+	static Value classValue;   // wrapped and GC-rooted at the end of the build
+	if (!classValue.IsNull()) return classValue;
 
 	interpClass.SetValue(kHandle(), Value::Null);
 
@@ -216,7 +217,7 @@ ValueDict& InterpClass() {
 		Bootstrap(h);
 
 		ValueDict inst;
-		inst.SetValue(Value::magicIsA, StaticMap(InterpClass()));
+		inst.SetValue(Value::magicIsA, InterpClass());
 		inst.SetValue(kHandle(), Value((double)(intptr_t)h));
 		return IntrinsicResult(DynamicMap(inst));
 	});
@@ -456,9 +457,11 @@ ValueDict& InterpClass() {
 	// drain and clear whatever the child printed to stdout
 	interpClass.SetValue(String("takeOutput"), f.GetFunc());
 
-	Intrinsic::AddShortName(StaticMap(interpClass), String("Interp"));
+	classValue = GCManager::NewMapFromDict(interpClass);   // shares interpClass's storage
+	GCManager::AddRoot(classValue);
+	Intrinsic::AddShortName(classValue, String("Interp"));
 
-	return interpClass;
+	return classValue;
 }
 
 } // namespace MiniScript
@@ -467,7 +470,7 @@ void AddInterpIntrinsics() {
 	MiniScript::Intrinsic f = MiniScript::Intrinsic::Create("Interp");
 	f.set_Code([](MiniScript::Context context, MiniScript::IntrinsicResult partialResult)
 			-> MiniScript::IntrinsicResult {
-		return MiniScript::IntrinsicResult(MiniScript::StaticMap(MiniScript::InterpClass()));
+		return MiniScript::IntrinsicResult(MiniScript::InterpClass());
 	});
 }
 

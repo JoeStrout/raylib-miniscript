@@ -52,7 +52,7 @@ static ModelAnimation* GetModelAnimationArray(Value value, int* outCount) {
 static Value ModelAnimationArrayItemToValue(ModelAnimation* animations, int count, int index) {
 	rcModelAnimation++;
 	ValueDict map;
-	map.SetValue(Value::magicIsA, StaticMap(ModelAnimationClass()));
+	map.SetValue(Value::magicIsA, ModelAnimationClass());
 	map.SetValue(String("_handle"), PointerToValue(&animations[index]));
 	map.SetValue(String("name"), Value(String(animations[index].name)));
 	map.SetValue(String("boneCount"), Value(animations[index].boneCount));

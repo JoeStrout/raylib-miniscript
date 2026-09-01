@@ -75,7 +75,7 @@ private:
 };
 
 // Get the RawData class (MiniScript intrinsic class)
-ValueDict& RawDataClass();
+const Value& RawDataClass();
 
 // Convert between MiniScript Value and BinaryData
 Value RawDataToValue(BinaryData* data);

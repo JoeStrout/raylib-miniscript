@@ -367,9 +367,10 @@ static bool ApplyCallback(Context context, MatrixData* m, Value fn,
 // The Matrix class
 //--------------------------------------------------------------------------------
 
-ValueDict& MatrixClass() {
+const Value& MatrixClass() {
 	static ValueDict matrixClass;
-	if (matrixClass.Count() > 0) return matrixClass;
+	static Value classValue;   // wrapped and GC-rooted at the end of the build
+	if (!classValue.IsNull()) return classValue;
 
 	// Matrix itself must hold a NULL handle.  Without this entry, `new Matrix`
 	// produces a map containing only __isa, and a lookup of `_handle` resolves
@@ -1850,9 +1851,11 @@ ValueDict& MatrixClass() {
 	// Register the class under a short name.  Value.CodeForm consults it when
 	// stringifying an __isa entry, which is the difference between str(m)
 	// reporting `{"__isa": Matrix, ...}` and dumping every method in the class.
-	Intrinsic::AddShortName(StaticMap(matrixClass), String("Matrix"));
+	classValue = GCManager::NewMapFromDict(matrixClass);   // shares matrixClass's storage
+	GCManager::AddRoot(classValue);
+	Intrinsic::AddShortName(classValue, String("Matrix"));
 
-	return matrixClass;
+	return classValue;
 }
 
 } // namespace MiniScript

@@ -36,56 +36,23 @@ void AddRaylibIntrinsics() {
 
 	// Create accessors for the classes
 	f = Intrinsic::Create("RawData");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(RawDataClass())); });
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(RawDataClass()); });
 
 	f = Intrinsic::Create("Matrix");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MatrixClass())); });
+	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(MatrixClass()); });
 
-	f = Intrinsic::Create("Image");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ImageClass())); });
-
-	f = Intrinsic::Create("Texture");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(TextureClass())); });
-
-	f = Intrinsic::Create("Font");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(FontClass())); });
-
-	f = Intrinsic::Create("Wave");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(WaveClass())); });
-
-	f = Intrinsic::Create("Music");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MusicClass())); });
-
-	f = Intrinsic::Create("Sound");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(SoundClass())); });
-
-	f = Intrinsic::Create("AudioStream");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(AudioStreamClass())); });
-
-	f = Intrinsic::Create("Shader");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ShaderClass())); });
-
-	f = Intrinsic::Create("Mesh");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MeshClass())); });
-
-	f = Intrinsic::Create("Material");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(MaterialClass())); });
-
-	f = Intrinsic::Create("Model");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ModelClass())); });
-
-	f = Intrinsic::Create("ModelAnimation");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(ModelAnimationClass())); });
-
-	f = Intrinsic::Create("Camera3D");
-	f.set_Code(INTRINSIC_LAMBDA { return IntrinsicResult(StaticMap(Camera3DClass())); });
-
-	// Create and register the main raylib module
+	// Create and register the main raylib module.  Built on first use, then
+	// wrapped and GC-rooted once; every later reference to the global `raylib`
+	// is a plain read of that Value.  (A host ValueDict is not reachable by the
+	// GC on its own, so the wrap has to happen here, where the dictionary is
+	// filled -- and keeping the Value means this accessor, which runs on every
+	// `raylib.Foo` that did not cache the module, costs nothing.)
 	f = Intrinsic::Create("raylib");
 	f.set_Code(INTRINSIC_LAMBDA {
 		static ValueDict raylibModule;
+		static Value raylibModuleValue;
 
-		if (raylibModule.Count() == 0) {
+		if (raylibModuleValue.IsNull()) {
 			AddRAudioMethods(raylibModule);
 			AddRCoreMethods(raylibModule);
 			AddRModelsMethods(raylibModule);
@@ -94,8 +61,11 @@ void AddRaylibIntrinsics() {
 			AddRTextMethods(raylibModule);
 			AddRTexturesMethods(raylibModule);
 			AddConstants(raylibModule);
+			AddTypeClasses(raylibModule);
+			raylibModuleValue = GCManager::NewMapFromDict(raylibModule);
+			GCManager::AddRoot(raylibModuleValue);
 		}
 
-		return IntrinsicResult(StaticMap(raylibModule));
+		return IntrinsicResult(raylibModuleValue);
 	});
 }

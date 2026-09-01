@@ -5,21 +5,30 @@
 
 using namespace MiniScript;
 
-// MiniScript classes (maps) that represent various Raylib structs
-ValueDict& ImageClass();
-ValueDict& TextureClass();
-ValueDict& FontClass();
-ValueDict& WaveClass();
-ValueDict& MusicClass();
-ValueDict& SoundClass();
-ValueDict& AudioStreamClass();
-ValueDict& RenderTextureClass();
-ValueDict& ShaderClass();
-ValueDict& MeshClass();
-ValueDict& MaterialClass();
-ValueDict& ModelClass();
-ValueDict& ModelAnimationClass();
-ValueDict& Camera3DClass();
+// MiniScript classes (maps) that represent various Raylib structs.
+//
+// Each returns the class prototype as a Value: built, wrapped and GC-rooted on
+// first use, then handed back unchanged.  Returning the Value rather than the
+// ValueDict is what keeps the per-instance `__isa` assignments below a plain
+// read -- StaticMap would cost a hashtable lookup per object created -- and it
+// gives each class the single stable identity `isa` compares against.
+const Value& ImageClass();
+const Value& TextureClass();
+const Value& FontClass();
+const Value& WaveClass();
+const Value& MusicClass();
+const Value& SoundClass();
+const Value& AudioStreamClass();
+const Value& RenderTextureClass();
+const Value& ShaderClass();
+const Value& MeshClass();
+const Value& MaterialClass();
+const Value& ModelClass();
+const Value& ModelAnimationClass();
+const Value& Camera3DClass();
+
+// Install the above classes into the given (raylib) module map
+void AddTypeClasses(ValueDict& raylibModule);
 
 // Convert a Raylib Texture to a MiniScript map
 // Allocates the Texture on the heap and stores pointer in _handle

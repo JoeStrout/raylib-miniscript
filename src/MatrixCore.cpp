@@ -1548,7 +1548,7 @@ using namespace MatrixInternal;
 Value MatrixToValue(MatrixData* data) {
 	if (data == nullptr) return Value::Null;
 	ValueDict instance;
-	instance.SetValue(Value::magicIsA, StaticMap(MatrixClass()));
+	instance.SetValue(Value::magicIsA, MatrixClass());
 	instance.SetValue(kHandle(), MakeHandle(data));
 	// rows/columns are plain map entries so that `m.rows` is an ordinary map
 	// lookup rather than an intrinsic call.  The C++ side rewrites them on

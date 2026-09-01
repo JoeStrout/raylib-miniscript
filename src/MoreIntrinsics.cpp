@@ -44,6 +44,19 @@ using namespace MiniScript;
 // Environment variable support
 //--------------------------------------------------------------------------------
 
+// The `env` map as a Value: wrapped and GC-rooted once, at the moment the
+// dictionary below is built.  A host ValueDict is NOT reachable by the GC on
+// its own, so a dictionary filled at startup but not wrapped until script first
+// names `env` is unreachable in between, and a collection in that window frees
+// its keys and values.  (The symptom is an `env` whose longer keys have turned
+// into empty strings and fragments of unrelated strings.)  Wrapping and rooting
+// at build time closes that window; GCManager::Init runs at the top of main, so
+// this is safe even though it happens before InitMiniScript.
+//
+// The map shares the dictionary's storage, so later setEnvVar writes show
+// through it, and the env intrinsic can return it directly.
+static Value envMapValue;
+
 // Get a reference to the shared environment map.
 // On desktop, initialized from the OS environment on first call.
 // On web, starts empty (populated via setEnvVar).
@@ -62,6 +75,8 @@ static ValueDict& envMapRef() {
 			envMap.SetValue(varName, valueStr);
 		}
 #endif
+		envMapValue = GCManager::NewMapFromDict(envMap);  // shares envMap's storage
+		GCManager::AddRoot(envMapValue);
 	}
 	return envMap;
 }
@@ -141,11 +156,13 @@ static String ExpandVariables(String path) {
 }
 
 static IntrinsicResult intrinsic_env(Context context, IntrinsicResult partialResult) {
-	// The env map has stable identity (scripts may hold onto it), so root it
-	// once via StaticMap.  Note: unlike MS1, assigning to a member of this map
-	// from script does NOT propagate to the OS environment (MS2 dropped the
-	// map assign-override hook); host code changes the OS env via setEnvVar().
-	return IntrinsicResult(StaticMap(envMapRef()));
+	// One map with stable identity (scripts may hold onto it), built and rooted
+	// by envMapRef; calling it here is what guarantees that has happened.  Note:
+	// unlike MS1, assigning to a member of this map from script does NOT
+	// propagate to the OS environment (MS2 dropped the map assign-override
+	// hook); host code changes the OS env via setEnvVar().
+	envMapRef();
+	return IntrinsicResult(envMapValue);
 }
 
 static bool IsAlpha(char c) {

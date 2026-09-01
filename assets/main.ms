@@ -166,6 +166,14 @@ end function
 buttons.push btn
 y += dy
 
+btn = Button.Make("Fireworks", x, y)
+btn.action = function
+	import "fireworks"
+	fireworks.run
+end function
+buttons.push btn
+y += dy
+
 btn = Button.Make("Sounds", x, y)
 btn.action = function
 	import "sounds"

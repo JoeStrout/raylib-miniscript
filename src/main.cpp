@@ -47,8 +47,16 @@ static Value stackTrace;           // stack trace list Value, captured on error
 // Output callbacks for MiniScript
 //--------------------------------------------------------------------------------
 
+// Script output goes straight out, never sitting in stdio's buffer.  With
+// stdout a pipe or file it is block-buffered by default, and this process keeps
+// running after the script ends for as long as a window is open -- so anything
+// short of a full block would be lost whenever the app was killed rather than
+// closed, which reads as a script that stopped partway through.  main() also
+// asks for line buffering; the explicit flush additionally covers a partial
+// line, as from `print x, ""`.
 static void Print(String s, Boolean lineBreak = true) {
 	printf("%s%s", s.c_str(), lineBreak ? "\n" : "");
+	fflush(stdout);
 }
 
 static void PrintErr(String s, Boolean lineBreak = true) {
@@ -67,6 +75,7 @@ static void PrintErr(String s, Boolean lineBreak = true) {
 			printf("\t%s\n", stackTrace.ListGet(i).ToString().c_str());
 		}
 	}
+	fflush(stdout);
 }
 
 //--------------------------------------------------------------------------------
@@ -325,6 +334,14 @@ void CleanupMiniScript() {
 //--------------------------------------------------------------------------------
 
 int main(int argc, char *argv[]) {
+	// Line-buffer stdout, so our own progress messages (and anything else that
+	// printf's here) appear as they happen rather than a block at a time.  A
+	// terminal gives us this anyway; a pipe or file does not, and this process
+	// outlives the script whenever a window is open, so buffered output would
+	// be lost if the app is killed instead of closed.  Must come before the
+	// first printf.
+	setvbuf(stdout, nullptr, _IOLBF, 0);
+
 	// Bring up the MiniScript runtime before ANY Value/String/GC operation
 	// (including the env-var setup below and InitMiniScript).  In MS1 strings
 	// were refcounted so this was implicit; in MS2 strings are GC-allocated, so
