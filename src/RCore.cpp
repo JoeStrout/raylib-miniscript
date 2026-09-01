@@ -52,6 +52,25 @@ EM_ASYNC_JS(void, _SetWindowIcon_Web, (unsigned char *data, long size), {
 });
 #endif
 
+// rlgl's own rlGetActiveFramebuffer is compiled only for GL 3.3, ES 3 and the
+// software renderer (see the guard in rlgl.h); on the ES2/WebGL1 web build it
+// is a stub that always returns 0.  ES2 can answer the same question perfectly
+// well -- it just spells the enum GL_FRAMEBUFFER_BINDING rather than
+// GL_DRAW_FRAMEBUFFER_BINDING (both are 0x8CA6) -- so supply it ourselves
+// there.  Script sees one function that works on every backend.
+#ifdef PLATFORM_WEB
+#include <GLES2/gl2.h>
+static unsigned int GetActiveFramebuffer() {
+	GLint fboId = 0;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboId);
+	return (unsigned int)fboId;
+}
+#else
+static unsigned int GetActiveFramebuffer() {
+	return rlGetActiveFramebuffer();
+}
+#endif
+
 using namespace MiniScript;
 
 static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
@@ -2295,6 +2314,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(rlGetCullDistanceFar()));
 	});
 	raylibModule.SetValue("rlGetCullDistanceFar", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.set_Code(INTRINSIC_LAMBDA {
+		return IntrinsicResult(Value((double)GetActiveFramebuffer()));
+	});
+	raylibModule.SetValue("rlGetActiveFramebuffer", i.GetFunc());
 
 	// Render state toggles (rlgl)
 

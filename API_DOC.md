@@ -644,6 +644,7 @@
 |rlSetClipPlanes |**nearPlane**, **farPlane** |Set clip planes distances |
 |rlGetCullDistanceNear | |Get cull plane distance near |
 |rlGetCullDistanceFar | |Get cull plane distance far |
+|rlGetActiveFramebuffer | |Get the currently active render texture (fbo); 0 for the default framebuffer |
 |rlEnableBackfaceCulling | | |
 |rlDisableBackfaceCulling | | |
 |rlEnableDepthTest | | |
