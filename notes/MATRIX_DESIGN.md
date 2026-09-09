@@ -1,6 +1,6 @@
 # Intrinsic `Matrix` Class — Design Notes
 
-Target: raylib-miniscript. Status: agreed design, not yet implemented.
+Target: raylib-miniscript. Status: implemented in MatrixCore/MatrixClass.cpp, and a revised `matrixUtil.ms`.
 Replaces the pure-MiniScript `sys/lib/matrixUtil.ms`.
 
 ## Goals
