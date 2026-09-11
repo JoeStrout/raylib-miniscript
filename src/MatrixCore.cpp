@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace MiniScript {
 
@@ -1113,6 +1114,131 @@ MatrixData* RowCross(const MatrixData* A, Value vB, Value* outErr) {
 }
 
 //--------------------------------------------------------------------------------
+// Convolution
+//--------------------------------------------------------------------------------
+
+// m.convolve(kernel, out) -> out, the same size as m:
+//
+//     out[y][x] = sum over i, j of kernel[i][j] * m[y - cy + i][x - cx + j]
+//
+// with the kernel's center at (cy, cx) = (kh/2, kw/2), rounded down.  For an
+// odd size that is the middle; for an even size it is the lower-right of the
+// middle pair, which is scipy.ndimage's convention (origin 0).
+//
+// It is CORRELATION -- the kernel is not flipped -- as in scipy.ndimage.correlate
+// and every deep-learning "conv2d".  The name follows the latter.
+//
+// Only the positions where the whole kernel fits inside m are written; every
+// other element of out is left exactly as it was.  That is the design: edge
+// handling belongs to the caller, who keeps a border around the data and fills
+// it however they like (zeros, wrapped, repeated, reflected) before calling.
+// Two same-sized buffers can then be convolved back and forth with no padding
+// and no allocation.  A fresh result, or an `out` that had to be reshaped (so
+// its old contents mean nothing), has zeros in that border.
+//
+// A 1 x k kernel on a row vector is 1-D correlation; 1-D kernels on a 2-D
+// matrix are the two passes of a separable filter.
+//
+// A zero weight is skipped outright, as gemm skips a zero factor: a kernel
+// with holes costs only its nonzero taps, and an inf or NaN under a zero
+// weight does not leak into the result.
+//
+// The loop is row by row: each nonzero tap adds a scaled, contiguous run of an
+// input row onto a contiguous run of an output row.
+MatrixData* Convolve(const MatrixData* m, Value vKernel, MatrixData* out, Value* outErr) {
+	// ---- the kernel: a Matrix or a list ----
+	const MatrixData* kM = nullptr;
+	ValueList kList;
+	bool kNested = false;
+	int kh = 0, kw = 0;
+	if (vKernel.Type() == ValueType::List) {
+		kList = vKernel.GetList();
+		if (!ListShape(kList, &kNested, &kh, &kw, "convolve", outErr)) return nullptr;
+	} else {
+		kM = ValueToMatrix(vKernel);
+		if (kM == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.convolve: kernel must be a Matrix or a list");
+			return nullptr;
+		}
+		kh = kM->rows;
+		kw = kM->columns;
+	}
+	if (kh == 0 || kw == 0) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.convolve: kernel must not be empty");
+		return nullptr;
+	}
+	int rows = m->rows, cols = m->columns;
+	if (kh > rows || kw > cols) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.convolve: kernel is larger than the matrix");
+		return nullptr;
+	}
+
+	// ---- snapshot what the output could clobber ----
+	//
+	// The kernel is always copied (it is small, and this covers a list kernel
+	// and a kernel that is `out` in one stroke).  The input is copied only when
+	// it IS `out`: each output element reads its neighbors, so there is no
+	// order in which an in-place pass would be safe.  One Scratch call, carved.
+	bool aliasIn = (out == m);
+	long kElems = (long)kh * kw;
+	long inElems = aliasIn ? (long)rows * cols : 0;
+	double* scratch = Scratch(kElems + inElems);
+	if (scratch == nullptr) {
+		*outErr = ErrorTypes::RuntimeError("Matrix.convolve: out of memory");
+		return nullptr;
+	}
+	double* k = scratch;
+	for (int i = 0; i < kh; i++) {
+		for (int j = 0; j < kw; j++) {
+			k[(long)i * kw + j] = (kM != nullptr) ? kM->data[(long)i * kw + j]
+			                                      : ListElem(kList, kNested, i, j);
+		}
+	}
+	const double* in = m->data;
+	if (aliasIn) {
+		memcpy(scratch + kElems, m->data, (size_t)inElems * sizeof(double));
+		in = scratch + kElems;
+	}
+
+	// ---- shape the destination ----
+	if (out == nullptr) {
+		out = NewMatrixData(rows, cols);   // zero-filled
+		if (out == nullptr) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.convolve: out of memory");
+			return nullptr;
+		}
+	} else if (out->rows != rows || out->columns != cols) {
+		long need = (long)rows * cols;
+		if (!EnsureCapacity(out, need)) {
+			*outErr = ErrorTypes::RuntimeError("Matrix.convolve: out of memory");
+			return nullptr;
+		}
+		out->rows = rows;
+		out->columns = cols;
+		if (need > 0) memset(out->data, 0, (size_t)need * sizeof(double));
+	}
+
+	// ---- compute: every position where the kernel fits ----
+	int cy = kh / 2, cx = kw / 2;
+	int fitRows = rows - kh + 1, fitCols = cols - kw + 1;
+	for (int oy = 0; oy < fitRows; oy++) {
+		double* dst = out->data + (long)(oy + cy) * cols + cx;
+		for (int x = 0; x < fitCols; x++) dst[x] = 0.0;
+		for (int i = 0; i < kh; i++) {
+			const double* srcRow = in + (long)(oy + i) * cols;
+			const double* krow = k + (long)i * kw;
+			for (int j = 0; j < kw; j++) {
+				double w = krow[j];
+				if (w == 0.0) continue;
+				const double* src = srcRow + j;
+				for (int x = 0; x < fitCols; x++) dst[x] += w * src[x];
+			}
+		}
+	}
+	return out;
+}
+
+//--------------------------------------------------------------------------------
 // Neural network primitives
 //--------------------------------------------------------------------------------
 
@@ -1504,6 +1630,49 @@ static bool SetShapeDiscarding(MatrixData* m, int rows, int columns) {
 	return true;
 }
 
+// Whether this machine stores multi-byte values little-endian.  When a
+// RawData's byte order matches it, elements can be stored with a plain typed
+// write instead of being packed a byte at a time.
+static bool HostIsLittleEndian() {
+	const uint16_t one = 1;
+	unsigned char first;
+	memcpy(&first, &one, 1);
+	return first == 1;
+}
+
+// StoreElem for a whole run of one integer type, in native byte order.
+//
+// This must produce exactly StoreElem's bytes -- round half away from zero,
+// saturate, NaN to 0 -- and it does the same conversion, minus the per-element
+// dispatch and byte-by-byte packing.  The one real change is the rounding:
+// std::round can be a library call per element (it is on x86-64 without
+// SSE4.1), so values that fit comfortably in an int64 are rounded with a
+// truncating cast instead.  That is exact: v minus its integer part is v's
+// fractional part, which a double represents exactly, and an |v| of 2^53 or
+// more is already an integer.  Everything else -- NaN, and magnitudes of 2^62
+// or more, where the saturation limits of int64 get delicate -- goes through
+// StoreElem itself.
+template <typename T>
+static void StoreIntRun(unsigned char* p, const double* src, long n, const DType* dt, bool le) {
+	const double kSafe = 4611686018427387904.0;   // 2^62
+	const int64_t lo = (int64_t)std::numeric_limits<T>::min();
+	const int64_t hi = (int64_t)std::numeric_limits<T>::max();
+	for (long i = 0; i < n; i++) {
+		double v = src[i];
+		unsigned char* dst = p + i * (long)sizeof(T);
+		if (!(v > -kSafe && v < kSafe)) {
+			StoreElem(dst, dt, v, le);
+			continue;
+		}
+		int64_t r = (int64_t)v;               // truncates toward zero
+		double frac = v - (double)r;
+		if (frac >= 0.5) r++;
+		else if (frac <= -0.5) r--;
+		T out = (r <= lo) ? (T)lo : (r >= hi) ? (T)hi : (T)r;
+		memcpy(dst, &out, sizeof(T));
+	}
+}
+
 // Write `m` at `p` -- header (if asked) followed by rows*columns elements.
 static void WriteElems(const MatrixData* m, unsigned char* p, const DType* dt,
                        bool header, bool le) {
@@ -1516,17 +1685,76 @@ static void WriteElems(const MatrixData* m, unsigned char* p, const DType* dt,
 		p += kHeaderSize;
 	}
 	long n = m->LiveElems();
+	const double* src = m->data;
+
+	// Fast paths, whenever the byte order does not get in the way: always for
+	// one-byte formats, and for wider ones when the RawData's order is the
+	// host's (the default, little-endian, on every platform we build for).
+	// float64 is then a straight copy -- the elements already are float64.
+	if (dt->size == 1 || le == HostIsLittleEndian()) {
+		bool isSigned = dt->lo < 0;
+		if (dt->isFloat && dt->size == 8) {
+			memcpy(p, src, (size_t)n * 8);
+			return;
+		}
+		if (dt->isFloat && dt->size == 4) {
+			for (long i = 0; i < n; i++) {
+				float f = (float)src[i];
+				memcpy(p + i * 4, &f, 4);
+			}
+			return;
+		}
+		switch (dt->size) {
+			case 1: isSigned ? StoreIntRun<int8_t>(p, src, n, dt, le)  : StoreIntRun<uint8_t>(p, src, n, dt, le);  return;
+			case 2: isSigned ? StoreIntRun<int16_t>(p, src, n, dt, le) : StoreIntRun<uint16_t>(p, src, n, dt, le); return;
+			case 4: isSigned ? StoreIntRun<int32_t>(p, src, n, dt, le) : StoreIntRun<uint32_t>(p, src, n, dt, le); return;
+			case 8: if (isSigned) { StoreIntRun<int64_t>(p, src, n, dt, le); return; } break;
+			default: break;
+		}
+	}
+
+	// The general path: any format, either byte order.
 	for (long i = 0; i < n; i++) {
-		StoreElem(p, dt, m->data[i], le);
+		StoreElem(p, dt, src[i], le);
 		p += dt->size;
 	}
 }
 
-// The reverse: fill an already-shaped `m` from `p`.
+// LoadElem for a whole run of one type, in native byte order: a typed load and
+// a widening to double, which is exactly LoadElem's sign extension or
+// zero extension followed by the same conversion.
+template <typename T>
+static void LoadRun(double* dst, const unsigned char* p, long n) {
+	for (long i = 0; i < n; i++) {
+		T v;
+		memcpy(&v, p + i * (long)sizeof(T), sizeof(T));
+		dst[i] = (double)v;
+	}
+}
+
+// The reverse: fill an already-shaped `m` from `p`.  Fast paths as for
+// WriteElems: always for one-byte formats, and for wider ones when the
+// RawData's byte order is the host's.
 static void ReadElems(MatrixData* m, const unsigned char* p, const DType* dt, bool le) {
 	long n = m->LiveElems();
+	double* dst = m->data;
+	if (dt->size == 1 || le == HostIsLittleEndian()) {
+		bool isSigned = dt->lo < 0;
+		if (dt->isFloat && dt->size == 8) {
+			memcpy(dst, p, (size_t)n * 8);
+			return;
+		}
+		if (dt->isFloat && dt->size == 4) { LoadRun<float>(dst, p, n); return; }
+		switch (dt->size) {
+			case 1: isSigned ? LoadRun<int8_t>(dst, p, n)  : LoadRun<uint8_t>(dst, p, n);  return;
+			case 2: isSigned ? LoadRun<int16_t>(dst, p, n) : LoadRun<uint16_t>(dst, p, n); return;
+			case 4: isSigned ? LoadRun<int32_t>(dst, p, n) : LoadRun<uint32_t>(dst, p, n); return;
+			case 8: if (isSigned) { LoadRun<int64_t>(dst, p, n); return; } break;
+			default: break;
+		}
+	}
 	for (long i = 0; i < n; i++) {
-		m->data[i] = LoadElem(p, dt, le);
+		dst[i] = LoadElem(p, dt, le);
 		p += dt->size;
 	}
 }

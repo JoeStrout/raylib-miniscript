@@ -1071,6 +1071,48 @@ matches u, 2, 3, [1,2,3,4,5,6], "rowCross leaves the receiver alone"
 matches v, 2, 3, [7,8,9,1,0,2], "...and the operand"
 
 print
+print "-- convolve --"
+// The arithmetic itself is checked against scipy in matrix_numpy_test.ms; this
+// covers out, the untouched border, aliasing, and the error cases.
+g = Matrix.fromList([[1,2,3,4],[5,6,7,8],[9,10,11,12]])
+box = [[1,1,1],[1,1,1],[1,1,1]]
+// A 3x3 kernel fits only at (1,1) and (1,2): 1+2+3+5+6+7+9+10+11 and one over.
+matches g.convolve(box), 3, 4, [0,0,0,0, 0,54,63,0, 0,0,0,0], "a fresh result is zero where the kernel does not fit"
+matches g.convolve(Matrix.fromList(box)), 3, 4, [0,0,0,0, 0,54,63,0, 0,0,0,0], "a Matrix kernel matches a list kernel"
+matches g, 3, 4, [1,2,3,4,5,6,7,8,9,10,11,12], "convolve leaves the receiver alone"
+co = Matrix.ofSize(3, 4, 99)
+got = g.convolve(box, co)
+ok refEquals(got, co), "convolve with out returns out itself"
+matches co, 3, 4, [99,99,99,99, 99,54,63,99, 99,99,99,99], "a same-sized out keeps its border untouched"
+co = Matrix.ofSize(2, 2, 7)
+g.convolve box, co
+matches co, 3, 4, [0,0,0,0, 0,54,63,0, 0,0,0,0], "an out that must be reshaped is zeroed first"
+self2 = g.gemm(null)   // a copy
+self2.convolve box, self2
+matches self2, 3, 4, [1,2,3,4, 5,54,63,8, 9,10,11,12], "out == self works, and keeps the border"
+k2 = Matrix.fromList(box)
+g.convolve k2, k2
+matches k2, 3, 4, [0,0,0,0, 0,54,63,0, 0,0,0,0], "out == kernel works"
+// 1-D, and the even-kernel convention (the center is the lower-right of the middle).
+r5 = Matrix.fromList([[1,2,3,4,5]])
+matches r5.convolve([1,10,100]), 1, 5, [0,321,432,543,0], "a flat list is a row kernel; correlation, not flipped"
+matches Matrix.fromList([[1,2,3]]).convolve([1,10]), 1, 3, [0,21,32], "an even 1-D kernel writes to the right"
+matches g.convolve([[1],[1]]), 3, 4, [0,0,0,0, 6,8,10,12, 14,16,18,20], "an even column kernel writes downward"
+matches g.convolve(Matrix.ofSize(3, 4, 1)), 3, 4, [0,0,0,0, 0,0,78,0, 0,0,0,0], "a kernel the size of the matrix fits once, at its center (1, 4/2)"
+// Zero weights are skipped, so a NaN under one does not spread.
+nanRow = Matrix.fromList([[1,0,3]])
+nanRow.setElem 0, 1, Matrix.fromList([[-1]]).sqrt.getElem(0, 0)
+eq nanRow.convolve([1,0,1]).getElem(0, 1), 4, "a NaN under a zero weight is ignored"
+nv = nanRow.convolve([1,1,1]).getElem(0, 1)
+ok nv != nv, "...but a NaN under a nonzero weight propagates"
+ok isErr(g.convolve([])), "an empty kernel is an error"
+ok isErr(g.convolve(Matrix.ofSize(4, 1))), "a kernel taller than the matrix is an error"
+ok isErr(g.convolve(Matrix.ofSize(1, 5))), "...or wider"
+ok isErr(g.convolve("x")), "a non-matrix kernel is an error"
+ok isErr(g.convolve(box, 5)), "a non-Matrix out is an error"
+ok isErr((new Matrix).convolve(box)), "convolve needs storage"
+
+print
 print "-- sigmoid --"
 near = function(got, want, label, tol=1e-9)
 	d = got - want
@@ -1347,6 +1389,59 @@ rd = new RawData
 rd.littleEndian = false
 Matrix.fromList([[1.5, 2.5]]).toRawData rd
 matches Matrix.fromRawData(rd), 1, 2, [1.5, 2.5], "big-endian headered round trip"
+
+print
+print "-- serialization: fast paths agree with the general path --"
+// toRawData writes with typed fast paths when the RawData's byte order is the
+// host's (and for one-byte formats always); big-endian still takes the general
+// byte-at-a-time path.  Every format must come out the same both ways, on
+// values chosen to hit the rounding and saturation edges.
+// Inside a function, like churn below, so its temporaries do not linger in
+// top-level registers and upset the storage-reclaimed check.
+checkFastPaths = function
+	nanV = Matrix.fromList([[-1]]).sqrt.getElem(0, 0)
+	tricky = [0, 0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 0.49999999999999994, -0.49999999999999994,
+	  3.7, -3.7, 127.5, -128.5, 128.4, 255.4, 255.5, 256, -1, 32767.5, -32768.5, 65535.5,
+	  2147483647.5, -2147483648.5, 4294967295.5, 1e10, -1e10, 4e18, -4e18, 5e18, 9.3e18,
+	  -9.3e18, 1/0, -1/0, nanV]
+	src = Matrix.fromList([tricky])
+	for dtype in ["float64", "float32", "int16", "uint16", "int32", "uint32", "int64"]
+		le = new RawData
+		src.toRawData le, dtype, 0, false
+		be = new RawData
+		be.littleEndian = false
+		src.toRawData be, dtype, 0, false
+		size = le.len / tricky.len
+		same = (le.len == be.len)
+		for i in range(0, tricky.len - 1)
+			for b in range(0, size - 1)
+				if le.byte(i*size + b) != be.byte(i*size + size - 1 - b) then same = false
+			end for
+		end for
+		ok same, dtype + ": the native fast path matches the big-endian general path, byte for byte"
+		// And reading back: fast (native) and general (big-endian) decode alike.
+		a = Matrix.fromRawData(le, dtype, 0, 1, tricky.len).toFlatList
+		z = Matrix.fromRawData(be, dtype, 0, 1, tricky.len).toFlatList
+		same = true
+		for i in a.indexes
+			if a[i] != z[i] and not (a[i] != a[i] and z[i] != z[i]) then same = false
+		end for
+		ok same, dtype + ": reading it back decodes the same on both paths"
+	end for
+	// One-byte formats have no byte order, so they always take the fast path.
+	// Check them against the general path of the next wider format, clamped.
+	for f in [["uint8", "uint16", 0, 255], ["int8", "int16", -128, 127]]
+		rd = new RawData
+		src.toRawData rd, f[0], 0, false
+		fast = Matrix.fromRawData(rd, f[0], 0, 1, tricky.len)
+		rd = new RawData
+		rd.littleEndian = false
+		src.toRawData rd, f[1], 0, false
+		wide = Matrix.fromRawData(rd, f[1], 0, 1, tricky.len).clamp(f[2], f[3])
+		ok fast.equals(wide, 0), f[0] + ": the fast path matches " + f[1] + "'s general path, saturated"
+	end for
+end function
+checkFastPaths
 
 print
 print "-- serialization: errors --"

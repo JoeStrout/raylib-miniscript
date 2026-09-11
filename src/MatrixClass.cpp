@@ -1715,6 +1715,43 @@ const Value& MatrixClass() {
 	});
 	matrixClass.SetValue(String("rowCross"), f.GetFunc());
 
+	// ---- Convolution ----
+
+	// m.convolve(kernel, out=null) -> out, the same size as m
+	//
+	//     out[y][x] = sum of kernel[i][j] * m[y - kernel.rows/2 + i][x - kernel.columns/2 + j]
+	//
+	// (halves rounded down).  Correlation, not flipped convolution, as in
+	// scipy.ndimage.correlate and deep-learning conv2d; flip the kernel for the
+	// other.  Only positions where the whole kernel fits are written -- the rest
+	// of out is left as it was -- so edges are the caller's to pad, and two
+	// same-sized buffers can be convolved back and forth with no garbage.  See
+	// Convolve in MatrixCore.cpp.  `out` may be m itself.
+	//
+	// Apply a kernel (correlation) at every position where it fits, into a same-sized matrix
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("kernel");
+	f.AddParam("out");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value vOut = context.GetVar("out");
+		MatrixData* out = nullptr;
+		if (!vOut.IsNull()) {
+			out = ValueToMatrix(vOut);
+			if (out == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.convolve: out must be a Matrix or null"));
+		}
+		MatrixData* result = Convolve(m, context.GetVar("kernel"), out, &err);
+		if (result == nullptr) return IntrinsicResult(err);
+		if (out == nullptr) return IntrinsicResult(MatrixToValue(result));
+		SyncShape(vOut, out);
+		return IntrinsicResult(vOut);
+	});
+	matrixClass.SetValue(String("convolve"), f.GetFunc());
+
 	// ---- Neural network primitives ----
 	//
 	// Derivatives are expressed in terms of a layer's OUTPUT, not its input

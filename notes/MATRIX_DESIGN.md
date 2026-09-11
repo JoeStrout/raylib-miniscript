@@ -429,6 +429,54 @@ crossed with an nx3 yields n rows. Here the result always has **self's** row cou
 rows than the receiver has would be a trap. A 1x3 receiver against an nx3 operand is an
 error, not an upcast.
 
+### Convolution
+
+```
+m.convolve(kernel, out=null)       // -> out, the same size as m
+```
+
+    out[y][x] = sum over i, j of kernel[i][j] * m[y - kh/2 + i][x - kw/2 + j]     (halves rounded down)
+
+Motivating cases: blur, sharpen and edge detection on image data, and cellular automata
+(Life is one convolution with `[[2,2,2],[2,1,2],[2,2,2]]`, which makes each cell
+`2*neighbors + alive`, then an elementwise rule: alive next exactly when that is 5, 6 or
+7).
+
+The decisions, and why:
+
+- **Correlation, named `convolve`.** The kernel is not flipped. This is what
+  `scipy.ndimage.correlate` computes and what every deep-learning `conv2d` computes under
+  the name convolution; the name follows the latter. For symmetric kernels there is no
+  difference. `m.flipped` (script layer) turns a kernel into its true-convolution form.
+- **Same-size output, and only the positions where the whole kernel fits are written.**
+  The rest of `out` is left exactly as it was (zeros, in a fresh result, or in an `out`
+  that had to be reshaped). So **edge handling belongs to the caller**: keep a border
+  around the data and fill it before convolving — `m.refreshBorder(kernel, mode)` in the
+  script layer does zeros/constant, wrap, nearest, reflect and mirror. The use case this
+  is designed around is two same-sized buffers convolved back and forth, displaying one
+  while computing the other: no padding copy per frame, no allocation, and a zero border
+  stays zero for free because convolve never writes it. The alternatives considered were
+  numpy/MATLAB's `'valid'` output (smaller than the input — every frame would need a
+  pad or crop) and edge modes built into the intrinsic (more C++, and it would still
+  either pad internally or special-case every edge pixel). A `'valid'` result is one
+  `getSub(..., out)` away.
+- **Even-sized kernels center at the lower-right of the middle** (`k/2` rounded down, so
+  the unwritten border is on the top/left), matching `scipy.ndimage` with origin 0.
+- **Any kernel shape.** A 1 x k kernel on a row vector is 1-D correlation; 1-D kernels
+  on a 2-D matrix are the passes of a separable filter (a large blur costs 2k per
+  element instead of k²). A flat list is a *row* kernel, so a vertical pass is
+  `[[1],[2],[1]]`.
+- **Zero weights are skipped**, as gemm skips a zero factor: a kernel with holes (Sobel)
+  costs only its nonzero taps, and an inf/NaN under a zero weight does not spread.
+- **`out` may be `m`** — the input is snapshotted into the scratch buffer, since every
+  output element reads its neighbors. A kernel larger than `m`, or empty, is an error.
+
+The loop is row by row: each nonzero tap adds a scaled, contiguous run of an input row
+onto a contiguous run of an output row. At 512x512 a 3x3 kernel takes ~0.7 ms (versus
+~2.9 ms for the best shift-and-add formulation in script, and ~17 ms for the naive
+script one), and a whole wrapped Life step ~2.3 ms, of which the elementwise rule is
+now the larger part.
+
 ### Neural network primitives
 
 Chosen so a MiniScript layer library can be built on top without further C++ work.
@@ -676,6 +724,8 @@ form is the one that can afford to be slower.
 | `m.tanhDeriv` | `y.powed(2).negated.plus(1)` |
 | `m.softmaxCrossEntropyGrad(t)` | `yHat.minus(t)` |
 | `m.relu` / `m.relued` | `clamp(0, null)` / `clamped(0, null)` |
+| `m.refreshBorder(kernel, mode)` | `setRow`/`setColumn` (constant), or `getSub(..., out)` + `setSub` per border row/column into a reused band |
+| `m.flip` / `m.flipped` | `swapRows` / `swapColumns` from both ends |
 | `m.print` | `format` |
 | `m.str` | `format`, truncated to a few rows/columns plus the dimensions |
 

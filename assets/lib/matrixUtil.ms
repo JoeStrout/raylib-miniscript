@@ -552,6 +552,126 @@ end function
 
 
 //----------------------------------------------------------------------
+// Convolution helpers.
+//
+// The intrinsic m.convolve(kernel, out) writes only where the whole kernel
+// fits, and leaves the border -- floor(k/2) rows/columns before the data and
+// the rest after it -- alone.  So edge handling is done by keeping that
+// border around the data and filling it before each convolve.  That is what
+// refreshBorder is for.
+//----------------------------------------------------------------------
+
+// Scratch for refreshBorder's row and column copies.  Reused (getSub resizes
+// it, keeping capacity) so refreshing a border every frame makes no garbage.
+_band = Matrix.ofSize(0, 0)
+
+// Fold an index that has run off either end of 0..n-1 back into range.
+_borderIndex = function(t, n, mode)
+	if mode == "wrap" then
+		t = t % n
+		if t < 0 then t += n
+		return t
+	else if mode == "nearest" then
+		if t < 0 then return 0
+		if t >= n then return n - 1
+		return t
+	else if mode == "reflect" then      // d c b a | a b c d | d c b a
+		t = t % (2*n)
+		if t < 0 then t += 2*n
+		if t >= n then t = 2*n - 1 - t
+		return t
+	else if mode == "mirror" then       // d c b | a b c d | c b a
+		if n == 1 then return 0
+		t = t % (2*n - 2)
+		if t < 0 then t += 2*n - 2
+		if t >= n then t = 2*n - 2 - t
+		return t
+	end if
+	return null
+end function
+
+// m.refreshBorder(kernel, mode=0): fill the border that m.convolve(kernel)
+// leaves unwritten, from the interior, in place -> self.
+//
+// Only the kernel's size is used (it may be a Matrix or a list), so the
+// border matches convolve's exactly, even-sized kernels included.  mode is:
+//   a number   every border element is that constant (0 for zero-padding)
+//   "wrap"     from the opposite edge -- a torus
+//   "nearest"  the nearest edge element, repeated
+//   "reflect"  mirrored, repeating the edge element (d c b a | a b c d)
+//   "mirror"   mirrored about the edge element     (d c b | a b c d)
+// The names are scipy.ndimage's.  Corners come out right for every mode:
+// rows are filled first, then whole columns including the new rows.
+Matrix.refreshBorder = function(kernel, mode=0)
+	if kernel isa Matrix then
+		kh = kernel.rows; kw = kernel.columns
+	else if kernel isa list and kernel.len > 0 and kernel[0] isa list then
+		kh = kernel.len; kw = kernel[0].len
+	else if kernel isa list then
+		kh = 1; kw = kernel.len
+	else
+		return err("Matrix.refreshBorder: kernel must be a Matrix or a list")
+	end if
+	top = floor(kh / 2); left = floor(kw / 2)
+	h = self.rows - kh + 1; w = self.columns - kw + 1    // the interior
+	if h < 1 or w < 1 then return err("Matrix.refreshBorder: kernel is larger than the matrix")
+
+	if mode isa number then
+		i = 0
+		while i < top; self.setRow i, mode; i += 1; end while
+		i = top + h
+		while i < self.rows; self.setRow i, mode; i += 1; end while
+		j = 0
+		while j < left; self.setColumn j, mode; j += 1; end while
+		j = left + w
+		while j < self.columns; self.setColumn j, mode; j += 1; end while
+		return self
+	end if
+	if _borderIndex(0, 1, mode) == null then
+		return err("Matrix.refreshBorder: unknown mode " + mode)
+	end if
+
+	// Border rows, across the interior columns only.
+	i = 0
+	while i < self.rows
+		if i == top then i = top + h    // skip the interior
+		if i >= self.rows then break
+		src = top + _borderIndex(i - top, h, mode)
+		self.getSub src, left, 1, w, _band
+		self.setSub i, left, _band
+		i += 1
+	end while
+	// Border columns, full height, so the corners come from the rows above.
+	j = 0
+	while j < self.columns
+		if j == left then j = left + w
+		if j >= self.columns then break
+		src = left + _borderIndex(j - left, w, mode)
+		self.getSub 0, src, self.rows, 1, _band
+		self.setSub 0, j, _band
+		j += 1
+	end while
+	return self
+end function
+
+// m.flip: reverse the element order in both dimensions (a 180-degree
+// rotation), in place -> self.  convolve correlates; flipping the kernel first
+// gives true convolution, as scipy.signal.convolve2d or MATLAB conv2 compute.
+Matrix.flip = function
+	i = 0; j = self.rows - 1
+	while i < j; self.swapRows i, j; i += 1; j -= 1; end while
+	i = 0; j = self.columns - 1
+	while i < j; self.swapColumns i, j; i += 1; j -= 1; end while
+	return self
+end function
+
+// m.flipped -> new matrix, m reversed in both dimensions.
+Matrix.flipped = function
+	return self.clone.flip
+end function
+
+
+//----------------------------------------------------------------------
 // Display.
 //----------------------------------------------------------------------
 
@@ -720,6 +840,23 @@ runUnitTests = function
 	assertEqual Matrix.fromList([[0.5]]).tanhDeriv, [[0.75]], "tanhDeriv"
 	assertEqual Matrix.fromList([[1, 0]]).softmaxCrossEntropyGrad([[0.75, 0.25]]),
 	  [[0.25, -0.25]], "softmaxCrossEntropyGrad"
+
+	// convolution helpers (the edge modes are checked against numpy.pad and
+	// scipy in matrix_numpy_test.ms)
+	assertEqual Matrix.fromList([[1,2,3],[4,5,6]]).flipped, [[6,5,4],[3,2,1]], "flipped"
+	assertEqual Matrix.fromList([[1,2,3]]).flipped, [[3,2,1]], "flipped row"
+	fb = Matrix.fromList([[9,9,9,9],[9,1,2,9],[9,9,9,9]])
+	assertEqual fb.refreshBorder([[0,0,0],[0,1,0],[0,0,0]], "wrap"),
+	  [[2,1,2,1],[2,1,2,1],[2,1,2,1]], "refreshBorder wrap, list-of-lists kernel"
+	fb = Matrix.fromList([[9,1,2,9]])
+	assertEqual fb.refreshBorder([0,1,0], "nearest"), [[1,1,2,2]], "refreshBorder, flat-list kernel"
+	assertEqual fb.refreshBorder([0,1,0]), [[0,1,2,0]], "refreshBorder defaults to zeros"
+	assert fb.refreshBorder([0,1,0], "bogus") isa error, "an unknown mode is an error"
+	assert fb.refreshBorder([[1],[1]]) isa error, "a kernel taller than the matrix is an error"
+	// convolve correlates; a flipped kernel gives true convolution
+	assertEqual Matrix.fromList([[1,2,3]]).convolve([1,0,0]), [[0, 1, 0]], "convolve correlates"
+	assertEqual Matrix.fromList([[1,2,3]]).convolve(Matrix.fromList([[1,0,0]]).flipped),
+	  [[0, 3, 0]], "convolve with a flipped kernel"
 
 	// display
 	assert m.str.indexOf("2x3 Matrix") == 0, "str names the dimensions"

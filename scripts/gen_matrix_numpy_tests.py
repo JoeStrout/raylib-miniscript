@@ -555,6 +555,107 @@ lines.append("rd = rawFrom(%s)" % bytelist(A.astype("<f4").tobytes()))
 emit("headerless float32 with the row count inferred",
      'Matrix.fromRawData(rd, "float32", 0, null, 3)', np.float64(np.float32(A)))
 
+# ---- convolve: scipy.ndimage.correlate is the oracle ----
+#
+# convolve writes only where the whole kernel fits and leaves the rest alone
+# (zeros, in a fresh result).  Which positions those are -- in particular where
+# an even kernel's center falls -- is exactly the convention being tested, so
+# it is not computed here either: padding with NaN makes every output that
+# touches the padding NaN, even under a zero weight, so "not NaN" IS "the
+# kernel fits", as scipy itself decides it.
+from scipy.ndimage import correlate
+
+
+def fits_only(X, K):
+    padded = correlate(X, K, mode="constant", cval=np.nan)
+    return np.where(np.isnan(padded), 0.0, padded)
+
+
+lines.append("")
+lines.append('print "-- convolve (scipy.ndimage.correlate oracle) --"')
+conv_cases = [
+    ("3x3 kernel", (7, 9), (3, 3)),
+    ("5x5 kernel", (8, 8), (5, 5)),
+    ("3x5 kernel", (7, 9), (3, 5)),
+    ("even 2x2 kernel", (6, 7), (2, 2)),
+    ("even 4x4 kernel", (9, 8), (4, 4)),
+    ("even-by-odd 2x3 kernel", (6, 7), (2, 3)),
+    ("4x1 kernel on a 2-D matrix", (8, 5), (4, 1)),
+    ("1x3 kernel on a 2-D matrix", (5, 8), (1, 3)),
+    ("1-D: 1x3 on a row vector", (1, 10), (1, 3)),
+    ("1-D: 1x4 (even) on a row vector", (1, 10), (1, 4)),
+    ("1-D: 3x1 on a column vector", (9, 1), (3, 1)),
+    ("kernel the size of the matrix", (4, 5), (4, 5)),
+    ("1x1 kernel", (3, 4), (1, 1)),
+]
+for label, (r, c), (kr, kc) in conv_cases:
+    X, K = rand(r, c), rand(kr, kc)
+    emit(label, "Matrix.fromList(%s).convolve(Matrix.fromList(%s))" % (lit(X), lit(K)),
+         fits_only(X, K))
+
+# A kernel with holes: zero weights are skipped, which must not change the answer.
+X = rand(7, 7)
+K = np.array([[1.0, 0.0, -1.0], [2.0, 0.0, -2.0], [1.0, 0.0, -1.0]])   # Sobel x
+emit("Sobel (zero column) kernel", "Matrix.fromList(%s).convolve(%s)" % (lit(X), lit(K)),
+     fits_only(X, K))
+
+# Correlation, not convolution: an asymmetric kernel tells them apart.
+X = rand(5, 6)
+K = rand(3, 3)
+emit("an asymmetric kernel is not flipped",
+     "Matrix.fromList(%s).convolve(Matrix.fromList(%s))" % (lit(X), lit(K)),
+     fits_only(X, K))
+
+# Wrap-around, the cellular-automaton case: the caller pads (here in numpy),
+# convolve fills the interior, and it must equal scipy's own mode="wrap".
+B = (rng.uniform(size=(6, 7)) < 0.4).astype(float)
+Kl = np.array([[2.0, 2, 2], [2, 1, 2], [2, 2, 2]])
+P = np.pad(B, 1, mode="wrap")
+emit("caller-padded wrap matches scipy mode=wrap",
+     "Matrix.fromList(%s).convolve(%s).getSub(1, 1, 6, 7)" % (lit(P), lit(Kl)),
+     correlate(B, Kl, mode="wrap"))
+
+# ---- matrixUtil's refreshBorder, then convolve: the whole edge-mode pipeline ----
+#
+# Two independent oracles per case: numpy.pad says what the border should hold,
+# and scipy.ndimage.correlate with the matching mode says what the convolution
+# of the padded result should be.  Note the naming crossover: scipy's
+# "reflect" is numpy.pad's "symmetric", and scipy's "mirror" is numpy.pad's
+# "reflect".
+lines.append("")
+lines.append('print "-- refreshBorder + convolve (numpy.pad / scipy.ndimage oracles) --"')
+lines.append('import "matrixUtil"')
+modes = [
+    # (our mode literal, numpy.pad kwargs, scipy mode kwargs)
+    ('"wrap"', dict(mode="wrap"), dict(mode="wrap")),
+    ('"nearest"', dict(mode="edge"), dict(mode="nearest")),
+    ('"reflect"', dict(mode="symmetric"), dict(mode="reflect")),
+    ('"mirror"', dict(mode="reflect"), dict(mode="mirror")),
+    ("2.5", dict(mode="constant", constant_values=2.5), dict(mode="constant", cval=2.5)),
+]
+border_cases = [
+    ("3x3", (5, 6), (3, 3)),
+    ("even 4x4", (5, 6), (4, 4)),
+    ("5x2", (6, 5), (5, 2)),
+    ("border wider than the data", (2, 3), (7, 7)),
+]
+for modeLit, padKw, sciKw in modes:
+    for clabel, (h, w), (kh, kw) in border_cases:
+        if modeLit == '"mirror"' and (h < 2 or w < 2):
+            continue
+        B, K = rand(h, w), rand(kh, kw)
+        top, left = kh // 2, kw // 2
+        pads = ((top, kh - 1 - top), (left, kw - 1 - left))
+        frame = np.full((h + kh - 1, w + kw - 1), 99.0)    # a stale border to overwrite
+        frame[top:top + h, left:left + w] = B
+        lines.append("pb = Matrix.fromList(%s)" % lit(frame))
+        emit("%s, %s kernel: the border" % (modeLit.strip('"'), clabel),
+             "pb.refreshBorder(Matrix.fromList(%s), %s)" % (lit(K), modeLit),
+             np.pad(B, pads, **padKw))
+        emit("%s, %s kernel: then convolve" % (modeLit.strip('"'), clabel),
+             "pb.convolve(Matrix.fromList(%s)).getSub(%d, %d, %d, %d)" % (lit(K), top, left, h, w),
+             correlate(B, K, **sciKw))
+
 lines.append("")
 lines.append('print')
 lines.append('print checks + " numpy-oracle checks, " + failures + " failures"')

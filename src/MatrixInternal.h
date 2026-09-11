@@ -135,6 +135,15 @@ MatrixData* Solve(const MatrixData* A, Value vB, Value* outErr);
 MatrixData* RowCross(const MatrixData* A, Value vB, Value* outErr);
 
 //--------------------------------------------------------------------------------
+// Convolution  (MatrixCore.cpp)
+//--------------------------------------------------------------------------------
+
+// Correlate m with a kernel (Matrix or list) into out, the same size as m,
+// writing only where the kernel fits.  out null allocates; out may be m.
+// Returns the result, or null with *outErr.
+MatrixData* Convolve(const MatrixData* m, Value vKernel, MatrixData* out, Value* outErr);
+
+//--------------------------------------------------------------------------------
 // Neural network primitives  (MatrixCore.cpp)
 //--------------------------------------------------------------------------------
 

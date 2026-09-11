@@ -942,6 +942,7 @@
 |swapRows |**row1**, **row2** |Swap two rows in place |
 |swapColumns |**column1**, **column2** |Swap two columns in place |
 |rowCross |**m2** |Get the cross product of each row with the matching row of m2 (both 3 columns wide) |
+|convolve |**kernel**, **out** |Apply a kernel (correlation) at every position where it fits, into a same-sized matrix |
 |sigmoid | |Apply the sigmoid function to each element, in place |
 |tanh | |Apply the tanh function to each element, in place |
 |softmax |**axis**=1 |Apply softmax in place, across each row by default |
