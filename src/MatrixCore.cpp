@@ -254,23 +254,67 @@ static void Prefill(double* out, int m, int n, const Operand& add,
 	}
 }
 
-// Level-1: out += alpha * op(A).  Reached whenever B is null.
+// Level-1: out := alpha * A + beta * addend, in ONE pass.  Reached whenever B
+// is null and A is not transposed.
 //
 // This is the reason gemm early-dispatches instead of funnelling everything
-// through the matmul: add, plus, subtract, negate, addScaled, clone, copyFrom,
-// transpose and transposed are ALL defined as gemm with a null B, and they are
-// bandwidth-bound work that must not pay matmul setup.
-static void KernelAxpby(double* out, int m, int n, const Operand& A, bool transA, double alpha) {
-	if (!transA) {
-		long total = (long)m * n;
-		for (long i = 0; i < total; i++) out[i] += alpha * A.data[i];
-	} else {
-		// Transpose-copy: the flag does not transpose anything, it changes the
-		// indexing.  out is n_A-rows by m_A-cols reversed, so walk A by column.
-		for (int i = 0; i < m; i++) {
-			double* crow = out + (long)i * n;
-			for (int j = 0; j < n; j++) crow[j] += alpha * A.data[(long)j * A.columns + i];
+// through the matmul: add, plus, subtract, negate, addScaled, clone and copyFrom
+// are ALL defined as gemm with a null B, and they are bandwidth-bound work that
+// must not pay matmul setup -- or a second pass over `out`, which is what
+// Prefill-then-accumulate would cost.
+//
+// Every element is read before its own slot is written, and no other slot is
+// touched, so `out` may BE A or the (full-size) addend with no snapshot.  That
+// is what makes `m.add(x)` and `acc.addScaled(s, w)` copy-free.
+//
+// Same beta == 0 contract as Prefill: the addend is not read at all.  And
+// alpha*a + beta*b is the same double as Prefill's beta*b + alpha*a, since IEEE
+// addition is commutative, so with an addend this agrees bit for bit with the
+// two-pass form it replaced.
+static void KernelLevel1(double* out, int m, int n, const Operand& A, double alpha,
+                         const Operand& add, AddendMode mode, double beta, double scalar) {
+	long total = (long)m * n;
+	const double* a = A.data;
+	switch (mode) {
+		case kAddendScalar: {
+			double v = beta * scalar;
+			for (long i = 0; i < total; i++) out[i] = alpha * a[i] + v;
+			break;
 		}
+		case kAddendFull: {
+			const double* c = add.data;
+			for (long i = 0; i < total; i++) out[i] = alpha * a[i] + beta * c[i];
+			break;
+		}
+		case kAddendRow:
+			for (int i = 0; i < m; i++) {
+				long base = (long)i * n;
+				for (int j = 0; j < n; j++) out[base + j] = alpha * a[base + j] + beta * add.data[j];
+			}
+			break;
+		case kAddendCol:
+			for (int i = 0; i < m; i++) {
+				long base = (long)i * n;
+				double v = beta * add.data[i];
+				for (int j = 0; j < n; j++) out[base + j] = alpha * a[base + j] + v;
+			}
+			break;
+		default:
+			// No addend.  (Prefill-then-accumulate computed 0.0 + alpha*a here,
+			// which turns -0.0 into +0.0; so clone was not quite exact.  It is now.)
+			for (long i = 0; i < total; i++) out[i] = alpha * a[i];
+			break;
+	}
+}
+
+// Level-1 with A transposed: out += alpha * A^T, onto Prefill's addend.  The
+// flag does not transpose anything, it changes the indexing: out is n_A-rows by
+// m_A-cols reversed, so walk A by column.  Output slots do not line up with
+// input slots here, so an aliased A is always snapshotted first.
+static void KernelAxpbyTransposed(double* out, int m, int n, const Operand& A, double alpha) {
+	for (int i = 0; i < m; i++) {
+		double* crow = out + (long)i * n;
+		for (int j = 0; j < n; j++) crow[j] += alpha * A.data[(long)j * A.columns + i];
 	}
 }
 
@@ -413,16 +457,29 @@ MatrixData* Gemm(MatrixData* A, MatrixData* B, Value vAdd, MatrixData* out,
 	// and rewrite its dimensions.  So copy first, and record the dimensions
 	// as they are NOW.  A list addend is copied here too, which lets the
 	// prefill treat every addend uniformly as contiguous doubles.
+	//
+	// Two aliasings need no copy, because each output element depends only on
+	// the same element of the aliased operand, and the shape is not changing:
+	//   - A == out on the untransposed level-1 path (KernelLevel1 reads each
+	//     slot before writing it) -- e.g. m.add(x), m.negate.
+	//   - a full-size addend == out, on either path: the elementwise pass that
+	//     applies beta*addend is the first thing to touch `out` -- e.g.
+	//     acc.addScaled(s, w), and C.addProduct(A, B) (C += A*B).
+	// A broadcast (row/column) addend that aliases `out` still needs the copy:
+	// it is smaller than the result, so `out` is about to be reshaped.
 	Operand opA, opB, opAdd;
 	opA.rows = A->rows; opA.columns = A->columns;
 	if (B != nullptr) { opB.rows = B->rows; opB.columns = B->columns; }
 	opAdd.rows = addRows; opAdd.columns = addCols;
 
+	bool level1 = (B == nullptr && !transA);
 	bool addIsList = !addList.Empty();
-	bool copyA = (out != nullptr && A == out);
+	bool aliasA = (out != nullptr && A == out);
+	bool aliasAdd = (addM != nullptr && out != nullptr && addM == out);
+	bool copyA = aliasA && !level1;
 	bool copyB = (B != nullptr && out != nullptr && B == out);
 	bool copyAdd = (mode != kAddendNone && mode != kAddendScalar)
-	               && (addIsList || (addM != nullptr && out != nullptr && addM == out));
+	               && (addIsList || (aliasAdd && mode != kAddendFull));
 
 	long needA = copyA ? opA.Elems() : 0;
 	long needB = copyB ? opB.Elems() : 0;
@@ -478,15 +535,24 @@ MatrixData* Gemm(MatrixData* A, MatrixData* B, Value vAdd, MatrixData* out,
 		}
 		out->rows = m;
 		out->columns = n;
+		// An operand left aliased (uncopied) above is already m x n, so the
+		// capacity check cannot have reallocated -- but read the pointer again
+		// anyway rather than lean on that.
+		if (aliasA && !copyA) opA.data = out->data;
+		if (aliasAdd && !copyAdd) opAdd.data = out->data;
 	}
 
 	// ---- compute ----
 	if ((long)m * n > 0) {
-		Prefill(out->data, m, n, opAdd, mode, beta, addScalar);
-		if (B == nullptr) {
-			KernelAxpby(out->data, m, n, opA, transA, alpha);
+		if (level1) {
+			KernelLevel1(out->data, m, n, opA, alpha, opAdd, mode, beta, addScalar);
 		} else {
-			KernelMatmul(out->data, m, n, k, opA, transA, opB, transB, alpha);
+			Prefill(out->data, m, n, opAdd, mode, beta, addScalar);
+			if (B == nullptr) {
+				KernelAxpbyTransposed(out->data, m, n, opA, alpha);
+			} else {
+				KernelMatmul(out->data, m, n, k, opA, transA, opB, transB, alpha);
+			}
 		}
 	}
 	return out;

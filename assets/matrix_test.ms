@@ -337,6 +337,45 @@ ok isErr(b.getSub(0,0,4,4)), "a block that overruns is an error, not a clip"
 ok isErr(b.getSub(5,0)), "an offset past the end is an error"
 
 print
+print "-- getSub into out --"
+o = Matrix.ofSize(1, 1)
+got = b.getSub(1, 1, 2, 2, o)
+ok refEquals(got, o), "getSub with out returns out itself"
+matches o, 2, 2, [6,7,10,11], "...holding the block, reshaped to fit"
+b.getSub 0, 1, 3, 3, o
+matches o, 3, 3, [2,3,4,6,7,8,10,11,12], "out grows to a larger block"
+cap = o.capacity
+b.getSub 2, 3, 1, 1, o
+matches o, 1, 1, [12], "...and shrinks to a smaller one"
+eq o.capacity, cap, "...without giving back capacity"
+b.getSub 0, 0, 3, 3, o
+eq o.capacity, cap, "a same-size block reuses the storage"
+matches b, 3, 4, [1,2,3,4,5,6,7,8,9,10,11,12], "the source is untouched"
+b.getSub 1, 0, 0, 4, o
+matches o, 0, 4, [], "a zero-row block into out"
+ok isErr(b.getSub(0, 0, 1, 1, 5)), "a non-Matrix out is an error"
+ok isErr(b.getSub(0, 0, 4, 4, o)), "an overrun is still an error with out"
+// out == self: crop in place.
+c = b.gemm(null)   // a copy
+c.getSub 1, 1, 2, 2, c
+matches c, 2, 2, [6,7,10,11], "out == self crops in place"
+c = b.gemm(null)   // a copy
+c.getSub 1, 0, 2, 4, c
+matches c, 2, 4, [5,6,7,8,9,10,11,12], "...full-width rows (one overlapping move)"
+c = b.gemm(null)   // a copy
+c.getSub 0, 1, 3, 3, c
+matches c, 3, 3, [2,3,4,6,7,8,10,11,12], "...columns only, every row moving left"
+c = b.gemm(null)   // a copy
+c.getSub 0, 0, null, null, c
+matches c, 3, 4, [1,2,3,4,5,6,7,8,9,10,11,12], "...the whole thing is a no-op"
+// The garbage-free convolution pattern: a padded frame read at shifted offsets.
+pad = Matrix.ofSize(5, 6)
+pad.setSub 1, 1, b
+win = Matrix.ofSize(0, 0)
+pad.getSub 2, 2, 3, 4, win
+matches win, 3, 4, [6,7,8,0,10,11,12,0,0,0,0,0], "a shifted window of a padded frame"
+
+print
 print "-- setSub --"
 d = Matrix.ofSize(3, 4)
 d.setSub 0, 0, Matrix.fromList([[1,2],[3,4]])
@@ -537,6 +576,43 @@ matches lb, 2, 2, [2,4,6,8], "out == B works too"
 // addend aliases A (read-only, no copy needed).
 ra = Matrix.fromList([[1,2],[3,4]])
 matches ra.gemm(null, ra), 2, 2, [2,4,6,8], "addend == A is fine"
+// The single-pass level-1 kernel reads every element before writing it, so
+// these in-place forms skip the snapshot.  Their results must not change.
+ia = Matrix.fromList([[1,2],[3,4]])
+ia.gemm null, Matrix.fromList([[10,20],[30,40]]), ia
+matches ia, 2, 2, [11,22,33,44], "out == A with a full addend (m.add)"
+ia.gemm null, [100,200], ia
+matches ia, 2, 2, [111,222,133,244], "out == A with a row-broadcast addend"
+ia.gemm null, [[1000],[2000]], ia, false, false, 1, -1
+matches ia, 2, 2, [-889,-778,-1867,-1756], "out == A with a column-broadcast addend and beta"
+ia.gemm null, 1, ia, false, false, -1
+matches ia, 2, 2, [890,779,1868,1757], "out == A with a scalar addend and alpha"
+ib = Matrix.fromList([[1,2],[3,4]])
+ib.gemm null, ib, ib, false, false, 2, 3
+matches ib, 2, 2, [5,10,15,20], "out == A == addend"
+// A full-size addend that aliases out is also copy-free on the matmul path:
+// C.addProduct(A, B), the gradient-accumulation case.
+ic = Matrix.fromList([[1,1],[1,1]])
+Matrix.fromList([[1,2],[3,4]]).gemm Matrix.fromList([[5,6],[7,8]]), ic, ic
+matches ic, 2, 2, [20,23,44,51], "out == addend accumulates a product in place"
+ic.gemm Matrix.fromList([[1,0],[0,1]]), ic, ic, false, false, 1, -1
+matches ic, 2, 2, [0,0,0,0], "out == A == addend in a product (A is still copied)"
+// A broadcast addend aliasing out must still be copied: out is about to grow.
+rv = Matrix.fromList([[1,2]])
+Matrix.fromList([[10,20],[30,40]]).gemm null, rv, rv
+matches rv, 2, 2, [11,22,31,42], "out == a row-broadcast addend, growing"
+cv = Matrix.fromList([[1],[2]])
+Matrix.fromList([[10,20],[30,40]]).gemm Matrix.fromList([[1,0],[0,1]]), cv, cv
+matches cv, 2, 2, [11,21,32,42], "out == a column-broadcast addend in a product"
+// beta = 0 must not read the addend, even when it is out itself.
+nz = Matrix.fromList([[1,2],[3,4]])
+nz.gemm null, nz, nz, false, false, 5, 0
+matches nz, 2, 2, [5,10,15,20], "beta 0 with out == A == addend"
+// A plain copy is exact now, including the sign of zero.  (The -0.0 is made at
+// run time: a -0 constant in the source comes out as +0 in MS2.)
+negZero = Matrix.ofSize(1, 1).gemm(null, null, null, false, false, -1)
+eq 1 / negZero.getElem(0, 0), -1/0, "scaling 0 by -1 gives -0.0"
+eq 1 / negZero.gemm(null).getElem(0, 0), -1/0, "a copy keeps -0.0"
 
 print
 print "-- gemm: empty and degenerate shapes --"

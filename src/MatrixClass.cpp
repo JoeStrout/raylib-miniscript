@@ -726,7 +726,7 @@ const Value& MatrixClass() {
 	});
 	matrixClass.SetValue(String("setColumn"), f.GetFunc());
 
-	// m.getSub(row=0, col=0, rows=null, columns=null) -> new Matrix
+	// m.getSub(row=0, col=0, rows=null, columns=null, out=null) -> new Matrix, or out
 	//
 	// A rectangular block, copied out.  Intrinsic rather than a script wrapper
 	// despite the general preference for wrappers: the script version would
@@ -737,13 +737,20 @@ const Value& MatrixClass() {
 	// an error rather than a clip.  Returns a Matrix, not a list of lists,
 	// because a 2-D result has no natural flat-list form.
 	//
-	// Copy a rectangular block out into a new matrix
+	// `out` works as it does for gemm: null allocates a fresh result; a Matrix
+	// is reshaped to the block's size, written in place, and returned.  That is
+	// what lets a loop that reads the same-sized block every frame (a crop, a
+	// shifted window for a convolution) run without making garbage.  `out` may
+	// be self, which crops in place.
+	//
+	// Copy a rectangular block out into a new matrix (or into out)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row", Value::zero);
 	f.AddParam("col", Value::zero);
 	f.AddParam("rows");
 	f.AddParam("columns");
+	f.AddParam("out");
 	f.set_Code(INTRINSIC_LAMBDA {
 		Value err;
 		MatrixData* m = SelfMatrix(context, &err);
@@ -753,6 +760,44 @@ const Value& MatrixClass() {
 		if (!ResolveOffset(context.GetVar("col"), m->columns, "getSub col", &col, &err)) return IntrinsicResult(err);
 		if (!ResolveExtent(context.GetVar("rows"), row, m->rows, "row", &nrows, &err)) return IntrinsicResult(err);
 		if (!ResolveExtent(context.GetVar("columns"), col, m->columns, "column", &ncols, &err)) return IntrinsicResult(err);
+
+		Value vOut = context.GetVar("out");
+		if (!vOut.IsNull()) {
+			MatrixData* dst = ValueToMatrix(vOut);
+			if (dst == nullptr) return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.getSub: out must be a Matrix or null"));
+			long need = (long)nrows * ncols;
+			if (dst == m) {
+				// Cropping in place.  Walking rows top to bottom is safe with no
+				// temporary: the block's row r moves to r*ncols from
+				// (row+r)*columns + col, which is never earlier, and it lands
+				// entirely before where any later row is read from, because
+				// ncols <= columns.  memmove covers the overlap within a row.
+				// Capacity is kept, as for resize.
+				if (ncols > 0) {
+					for (int r = 0; r < nrows; r++) {
+						memmove(m->data + (long)r * ncols,
+						        m->data + (long)(row + r) * m->columns + col,
+						        (size_t)ncols * sizeof(double));
+					}
+				}
+			} else {
+				if (!EnsureCapacity(dst, need)) {
+					return IntrinsicResult(ErrorTypes::RuntimeError("Matrix.getSub: out of memory"));
+				}
+				if (ncols > 0) {
+					for (int r = 0; r < nrows; r++) {
+						memcpy(dst->data + (long)r * ncols,
+						       m->data + (long)(row + r) * m->columns + col,
+						       (size_t)ncols * sizeof(double));
+					}
+				}
+			}
+			dst->rows = nrows;
+			dst->columns = ncols;
+			SyncShape(vOut, dst);
+			return IntrinsicResult(vOut);
+		}
 
 		MatrixData* out = NewMatrixData(nrows, ncols);
 		if (out == nullptr) {

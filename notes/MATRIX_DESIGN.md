@@ -264,9 +264,15 @@ m.toFlatList                            // single flat list; index as r*columns 
 Block access — a rectangular sub-region, returned or written as a **Matrix**:
 
 ```
-m.getSub(row=0, col=0, rows=null, columns=null)   // -> new Matrix; null = through the end
-m.setSub(row, col, m2)                            // write m2 as a block, in place
+m.getSub(row=0, col=0, rows=null, columns=null, out=null)   // -> new Matrix (or out); null = through the end
+m.setSub(row, col, m2)                                      // write m2 as a block, in place
 ```
+
+`out` behaves as it does for `gemm`: given a Matrix, the block is written into it (reshaped
+to fit, capacity kept) and it is returned, so a loop that reads the same-sized block every
+frame makes no garbage. `out` may be `m` itself, which crops in place. Without it, reading
+at an offset was the one thing that could not be done allocation-free: a shifted window of
+a padded frame for convolution, a crop, or the edge bands for wrap-around padding.
 
 Intrinsic rather than a wrapper despite the reduction goal: the script version would
 allocate a MiniScript list per row to accomplish what is fundamentally a strided memcpy,
@@ -333,9 +339,16 @@ overrides; transposition is usually reached through a named wrapper.
 
 | Combination | Allowed? |
 |---|---|
-| `out` aliases `addend` | **Yes** — the accumulate case, elementwise, and the fast path |
-| `out` aliases `A` or `B` | **Yes** — aliased input is copied to internal buffer before calculation |
+| `out` aliases `addend` | **Yes** — the accumulate case, elementwise, and the fast path (no copy, unless a broadcast addend is about to be outgrown) |
+| `out` aliases `A` | **Yes** — no copy on the untransposed elementwise path (B null); otherwise copied to an internal buffer before calculation |
+| `out` aliases `B` | **Yes** — copied to an internal buffer before calculation |
 | `addend` aliases `A` or `B` | Yes — read-only |
+
+The no-copy cases are the ones where every output element depends only on the same
+element of the aliased operand and the shape is not changing: the elementwise path
+(`out := alpha*A + beta*addend`) is a single pass that reads each element before writing
+it, so `m.add(x)`, `m.negate` and `acc.addScaled(s, w)` cost one pass and no copy, and on
+the matmul path `C.addProduct(A, B)` applies `beta*C` to C in place before accumulating.
 
 `A := A·B + ...` would be impossible without a temporary regardless of shapes, so we maintain an internal scratch buffer, resized as necessary, used for this purpose.
 

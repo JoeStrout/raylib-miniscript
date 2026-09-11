@@ -909,7 +909,7 @@
 |setRow |**row**, **values** |Set one row from a list of numbers, or set every element in it to one number |
 |getColumn |**column** |Get one column as a list of numbers |
 |setColumn |**column**, **values** |Set one column from a list of numbers, or set every element in it to one number |
-|getSub |**row**=0, **col**=0, **rows**, **columns** |Copy a rectangular block out into a new matrix |
+|getSub |**row**=0, **col**=0, **rows**, **columns**, **out** |Copy a rectangular block out into a new matrix (or into out) |
 |setSub |**row**=0, **col**=0, **m2** |Copy another matrix into this one at the given row and column |
 |reshape |**rows**, **columns** |Change the shape without moving any elements (this is not a transpose) |
 |resize |**rows**, **columns** |Change the shape, keeping the top-left block and zero-filling any new elements |
