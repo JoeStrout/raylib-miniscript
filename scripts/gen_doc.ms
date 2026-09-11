@@ -82,6 +82,7 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 
 	params = []
 	pendingNote = ""  // inline comment accumulated just before a Create line
+	createNote = ""   // pendingNote as it stood at the Create line
 	for line in file.readLines(path)
 		line = line.trim
 
@@ -98,8 +99,11 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			continue
 		end if
 
+		// Snapshot the note here: an inline lambda body can hold comments of
+		// its own, which would otherwise replace it before we reach SetValue.
 		if line.contains("= Intrinsic::Create(") then
 			params = []
+			createNote = pendingNote
 			continue
 		end if
 
@@ -141,6 +145,8 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 
 			if functionNotes.hasIndex(m.api) then
 				note = functionNotes[m.api]
+			else if createNote != "" then
+				note = createNote
 			else if pendingNote != "" then
 				note = pendingNote
 			else
@@ -150,6 +156,7 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			outLines.push "|" + m.api + " |" + params.join(", ") + " |" + note + " |"
 			params = []
 			pendingNote = ""
+			createNote = ""
 		end if
 	end for
 	print "   " + apiCount + " APIs"
@@ -285,6 +292,7 @@ totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileM
 totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileHandleClass", "FileHandle")
 totalAPIs += processBindingFile(file.child(bindingSrc, "HttpModule.cpp"), "httpMap", "http module")
 totalAPIs += processBindingFile(file.child(bindingSrc, "RawData.cpp"), "rawDataClass", "RawData")
+totalAPIs += processBindingFile(file.child(bindingSrc, "MatrixClass.cpp"), "matrixClass", "Matrix")
 
 print totalAPIs + " APIs processed in total"
 

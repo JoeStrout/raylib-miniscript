@@ -386,6 +386,8 @@ const Value& MatrixClass() {
 	// Matrix.ofSize(rows, columns, initialValue=0) -> new Matrix
 	// initialValue may be a number, or a function of no arguments called once
 	// per element in row-major order (see FillFromCallback).
+	//
+	// Create a new matrix of the given size, filled with a number or by calling a function
 	f = Intrinsic::Create("");
 	f.AddParam("rows");
 	f.AddParam("columns");
@@ -437,6 +439,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("ofSize"), f.GetFunc());
 
 	// Matrix.identity(size) -> new size x size Matrix, ones on the main diagonal
+	// Create a new square identity matrix
 	f = Intrinsic::Create("");
 	f.AddParam("size");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -464,6 +467,8 @@ const Value& MatrixClass() {
 	//   1D list of numbers -> 1 x n row vector
 	//   2D list (list of lists) -> n x m, one row per inner list
 	//   [] -> a clean 0x0
+	//
+	// Create a new matrix from a 1D or 2D list of numbers
 	f = Intrinsic::Create("");
 	f.AddParam("sourceList");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -501,6 +506,8 @@ const Value& MatrixClass() {
 	// dtype and shape, so rows/columns must be left out.  With an explicit
 	// dtype the data is headerless and the shape is yours to give: name both,
 	// or name one and let the other follow from how much data is left.
+	//
+	// Create a new matrix from data in a RawData buffer
 	f = Intrinsic::Create("");
 	f.AddParam("rd");
 	f.AddParam("dtype", "auto");
@@ -580,6 +587,8 @@ const Value& MatrixClass() {
 	// m.toFlatList -> a plain list of every element, row by row.
 	// Index it as r*columns + c.  There is no 2D form here on purpose: a flat
 	// list is the one that costs a single allocation.
+	//
+	// Get all elements as one flat list, row by row
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -594,6 +603,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("toFlatList"), f.GetFunc());
 
 	// m.getElem(row, column) -> number
+	// Get the element at the given row and column
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row");
@@ -609,6 +619,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("getElem"), f.GetFunc());
 
 	// m.setElem(row, column, value) -> self
+	// Set the element at the given row and column
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row");
@@ -634,6 +645,8 @@ const Value& MatrixClass() {
 	// Note the deliberate asymmetry with getSub, which returns a Matrix: a 1-D
 	// result has a natural flat-list form and a 2-D one does not.  A row is
 	// contiguous, so this is a straight walk.
+	//
+	// Get one row as a list of numbers
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row");
@@ -651,6 +664,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("getRow"), f.GetFunc());
 
 	// m.setRow(row, values) -> self
+	// Set one row from a list of numbers, or set every element in it to one number
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row");
@@ -676,6 +690,8 @@ const Value& MatrixClass() {
 	// Strided: row-major storage means a column is the scattered access, which
 	// is exactly why columns are the structural dimension in this design and
 	// rows are the one that varies.
+	//
+	// Get one column as a list of numbers
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("column");
@@ -692,6 +708,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("getColumn"), f.GetFunc());
 
 	// m.setColumn(column, values) -> self
+	// Set one column from a list of numbers, or set every element in it to one number
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("column");
@@ -719,6 +736,8 @@ const Value& MatrixClass() {
 	// A null count means "through the end"; an explicit count that overruns is
 	// an error rather than a clip.  Returns a Matrix, not a list of lists,
 	// because a 2-D result has no natural flat-list form.
+	//
+	// Copy a rectangular block out into a new matrix
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row", Value::zero);
@@ -753,6 +772,8 @@ const Value& MatrixClass() {
 	// Write m2 as a block at (row, col).  Errors if m2 does not fit rather
 	// than clipping: a block that silently lands half-written is far worse to
 	// debug than a refused call.
+	//
+	// Copy another matrix into this one at the given row and column
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row", Value::zero);
@@ -816,6 +837,8 @@ const Value& MatrixClass() {
 	//
 	// Exactly one of rows/columns may be null, and is then inferred from the
 	// other.  The total element count must not change.
+	//
+	// Change the shape without moving any elements (this is not a transpose)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("rows");
@@ -890,6 +913,8 @@ const Value& MatrixClass() {
 	// Changing the column count moves every row, so it is a full copy -- the
 	// documented expensive case, and the reason the storage design treats
 	// columns as structural and rows as the thing that varies.
+	//
+	// Change the shape, keeping the top-left block and zero-filling any new elements
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("rows");
@@ -965,6 +990,8 @@ const Value& MatrixClass() {
 	// visible change: the shape and every element stay as they were, only
 	// `capacity` moves.  This is what makes a steady-state pool that grows and
 	// shrinks by a few rows per frame allocate zero times after warmup.
+	//
+	// Pre-allocate room for the given number of rows, without changing the matrix
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("rows");
@@ -995,6 +1022,8 @@ const Value& MatrixClass() {
 	// automatically -- a pool oscillating between 900 and 1000 rows should
 	// allocate zero times after warmup -- so this is the explicit way to say
 	// that a matrix has finished growing.
+	//
+	// Release any memory reserved beyond the current size
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1027,6 +1056,8 @@ const Value& MatrixClass() {
 	// the removed one slides up. The rows share a stride, so the move is a
 	// uniform translation and memmove handles the overlap directly -- no
 	// temporary needed.
+	//
+	// Remove a row, moving the rows below it up
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("index");
@@ -1059,6 +1090,8 @@ const Value& MatrixClass() {
 	// method rather than a flag on removeRow -- the name is the warning, and
 	// any external index-to-entity mapping is invalidated for both the removed
 	// index and the old last row.
+	//
+	// Remove a row by moving the last row into its place (changes the row order)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("index");
@@ -1091,6 +1124,8 @@ const Value& MatrixClass() {
 	// parameter in the design notes (numpy's allclose instead combines a
 	// relative and an absolute tolerance).  NaN never compares equal to
 	// anything, including itself, which falls out of the comparison.
+	//
+	// Get whether this matrix matches another matrix or list, within a tolerance
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("m2");
@@ -1155,6 +1190,8 @@ const Value& MatrixClass() {
 	//
 	// Aliasing is allowed everywhere: an input that shares storage with `out` is
 	// snapshotted into scratch before `out` is touched.
+	//
+	// General matrix multiply-add: alpha * A * B + beta * addend, with optional transposes
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("B");
@@ -1211,6 +1248,7 @@ const Value& MatrixClass() {
 	// the same rules gemm's addend follows, from the same code.
 
 	// m.elemMultiplyBy(x) -> self   (Hadamard product when x is a Matrix)
+	// Multiply each element in place by a number, or elementwise by a matrix or list
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("x");
@@ -1234,6 +1272,8 @@ const Value& MatrixClass() {
 	//
 	// Division by zero yields inf or NaN rather than an error, following IEEE
 	// and numpy: a matrix op should not abort a whole batch over one element.
+	//
+	// Divide each element in place by a number, or elementwise by a matrix or list
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("x");
@@ -1254,6 +1294,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("elemDivideBy"), f.GetFunc());
 
 	// m.pow(k) -> self   (k may broadcast, as numpy's ** does)
+	// Raise each element to a power, in place
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("k");
@@ -1274,6 +1315,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("pow"), f.GetFunc());
 
 	// m.abs -> self
+	// Replace each element with its absolute value
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1287,6 +1329,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("abs"), f.GetFunc());
 
 	// m.sqrt -> self   (negative input gives NaN, as in numpy)
+	// Replace each element with its square root
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1304,6 +1347,8 @@ const Value& MatrixClass() {
 	// Rounds half AWAY FROM ZERO, matching MiniScript's own round() -- not
 	// numpy, which rounds half to even.  Agreeing with the language matters
 	// more here: m.round and round(m.getElem(...)) must not disagree.
+	//
+	// Round each element to the given number of decimal places
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("places", Value::zero);
@@ -1326,6 +1371,8 @@ const Value& MatrixClass() {
 	// Either bound may be null for an open end.  Bounds are plain numbers
 	// rather than broadcastable operands: two broadcast operands would need two
 	// scratch segments, and a per-element clamp range is a rare thing to want.
+	//
+	// Limit each element to the range lo to hi (either may be null)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("lo");
@@ -1361,6 +1408,8 @@ const Value& MatrixClass() {
 	// Not routed through gemm: the alpha*A term always READS A, and a fill must
 	// not -- spare capacity brought into the live region may hold anything, and
 	// 0 * NaN is NaN.  So this is the one op that needs its own write-only pass.
+	//
+	// Set every element to the given value
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("value", Value::zero);
@@ -1386,6 +1435,8 @@ const Value& MatrixClass() {
 	// Box-Muller, filling two elements per transform: the sine and cosine
 	// outputs are both usable deviates, and an odd element count simply drops
 	// the second.  sd of 0 is legal and fills with the mean.
+	//
+	// Fill with normally distributed random numbers of the given mean and standard deviation
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("mean", Value::zero);
@@ -1422,6 +1473,8 @@ const Value& MatrixClass() {
 	// initialization is deliberately not offered: the callback sees the value
 	// and nothing else (build a list and use fromList if you need the index).
 	// See ApplyCallback for what a callback may and may not do to the matrix.
+	//
+	// Replace each element with the result of func(value)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("func");
@@ -1438,6 +1491,7 @@ const Value& MatrixClass() {
 	});
 	matrixClass.SetValue(String("apply"), f.GetFunc());
 
+	// Replace each element with the result of func(value, arg1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("func");
@@ -1459,37 +1513,56 @@ const Value& MatrixClass() {
 	//
 	// axis null -> a scalar; axis 0 -> 1 x n (down the columns);
 	// axis 1 -> m x 1 (across the rows).  Same axis meaning as numpy.
-	{
-		struct Reg { const char* name; int op; };
-		static const Reg regs[] = {
-			{ "sum",           kReduceSum    },
-			{ "sumOfSquares",  kReduceSumSq  },
-			{ "max",           kReduceMax    },
-			{ "min",           kReduceMin    },
-			{ "argmax",        kReduceArgMax },
-			{ "argmin",        kReduceArgMin },
-		};
-		// One lambda per op, since an intrinsic's code must be captureless.
-		NativeCallbackDelegate codes[] = {
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceSum, "sum"); },
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceSumSq, "sumOfSquares"); },
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceMax, "max"); },
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceMin, "min"); },
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMax, "argmax"); },
-			INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMin, "argmin"); },
-		};
-		for (int i = 0; i < 6; i++) {
-			f = Intrinsic::Create("");
-			f.AddParam("self");
-			f.AddParam("axis");
-			f.set_Code(codes[i]);
-			matrixClass.SetValue(String(regs[i].name), f.GetFunc());
-		}
-	}
+	//
+	// Registered one by one rather than in a loop so that each has its own
+	// doc comment for scripts/gen_doc.ms to find.
+
+	// Get the sum of all elements, or of each column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceSum, "sum"); });
+	matrixClass.SetValue(String("sum"), f.GetFunc());
+
+	// Get the sum of the squared elements, overall or per column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceSumSq, "sumOfSquares"); });
+	matrixClass.SetValue(String("sumOfSquares"), f.GetFunc());
+
+	// Get the largest element, overall or per column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceMax, "max"); });
+	matrixClass.SetValue(String("max"), f.GetFunc());
+
+	// Get the smallest element, overall or per column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceMin, "min"); });
+	matrixClass.SetValue(String("min"), f.GetFunc());
+
+	// Get the index of the largest element, overall or per column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMax, "argmax"); });
+	matrixClass.SetValue(String("argmax"), f.GetFunc());
+
+	// Get the index of the smallest element, overall or per column (axis 0) or row (axis 1)
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("axis");
+	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMin, "argmin"); });
+	matrixClass.SetValue(String("argmin"), f.GetFunc());
 
 	// ---- Linear algebra ----
 
 	// m.determinant -> number.  Square only; singular gives 0.
+	// Get the determinant of a square matrix
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1503,6 +1576,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("determinant"), f.GetFunc());
 
 	// m.inverse -> new Matrix, or an error value if singular.
+	// Get the inverse of a square matrix as a new matrix
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1516,6 +1590,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("inverse"), f.GetFunc());
 
 	// m.solve(b) -> new Matrix X with m*X = b.  LU with partial pivoting.
+	// Solve self * X = b for X, returning X as a new matrix
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("b");
@@ -1530,6 +1605,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("solve"), f.GetFunc());
 
 	// m.swapRows(row1, row2) -> self.  Negative indices count from the end.
+	// Swap two rows in place
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("row1");
@@ -1553,6 +1629,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("swapRows"), f.GetFunc());
 
 	// m.swapColumns(column1, column2) -> self.  Negative indices count from the end.
+	// Swap two columns in place
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("column1");
@@ -1578,6 +1655,8 @@ const Value& MatrixClass() {
 
 	// m.rowCross(m2) -> new n x 3 Matrix.  Both need 3 columns; a single-row
 	// operand is crossed with every row.
+	//
+	// Get the cross product of each row with the matching row of m2 (both 3 columns wide)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("m2");
@@ -1599,6 +1678,7 @@ const Value& MatrixClass() {
 	// script wrappers; only the forward passes need C++.
 
 	// m.sigmoid -> self
+	// Apply the sigmoid function to each element, in place
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1612,6 +1692,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("sigmoid"), f.GetFunc());
 
 	// m.tanh -> self
+	// Apply the tanh function to each element, in place
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1626,6 +1707,8 @@ const Value& MatrixClass() {
 
 	// m.softmax(axis=1) -> self.  1 = across rows (the usual: samples in rows),
 	// 0 = down columns, null = over the whole matrix.
+	//
+	// Apply softmax in place, across each row by default
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis", Value::one);
@@ -1645,6 +1728,8 @@ const Value& MatrixClass() {
 	// Broadcasts like the elementwise ops.  This is the indicator that makes
 	// relu's derivative a wrapper: y.greaterThan(0).  NaN compares false, so a
 	// NaN element becomes 0.
+	//
+	// Replace each element with 1 if it is greater than x, or 0 otherwise
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("x");
@@ -1668,6 +1753,8 @@ const Value& MatrixClass() {
 	//
 	// self holds LOGITS, not probabilities.  Returns the unreduced per-sample
 	// loss; `.mean` is the caller's to write, and visibly so.
+	//
+	// Get the per-sample softmax cross-entropy loss of these logits against targets
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("targets");
@@ -1689,6 +1776,8 @@ const Value& MatrixClass() {
 	//
 	// The RawData grows to fit if it needs to, so writing a network's weights
 	// into one blob is a loop over `pos = m.toRawData(rd, "float32", pos)`.
+	//
+	// Write the matrix into a RawData buffer, returning the position after what was written
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("rd");
@@ -1722,6 +1811,8 @@ const Value& MatrixClass() {
 	// explicit dtype means headerless data, whose shape is the receiver's
 	// current one -- so `Matrix.ofSize(28, 28).readRawData(rd, "uint8")` is how
 	// you pull an image out of a blob somebody else wrote.
+	//
+	// Read data from a RawData buffer into this matrix, returning the position after what was read
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("rd");
@@ -1761,6 +1852,8 @@ const Value& MatrixClass() {
 	// handles the real case properly -- fixed-point notation renders 1e-17 as
 	// "0.000" because that is genuinely its value to three places -- while
 	// leaving the default honest about magnitude.
+	//
+	// Get the matrix as a human-readable table string
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("fieldWidth", Value(10));
@@ -1824,6 +1917,8 @@ const Value& MatrixClass() {
 	// MatrixToValue) rather than intrinsics, so `m.rows` costs a map lookup
 	// rather than a call.  A fresh list per call, rather than a stored entry,
 	// so that construction does not allocate one for a matrix nobody asks.
+	//
+	// Get the shape of the matrix as [rows, columns]
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -1838,6 +1933,7 @@ const Value& MatrixClass() {
 	matrixClass.SetValue(String("size"), f.GetFunc());
 
 	// m.capacity -> current element capacity (read-only report)
+	// Get how many elements the matrix can hold without reallocating
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {

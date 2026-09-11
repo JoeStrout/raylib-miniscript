@@ -2315,6 +2315,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("rlGetCullDistanceFar", i.GetFunc());
 
+	// Get the currently active render texture (fbo); 0 for the default framebuffer
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value((double)GetActiveFramebuffer()));

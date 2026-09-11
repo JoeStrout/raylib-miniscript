@@ -441,7 +441,7 @@
 |LoadFontFromImage |**image**, **key**=Color{255, 0, 255, 255}, **firstChar**=32 |Load an Image font file (XNA style) |
 |IsFontValid |**font** |Check if a font is valid (font data loaded) WARNING: GPU texture not checked |
 |UnloadFont |**font** |Unload Font from GPU memory (VRAM) |
-|MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 | |
+|MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 |This is needed for manual font construction, e.g. SDF fonts |
 |DrawFPS |**posX**=0, **posY**=0 |Draw current FPS NOTE: Uses default font |
 |DrawText |**text**, **posX**=0, **posY**=0, **fontSize**=20, **color**=BLACK |Draw text (using default font) NOTE: fontSize work like in any drawing program but if fontSize is lower than font-base-size, then font-base-size is used NOTE: chars spacing is proportional to fontSize |
 |DrawTextEx |**font**, **text**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw text using Font NOTE: chars spacing is NOT proportional to fontSize |
@@ -893,3 +893,62 @@
 |setDouble |**offset**=0, **value**=0 |set 64-bit double at the given byte offset |
 |utf8 |**offset**=0, **bytes**=-1 |get UTF-8 string from the given byte offset (bytes=-1 reads to end) |
 |setUtf8 |**offset**=0, **value**="" |write a UTF-8 string at the given byte offset; returns bytes written |
+
+## Matrix
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|ofSize |**rows**, **columns**, **initialValue**=0 |Create a new matrix of the given size, filled with a number or by calling a function |
+|identity |**size** |Create a new square identity matrix |
+|fromList |**sourceList** |Create a new matrix from a 1D or 2D list of numbers |
+|fromRawData |**rd**, **dtype**="auto", **startPos**=0, **rows**=null, **columns**=null |Create a new matrix from data in a RawData buffer |
+|toFlatList | |Get all elements as one flat list, row by row |
+|getElem |**row**, **column** |Get the element at the given row and column |
+|setElem |**row**, **column**, **value**=0 |Set the element at the given row and column |
+|getRow |**row** |Get one row as a list of numbers |
+|setRow |**row**, **values** |Set one row from a list of numbers, or set every element in it to one number |
+|getColumn |**column** |Get one column as a list of numbers |
+|setColumn |**column**, **values** |Set one column from a list of numbers, or set every element in it to one number |
+|getSub |**row**=0, **col**=0, **rows**, **columns** |Copy a rectangular block out into a new matrix |
+|setSub |**row**=0, **col**=0, **m2** |Copy another matrix into this one at the given row and column |
+|reshape |**rows**, **columns** |Change the shape without moving any elements (this is not a transpose) |
+|resize |**rows**, **columns** |Change the shape, keeping the top-left block and zero-filling any new elements |
+|reserve |**rows** |Pre-allocate room for the given number of rows, without changing the matrix |
+|trim | |Release any memory reserved beyond the current size |
+|removeRow |**index** |Remove a row, moving the rows below it up |
+|removeRowFast |**index** |Remove a row by moving the last row into its place (changes the row order) |
+|equals |**m2**, **tolerance**=1e-9 |Get whether this matrix matches another matrix or list, within a tolerance |
+|gemm |**B**, **addend**, **out**, **transA**=0, **transB**=0, **alpha**=1, **beta**=1 |General matrix multiply-add: alpha * A * B + beta * addend, with optional transposes |
+|elemMultiplyBy |**x** |Multiply each element in place by a number, or elementwise by a matrix or list |
+|elemDivideBy |**x** |Divide each element in place by a number, or elementwise by a matrix or list |
+|pow |**k** |Raise each element to a power, in place |
+|abs | |Replace each element with its absolute value |
+|sqrt | |Replace each element with its square root |
+|round |**places**=0 |Round each element to the given number of decimal places |
+|clamp |**lo**, **hi** |Limit each element to the range lo to hi (either may be null) |
+|fill |**value**=0 |Set every element to the given value |
+|randomize |**mean**=0, **sd**=1 |Fill with normally distributed random numbers of the given mean and standard deviation |
+|apply |**func** |Replace each element with the result of func(value) |
+|apply1 |**func**, **arg1** |Replace each element with the result of func(value, arg1) |
+|sum |**axis** |Get the sum of all elements, or of each column (axis 0) or row (axis 1) |
+|sumOfSquares |**axis** |Get the sum of the squared elements, overall or per column (axis 0) or row (axis 1) |
+|max |**axis** |Get the largest element, overall or per column (axis 0) or row (axis 1) |
+|min |**axis** |Get the smallest element, overall or per column (axis 0) or row (axis 1) |
+|argmax |**axis** |Get the index of the largest element, overall or per column (axis 0) or row (axis 1) |
+|argmin |**axis** |Get the index of the smallest element, overall or per column (axis 0) or row (axis 1) |
+|determinant | |Get the determinant of a square matrix |
+|inverse | |Get the inverse of a square matrix as a new matrix |
+|solve |**b** |Solve self * X = b for X, returning X as a new matrix |
+|swapRows |**row1**, **row2** |Swap two rows in place |
+|swapColumns |**column1**, **column2** |Swap two columns in place |
+|rowCross |**m2** |Get the cross product of each row with the matching row of m2 (both 3 columns wide) |
+|sigmoid | |Apply the sigmoid function to each element, in place |
+|tanh | |Apply the tanh function to each element, in place |
+|softmax |**axis**=1 |Apply softmax in place, across each row by default |
+|greaterThan |**x** |Replace each element with 1 if it is greater than x, or 0 otherwise |
+|softmaxCrossEntropy |**targets**, **outProbs** |Get the per-sample softmax cross-entropy loss of these logits against targets |
+|toRawData |**rd**, **dtype**="float64", **startPos**=0, **includeHeader**=1 |Write the matrix into a RawData buffer, returning the position after what was written |
+|readRawData |**rd**, **dtype**="auto", **startPos**=0 |Read data from a RawData buffer into this matrix, returning the position after what was read |
+|format |**fieldWidth**=10, **precision**, **columnSep**="", **rowSep** |Get the matrix as a human-readable table string |
+|size | |Get the shape of the matrix as [rows, columns] |
+|capacity | |Get how many elements the matrix can hold without reallocating |

@@ -22,6 +22,7 @@ classifyReturnLine = function(line)
 	line = line.trim
 	if line.contains("IntrinsicResult::Null") then return "null"
 	if line.contains("IntrinsicResult::Bool(") then return "number"
+	if line.contains("IntrinsicResult::One") or line.contains("IntrinsicResult::Zero") then return "number"
 	if not line.contains("IntrinsicResult(") then return null
 	parts = line.split("IntrinsicResult(")
 	if parts.len < 2 then return null
@@ -31,6 +32,9 @@ classifyReturnLine = function(line)
 	if arg.startsWith("Vector4ToValue") then return "list"
 	if arg.contains("ToValue") then return "map"
 	if arg.contains("Class()") then return "map"
+	// Methods that return their receiver (for chaining); every class here is a map.
+	if arg.startsWith("context.GetVar(""self"")") then return "map"
+	if arg.startsWith("self)") then return "map"
 	if arg.startsWith("String(") then return "string"
 	if arg.startsWith("Value(""") then return "string"
 	if arg.startsWith("Value::emptyString") then return "string"
@@ -53,17 +57,30 @@ end function
 // Strategy:
 //   1. Skip conditional guard returns (lines starting with "if (").
 //   2. Last classified non-null main return wins.
-//   3. If only unclassified main returns exist (hasAmbiguous), scan the block
-//      for variable type declarations as a secondary hint.
+//   3. If only unclassified main returns exist (hasAmbiguous), use a guard
+//      return that produced a real value (not a number, which in a guard is
+//      usually a failure sentinel), or failing that, scan the block for
+//      variable type declarations as a secondary hint.
 //   4. Falls back to "null" (void) if nothing is determinable.
 inferReturnType = function(block)
 	mainRetType = "null"
+	guardRetType = null
 	hasAmbiguous = false
 	for line in block
 		lt = line.trim
+		// A one-line lambda that hands off to a helper returns *something*,
+		// though we cannot tell what from here.
+		if lt.contains("INTRINSIC_LAMBDA { return ") and not lt.contains("return IntrinsicResult") then
+			hasAmbiguous = true
+			continue
+		end if
 		if not lt.contains("return IntrinsicResult") then continue
-		// Skip conditional guard returns: "if (...) return ..."
-		if lt.startsWith("if (") or lt.startsWith("if(") then continue
+		// Set conditional guard returns aside: "if (...) return ..."
+		if lt.startsWith("if (") or lt.startsWith("if(") then
+			t = classifyReturnLine(line)
+			if t == "map" or t == "list" or t == "string" then guardRetType = t
+			continue
+		end if
 		t = classifyReturnLine(line)
 		if t == null then
 			hasAmbiguous = true
@@ -72,8 +89,9 @@ inferReturnType = function(block)
 		end if
 	end for
 	// If no main return type found but there were unclassified returns,
-	// look for local variable type declarations as a hint.
+	// look for a value-producing guard, then local variable declarations.
 	if mainRetType == "null" and hasAmbiguous then
+		if guardRetType != null then return guardRetType
 		for line in block
 			lt = line.trim
 			if lt.startsWith("ValueList ") then return "list"
@@ -85,7 +103,9 @@ inferReturnType = function(block)
 	return mainRetType
 end function
 
-// apiReturnType: populated by scanning C++ source files below.
+// apiReturnType: section heading -> {apiName: returnType}, populated by
+// scanning C++ source files below.  Keyed by section because names repeat
+// across classes (RawData.resize and Matrix.resize return different things).
 apiReturnType = {}
 
 // Pre-scan a file for named "static IntrinsicResult funcName(Context ...)" functions.
@@ -127,7 +147,8 @@ end function
 // Scan a module-variable binding file.
 // Looks for blocks of code ending with:  moduleVar.SetValue("name", ...)
 // Also handles function-pointer registrations (i->code = &funcName;).
-scanBindingFile = function(path, moduleVar)
+// Results go into the map `types` (apiName -> returnType).
+scanBindingFile = function(path, moduleVar, types)
 	lines = file.readLines(path)
 	if not lines then return
 	// Pre-scan named functions in case this file uses function pointers
@@ -160,7 +181,7 @@ scanBindingFile = function(path, moduleVar)
 			if retType == "null" and codeRef != "" and funcTypes.hasIndex(codeRef) then
 				retType = funcTypes[codeRef]
 			end if
-			apiReturnType[m.name] = retType
+			types[m.name] = retType
 			block = []
 			codeRef = ""
 		else
@@ -171,7 +192,8 @@ end function
 
 // Scan a global-intrinsics file.
 // Looks for blocks bounded by:  Intrinsic::Create("name");
-scanGlobalFile = function(path)
+// Results go into the map `types` (apiName -> returnType).
+scanGlobalFile = function(path, types)
 	lines = file.readLines(path)
 	if not lines then return
 	block = []
@@ -181,7 +203,7 @@ scanGlobalFile = function(path)
 		m = trimmed.match("{prefix}Intrinsic::Create(""{name}"");")
 		if m and m.name != "" then
 			if currentName != "" then
-				apiReturnType[currentName] = inferReturnType(block)
+				types[currentName] = inferReturnType(block)
 			end if
 			currentName = m.name
 			block = []
@@ -190,7 +212,7 @@ scanGlobalFile = function(path)
 		end if
 	end for
 	if currentName != "" then
-		apiReturnType[currentName] = inferReturnType(block)
+		types[currentName] = inferReturnType(block)
 	end if
 end function
 
@@ -212,21 +234,28 @@ sectionConfig["file module"]       = ["file",       "file",       "src/FileModul
 sectionConfig["FileHandle"]        = ["FileHandle", "FileHandle", "src/FileModule.cpp",      "fileHandleClass", 0]
 sectionConfig["http module"]       = ["http",       "http",       "src/HttpModule.cpp",      "httpMap",         0]
 sectionConfig["RawData"]           = ["RawData",    "RawData",    "src/RawData.cpp",         "rawDataClass",    0]
+sectionConfig["Matrix"]            = ["Matrix",     "Matrix",     "src/MatrixClass.cpp",     "matrixClass",     0]
 
 // Scan all source files.
 print "Scanning C++ source files for return types..."
+typeCount = 0
 for heading in sectionConfig.indexes
 	cfg = sectionConfig[heading]
 	cppFile = cfg[2]
 	moduleVar = cfg[3]
 	isGlobal = cfg[4]
+	types = {}
 	if isGlobal then
-		scanGlobalFile(cppFile)
+		scanGlobalFile(cppFile, types)
 	else
-		scanBindingFile(cppFile, moduleVar)
+		scanBindingFile(cppFile, moduleVar, types)
 	end if
+	apiReturnType[heading] = types
+	// Not types.len: a class with a method named "len" (RawData) would
+	// answer with that entry instead of the count.
+	typeCount += types.indexes.len
 end for
-print "  Found return types for " + apiReturnType.len + " APIs."
+print "  Found return types for " + typeCount + " APIs."
 
 // ---------------------------------------------------------------------------
 // Parameter parsing from API_DOC.md table format
@@ -443,7 +472,8 @@ for line in docLines
 
 	// Determine return type
 	retType = "null"
-	if apiReturnType.hasIndex(apiName) then retType = apiReturnType[apiName]
+	sectionTypes = apiReturnType[currentHeading]
+	if sectionTypes.hasIndex(apiName) then retType = sectionTypes[apiName]
 
 	// Parse parameters
 	params = parseParams(paramStr)
