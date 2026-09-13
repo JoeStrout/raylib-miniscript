@@ -235,6 +235,7 @@ sectionConfig["FileHandle"]        = ["FileHandle", "FileHandle", "src/FileModul
 sectionConfig["http module"]       = ["http",       "http",       "src/HttpModule.cpp",      "httpMap",         0]
 sectionConfig["RawData"]           = ["RawData",    "RawData",    "src/RawData.cpp",         "rawDataClass",    0]
 sectionConfig["Matrix"]            = ["Matrix",     "Matrix",     "src/MatrixClass.cpp",     "matrixClass",     0]
+sectionConfig["physicsCore"]       = ["physicsCore", "physicsCore", "src/PhysicsCore.cpp",   "physicsModule",   0]
 
 // Scan all source files.
 print "Scanning C++ source files for return types..."

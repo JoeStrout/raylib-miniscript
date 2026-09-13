@@ -1860,4 +1860,22 @@ MatrixData* ValueToMatrix(Value value) {
 	return (MatrixData*)handleVal.HandlePtr();
 }
 
+bool MatrixSetRows(Value matrix, int rows) {
+	MatrixData* m = ValueToMatrix(matrix);
+	if (m == nullptr || rows < 0) return false;
+	if (rows != m->rows) {
+		long needed = (long)rows * m->columns;
+		if (!EnsureCapacity(m, needed)) return false;
+		// EnsureCapacity zeroes only capacity it adds, so clear any rows that
+		// come back into the live region (as Matrix.resize does).
+		if (rows > m->rows && m->data != nullptr) {
+			long from = (long)m->rows * m->columns;
+			memset(m->data + from, 0, (size_t)(needed - from) * sizeof(double));
+		}
+		m->rows = rows;
+	}
+	SyncShape(matrix, m);
+	return true;
+}
+
 } // namespace MiniScript

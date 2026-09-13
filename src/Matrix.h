@@ -53,6 +53,13 @@ Value MatrixToValue(MatrixData* data);
 // bare `new Matrix`, whose handle is null).
 MatrixData* ValueToMatrix(Value value);
 
+// Change the number of rows of a Matrix value, keeping its column count: rows
+// that remain keep their contents, new rows are zero, and capacity only grows
+// (as with m.resize).  Keeps the instance's `rows` entry in sync, which a host
+// that just set data->rows itself would not.  False if `matrix` is not a
+// Matrix, or the size is out of range, or out of memory.
+bool MatrixSetRows(Value matrix, int rows);
+
 } // namespace MiniScript
 
 #endif // MATRIX_H

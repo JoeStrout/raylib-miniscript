@@ -9,6 +9,7 @@
 #include "FileModule.h"
 #include "MoreIntrinsics.h"
 #include "HttpModule.h"
+#include "PhysicsCore.h"
 #include "InterpModule.h"
 #include "FileSystem.h"
 #include "UserDisks.h"
@@ -203,6 +204,9 @@ void InitMiniScript() {
 
 	// Add Raylib intrinsics
 	AddRaylibIntrinsics();
+
+	// Add physicsCore (native hot spots for assets/physics.ms)
+	AddPhysicsCoreIntrinsics();
 
 #ifndef PLATFORM_WEB
 	// Add file module (desktop only)

@@ -49,6 +49,7 @@ set(APP_SOURCES
     src/RawData.cpp
     src/MatrixCore.cpp
     src/MatrixClass.cpp
+    src/PhysicsCore.cpp
     src/RAudio.cpp
     src/RCore.cpp
     src/RMath.cpp
