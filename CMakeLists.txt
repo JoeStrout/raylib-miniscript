@@ -90,6 +90,17 @@ target_include_directories(raylib-miniscript PRIVATE
     ${MS2_DIR}/generated
 )
 
+# Copy assets to the build directory.  This is its own target, with no
+# outputs, so it runs on every build -- not only when the binary relinks, as a
+# POST_BUILD step would -- and build/assets never lags behind edits to assets/.
+add_custom_target(copy_assets ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets
+    ${CMAKE_BINARY_DIR}/assets
+    COMMENT "Copying assets to build directory"
+)
+add_dependencies(raylib-miniscript copy_assets)
+
 if(EMSCRIPTEN)
     #---------------------------------------------------------------------------
     # Web build (Emscripten)
@@ -128,14 +139,6 @@ if(EMSCRIPTEN)
     if(EXISTS ${CMAKE_SOURCE_DIR}/web/shell.html)
         target_link_options(raylib-miniscript PRIVATE --shell-file ${CMAKE_SOURCE_DIR}/web/shell.html)
     endif()
-
-    # Copy assets to build directory
-    add_custom_command(TARGET raylib-miniscript POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/assets
-        ${CMAKE_BINARY_DIR}/assets
-        COMMENT "Copying assets to build directory"
-    )
 
     # Copy index.html to build directory
     if(EXISTS ${CMAKE_SOURCE_DIR}/web/index.html)
@@ -212,14 +215,6 @@ else()
             winhttp  # WinHTTP is built into Windows; SChannel provides TLS
         )
     endif()
-
-    # Copy assets to build directory
-    add_custom_command(TARGET raylib-miniscript POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/assets
-        ${CMAKE_BINARY_DIR}/assets
-        COMMENT "Copying assets to build directory"
-    )
 
     message(STATUS "raylib-miniscript Configuration: Desktop")
     message(STATUS "  Platform: ${CMAKE_SYSTEM_NAME}")
