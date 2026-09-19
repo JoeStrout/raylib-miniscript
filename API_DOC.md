@@ -496,8 +496,6 @@
 |rlScissor |**x**, **y**, **width**, **height** | |
 |rlEnablePointMode | |Enable point mode |
 |rlDisablePointMode | |Disable point mode |
-|rlSetPointSize |**size**=1 |Set the point drawing size |
-|rlGetPointSize | |Get the point drawing size |
 |rlEnableStereoRender | |Enable stereo rendering |
 |rlDisableStereoRender | |Disable stereo rendering |
 |rlIsStereoRenderEnabled | |Check if stereo render is enabled |
@@ -516,6 +514,71 @@
 |rlGetShaderIdDefault | | |
 |rlGetShaderLocsDefault | |Get default shader locs |
 |rlGetPixelFormatName |**format** | |
+|rlActiveTextureSlot |**slot**=0 |Select and active a texture slot |
+|rlEnableTexture |**id** |Enable texture |
+|rlDisableTexture | |Disable texture |
+|rlEnableTextureCubemap |**id** |Enable texture cubemap |
+|rlDisableTextureCubemap | |Disable texture cubemap |
+|rlTextureParameters |**id**, **param**, **value** |Set texture parameters (wrap mode/filter mode) |
+|rlCubemapParameters |**id**, **param**, **value** |Set cubemap parameters (wrap mode/filter mode) |
+|rlEnableShader |**id** |Enable shader program |
+|rlDisableShader | |Disable shader program |
+|rlEnableFramebuffer |**id** |Enable rendering to texture (fbo) |
+|rlDisableFramebuffer | |Disable rendering to texture |
+|rlBindFramebuffer |**target**, **framebuffer** |Bind framebuffer object (fbo) |
+|rlBlitFramebuffer |**srcX**, **srcY**, **srcWidth**, **srcHeight**, **dstX**, **dstY**, **dstWidth**, **dstHeight**, **bufferMask**=0x4000 |Blit active framebuffer to main framebuffer |
+|rlActiveDrawBuffers |**count**=1 |Activate multiple draw color buffers NOTE: One color buffer is always active by default |
+|rlLoadRenderBatch |**numBuffers**=RL_DEFAULT_BATCH_BUFFERS, **bufferElements**=2048, **bufferElements**=RL_DEFAULT_BATCH_BUFFER_ELEMENTS |Load render batch |
+|rlUnloadRenderBatch |**batch** |Unload default internal buffers vertex data from CPU and GPU |
+|rlDrawRenderBatch |**batch** |Draw render batch NOTE: Batch is reseted and current buffer is updated (for multi-buffer config) |
+|rlSetRenderBatchActive |**batch** |Set the active render batch for rlgl |
+|rlEnableVertexArray |**vaoId** |Enable vertex array object (VAO) |
+|rlDisableVertexArray | |Disable vertex array object (VAO) |
+|rlEnableVertexBuffer |**id** |Enable vertex buffer (VBO) |
+|rlDisableVertexBuffer | |Disable vertex buffer (VBO) |
+|rlEnableVertexBufferElement |**id** |Enable vertex buffer element (VBO element) |
+|rlDisableVertexBufferElement | |Disable vertex buffer element (VBO element) |
+|rlEnableVertexAttribute |**index** |Enable vertex attribute index |
+|rlDisableVertexAttribute |**index** |Disable vertex attribute index |
+|rlLoadVertexArray | | |
+|rlLoadVertexBuffer |**buffer**, **size**=0, **dynamic**=0 |size <= 0 means the whole RawData. |
+|rlLoadVertexBufferElement |**buffer**, **size**=0, **dynamic**=0 | |
+|rlUpdateVertexBuffer |**bufferId**, **data**, **dataSize**=0, **offset**=0 |Update vertex buffer with new data NOTE: dataSize and offset must be provided in bytes |
+|rlUpdateVertexBufferElements |**id**, **data**, **dataSize**=0, **offset**=0 |Update vertex buffer elements with new data NOTE: dataSize and offset must be provided in bytes |
+|rlUnloadVertexArray |**vaoId** |Unload vertex array object (VAO) |
+|rlUnloadVertexBuffer |**vboId** |Unload vertex buffer (VBO) |
+|rlSetVertexAttribute |**index**, **compSize**, **type**=RL_FLOAT, **normalized**=0, **stride**=0, **offset**=0 |Set vertex attribute |
+|rlSetVertexAttributeDivisor |**index**, **divisor** |Set vertex attribute divisor |
+|rlSetVertexAttributeDefault |**locIndex**, **value**, **attribType**=RL_SHADER_ATTRIB_FLOAT, **count**=0 |Set shader value attribute |
+|rlDrawVertexArray |**offset**=0, **count** |Draw vertex array |
+|rlDrawVertexArrayElements |**offset**=0, **count**, **buffer**=0 |Draw vertex array elements |
+|rlDrawVertexArrayInstanced |**offset**=0, **count**, **instances**=1 |Draw vertex array instanced |
+|rlDrawVertexArrayElementsInstanced |**offset**=0, **count**, **buffer**=0, **instances**=1 |Draw vertex array elements instanced |
+|rlLoadTexture |**data**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |data may be null for an empty texture |
+|rlLoadTextureDepth |**width**, **height**, **useRenderBuffer**=0 | |
+|rlLoadTextureCubemap |**data**, **size**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |or null for an empty cubemap |
+|rlUpdateTexture |**id**, **offsetX**, **offsetY**, **width**, **height**, **format**, **data** |Update already loaded texture in GPU with new data WARNING: Not possible to know safely if internal texture format is the expected one... |
+|rlGetGlTextureFormats |**format** |Get OpenGL internal formats and data type from raylib PixelFormat |
+|rlUnloadTexture |**id** |Unload texture from GPU memory |
+|rlGenTextureMipmaps |**id**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 |Generate mipmap data for selected texture NOTE: Only supports GPU mipmap generation |
+|rlReadTexturePixels |**id**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 |Read texture pixel data |
+|rlReadScreenPixels |**width**, **height** |Returns RGBA (R8G8B8A8) pixels, top row first |
+|rlLoadFramebuffer | | |
+|rlFramebufferAttach |**fboId**, **texId**, **attachType**=RL_ATTACHMENT_COLOR_CHANNEL0, **texType**=RL_ATTACHMENT_TEXTURE2D, **mipLevel**=0 |Attach color buffer texture to a framebuffer object (unloads previous attachment) NOTE: Attach type: 0-Color, 1-Depth renderbuffer, 2-Depth texture |
+|rlFramebufferComplete |**id** |Verify render texture is complete |
+|rlUnloadFramebuffer |**id** |Unload framebuffer from GPU memory NOTE: All attached textures/cubemaps/renderbuffers are also deleted |
+|rlLoadShader |**code**, **type**=RL_FRAGMENT_SHADER | |
+|rlLoadShaderProgram |**vsCode**=String(), **fsCode**=String() |Either code may be empty (or null) to use rlgl's default shader for that stage |
+|rlLoadShaderProgramEx |**vsId**, **fsId** | |
+|rlUnloadShader |**id** |Delete shader |
+|rlUnloadShaderProgram |**id** |Unload shader program |
+|rlGetLocationUniform |**id**, **uniformName** |Get shader location uniform NOTE: First parameter refers to shader program id |
+|rlGetLocationAttrib |**id**, **attribName** |Get shader location attribute NOTE: First parameter refers to shader program id |
+|rlSetUniform |**locIndex**, **value**, **uniformType**=RL_SHADER_UNIFORM_FLOAT, **count**=0 |Set shader value uniform |
+|rlSetUniformMatrix |**locIndex**, **mat** |Set shader value uniform matrix |
+|rlSetUniformMatrices |**locIndex**, **mats** |Set shader value uniform matrix |
+|rlSetUniformSampler |**locIndex**, **textureId** |Set shader value uniform sampler |
+|rlSetShader |**id**, **locs** |Set shader currently active (id and locations) |
 
 ## RText
 

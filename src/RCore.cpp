@@ -522,6 +522,40 @@ static void PackUIntUniformData(Value value, int components, int& count, std::ve
 	if ((int)out.size() > needed) out.resize(needed);
 }
 
+// Get the bytes for `count` uniforms of the given type from a script value:
+// RawData is used as-is; a number, vector map, or (nested) list is packed into
+// `storage`.  If count <= 0 it is inferred.  Returns null for an unknown type.
+// (Also used by rlSetUniform, in RLgl.cpp.)
+const void* PackUniformValue(Value value, int uniformType, int& count, std::vector<unsigned char>& storage) {
+	BinaryData* rawData = nullptr;
+	if (value.Type() == ValueType::Map) rawData = ValueToRawData(value);
+	if (rawData != nullptr && rawData->bytes != nullptr && rawData->length > 0) {
+		if (count <= 0) count = 1;
+		return rawData->bytes;
+	}
+
+	int components = ShaderUniformComponentCount(uniformType);
+	if (IsShaderUniformFloatType(uniformType)) {
+		std::vector<float> packed;
+		PackFloatUniformData(value, components, count, packed);
+		storage.assign((unsigned char*)packed.data(), (unsigned char*)(packed.data() + packed.size()));
+		return storage.data();
+	}
+	if (IsShaderUniformIntType(uniformType)) {
+		std::vector<int> packed;
+		PackIntUniformData(value, components, count, packed);
+		storage.assign((unsigned char*)packed.data(), (unsigned char*)(packed.data() + packed.size()));
+		return storage.data();
+	}
+	if (IsShaderUniformUIntType(uniformType)) {
+		std::vector<unsigned int> packed;
+		PackUIntUniformData(value, components, count, packed);
+		storage.assign((unsigned char*)packed.data(), (unsigned char*)(packed.data() + packed.size()));
+		return storage.data();
+	}
+	return nullptr;
+}
+
 struct RaylibCallbackBridgeState {
 	Interpreter interpreter;
 	Value traceLogCallback = Value::Null;

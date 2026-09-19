@@ -383,7 +383,6 @@ void AddConstants(ValueDict& raylibModule) {
 	raylibModule.SetValue("RL_DYNAMIC_COPY", Value(RL_DYNAMIC_COPY));
 	raylibModule.SetValue("RL_FRAGMENT_SHADER", Value(RL_FRAGMENT_SHADER));
 	raylibModule.SetValue("RL_VERTEX_SHADER", Value(RL_VERTEX_SHADER));
-	raylibModule.SetValue("RL_COMPUTE_SHADER", Value(RL_COMPUTE_SHADER));
 	raylibModule.SetValue("RL_ZERO", Value(RL_ZERO));
 	raylibModule.SetValue("RL_ONE", Value(RL_ONE));
 	raylibModule.SetValue("RL_SRC_COLOR", Value(RL_SRC_COLOR));
