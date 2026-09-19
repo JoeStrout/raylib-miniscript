@@ -52,6 +52,7 @@ set(APP_SOURCES
     src/PhysicsCore.cpp
     src/RAudio.cpp
     src/RCore.cpp
+    src/RLgl.cpp
     src/RMath.cpp
     src/RModels.cpp
     src/RShapes.cpp

@@ -324,6 +324,27 @@ void AddRTextMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
+	i.AddParam("codepoints");
+	i.AddParam("fontSize", Value(20));
+	i.AddParam("spacing", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context.GetArg(0));
+		float fontSize = context.GetArg(2).FloatValue();
+		float spacing = context.GetArg(3).FloatValue();
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int count = 0;
+		int* codepoints = GetCodepointsFromValue(context.GetArg(1), &count);
+		if (!codepoints || count == 0) return IntrinsicResult(Vector2ToValue(Vector2{0, 0}));
+
+		Vector2 size = MeasureTextCodepoints(font, codepoints, count, fontSize, spacing);
+		delete[] codepoints;
+		return IntrinsicResult(Vector2ToValue(size));
+	});
+	raylibModule.SetValue("MeasureTextCodepoints", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("font");
 	i.AddParam("codepoint");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Font font = ValueToFont(context.GetArg(0));
@@ -844,6 +865,28 @@ void AddRTextMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
+	i.AddParam("position", Value::zero);
+	i.AddParam("length", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetArg(0).ToString();
+		int position = context.GetArg(1).IntValue();
+		int length = context.GetArg(2).IntValue();
+		String ret(TextSubtext(textStr.c_str(), position, length));
+		return IntrinsicResult(ret);
+	});
+	raylibModule.SetValue("TextSubtext", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("text");
+	i.set_Code(INTRINSIC_LAMBDA {
+		String textStr = context.GetArg(0).ToString();
+		String ret(TextRemoveSpaces(textStr.c_str()));
+		return IntrinsicResult(ret);
+	});
+	raylibModule.SetValue("TextRemoveSpaces", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("text");
 	i.AddParam("insert");
 	i.AddParam("position");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -996,4 +1039,13 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadTextLines", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("lines");
+	i.set_Code(INTRINSIC_LAMBDA {
+		// In our implementation, lines is a MiniScript list
+		// We don't need to explicitly free it as MiniScript manages the memory
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("UnloadTextLines", i.GetFunc());
 }

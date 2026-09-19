@@ -21,6 +21,7 @@ using namespace MiniScript;
 // Helper methods, one per Raylib module (each defined in its own .cpp file)
 void AddRAudioMethods(ValueDict& raylibModule);
 void AddRCoreMethods(ValueDict& raylibModule);
+void AddRLglMethods(ValueDict& raylibModule);
 void AddRModelsMethods(ValueDict& raylibModule);
 void AddRMathMethods(ValueDict& raylibModule);
 void AddRShapesMethods(ValueDict& raylibModule);
@@ -55,6 +56,7 @@ void AddRaylibIntrinsics() {
 		if (raylibModuleValue.IsNull()) {
 			AddRAudioMethods(raylibModule);
 			AddRCoreMethods(raylibModule);
+			AddRLglMethods(raylibModule);
 			AddRModelsMethods(raylibModule);
 			AddRMathMethods(raylibModule);
 			AddRShapesMethods(raylibModule);

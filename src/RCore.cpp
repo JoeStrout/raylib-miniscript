@@ -10,7 +10,7 @@
 #include "FileSystem.h"
 #include "RawData.h"
 #include "raylib.h"
-#include "rlgl.h"
+#include "rcamera.h"
 #include "miniscript.h"
 #include "macros.h"
 #include <cstdarg>
@@ -50,25 +50,6 @@ EM_ASYNC_JS(void, _SetWindowIcon_Web, (unsigned char *data, long size), {
 		reader.readAsDataURL(blob);
 	});
 });
-#endif
-
-// rlgl's own rlGetActiveFramebuffer is compiled only for GL 3.3, ES 3 and the
-// software renderer (see the guard in rlgl.h); on the ES2/WebGL1 web build it
-// is a stub that always returns 0.  ES2 can answer the same question perfectly
-// well -- it just spells the enum GL_FRAMEBUFFER_BINDING rather than
-// GL_DRAW_FRAMEBUFFER_BINDING (both are 0x8CA6) -- so supply it ourselves
-// there.  Script sees one function that works on every backend.
-#ifdef PLATFORM_WEB
-#include <GLES2/gl2.h>
-static unsigned int GetActiveFramebuffer() {
-	GLint fboId = 0;
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboId);
-	return (unsigned int)fboId;
-}
-#else
-static unsigned int GetActiveFramebuffer() {
-	return rlGetActiveFramebuffer();
-}
 #endif
 
 using namespace MiniScript;
@@ -843,6 +824,156 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateCameraPro", i.GetFunc());
+
+	// rcamera: camera vectors, movement and rotation.  Functions that modify
+	// the camera update the given camera map in place.
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		return IntrinsicResult(Vector3ToValue(GetCameraForward(&camera)));
+	});
+	raylibModule.SetValue("GetCameraForward", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		return IntrinsicResult(Vector3ToValue(GetCameraUp(&camera)));
+	});
+	raylibModule.SetValue("GetCameraUp", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		return IntrinsicResult(Vector3ToValue(GetCameraRight(&camera)));
+	});
+	raylibModule.SetValue("GetCameraRight", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("distance");
+	i.AddParam("moveInWorldPlane", Value::one);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float distance = context.GetArg(1).FloatValue();
+		bool moveInWorldPlane = context.GetArg(2).IntValue() != 0;
+		CameraMoveForward(&camera, distance, moveInWorldPlane);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraMoveForward", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("distance");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float distance = context.GetArg(1).FloatValue();
+		CameraMoveUp(&camera, distance);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraMoveUp", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("distance");
+	i.AddParam("moveInWorldPlane", Value::one);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float distance = context.GetArg(1).FloatValue();
+		bool moveInWorldPlane = context.GetArg(2).IntValue() != 0;
+		CameraMoveRight(&camera, distance, moveInWorldPlane);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraMoveRight", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("delta");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float delta = context.GetArg(1).FloatValue();
+		CameraMoveToTarget(&camera, delta);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraMoveToTarget", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("angle");
+	i.AddParam("rotateAroundTarget", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float angle = context.GetArg(1).FloatValue();
+		bool rotateAroundTarget = context.GetArg(2).IntValue() != 0;
+		CameraYaw(&camera, angle, rotateAroundTarget);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraYaw", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("angle");
+	i.AddParam("lockView", Value::one);
+	i.AddParam("rotateAroundTarget", Value::zero);
+	i.AddParam("rotateUp", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float angle = context.GetArg(1).FloatValue();
+		bool lockView = context.GetArg(2).IntValue() != 0;
+		bool rotateAroundTarget = context.GetArg(3).IntValue() != 0;
+		bool rotateUp = context.GetArg(4).IntValue() != 0;
+		CameraPitch(&camera, angle, lockView, rotateAroundTarget, rotateUp);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraPitch", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("angle");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value cameraValue = context.GetArg(0);
+		Camera3D camera = ValueToCamera3D(cameraValue);
+		float angle = context.GetArg(1).FloatValue();
+		CameraRoll(&camera, angle);
+		SyncCamera3DValue(cameraValue, camera);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("CameraRoll", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		return IntrinsicResult(MatrixToValue(GetCameraViewMatrix(&camera)));
+	});
+	raylibModule.SetValue("GetCameraViewMatrix", i.GetFunc());
+
+	// aspect <= 0 means use the screen's aspect ratio
+	i = Intrinsic::Create("");
+	i.AddParam("camera");
+	i.AddParam("aspect", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		float aspect = context.GetArg(1).FloatValue();
+		if (aspect <= 0) aspect = (float)GetScreenWidth() / (float)GetScreenHeight();
+		return IntrinsicResult(MatrixToValue(GetCameraProjectionMatrix(&camera, aspect)));
+	});
+	raylibModule.SetValue("GetCameraProjectionMatrix", i.GetFunc());
 
 	// Shader functions
 
@@ -2119,336 +2250,6 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EndBlendMode", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("glSrcFactor");
-	i.AddParam("glDstFactor");
-	i.AddParam("glEquation");
-	i.set_Code(INTRINSIC_LAMBDA {
-		int glSrcFactor = context.GetArg(0).IntValue();
-		int glDstFactor = context.GetArg(1).IntValue();
-		int glEquation = context.GetArg(2).IntValue();
-		rlSetBlendFactors(glSrcFactor, glDstFactor, glEquation);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetBlendFactors", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("glSrcRGB");
-	i.AddParam("glDstRGB");
-	i.AddParam("glSrcAlpha");
-	i.AddParam("glDstAlpha");
-	i.AddParam("glEqRGB");
-	i.AddParam("glEqAlpha");
-	i.set_Code(INTRINSIC_LAMBDA {
-		int glSrcRGB = context.GetArg(0).IntValue();
-		int glDstRGB = context.GetArg(1).IntValue();
-		int glSrcAlpha = context.GetArg(2).IntValue();
-		int glDstAlpha = context.GetArg(3).IntValue();
-		int glEqRGB = context.GetArg(4).IntValue();
-		int glEqAlpha = context.GetArg(5).IntValue();
-		rlSetBlendFactorsSeparate(glSrcRGB, glDstRGB, glSrcAlpha, glDstAlpha, glEqRGB, glEqAlpha);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetBlendFactorsSeparate", i.GetFunc());
-
-	// Matrix operations (rlgl)
-
-	i = Intrinsic::Create("");
-	i.AddParam("mode");
-	i.set_Code(INTRINSIC_LAMBDA {
-		int mode = context.GetArg(0).IntValue();
-		rlMatrixMode(mode);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlMatrixMode", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlPushMatrix();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlPushMatrix", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlPopMatrix();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlPopMatrix", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlLoadIdentity();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlLoadIdentity", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("x", Value::zero);
-	i.AddParam("y", Value::zero);
-	i.AddParam("z", Value::zero);
-	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetArg(0).FloatValue();
-		float y = context.GetArg(1).FloatValue();
-		float z = context.GetArg(2).FloatValue();
-		rlTranslatef(x, y, z);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlTranslatef", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("angle", Value::zero);
-	i.AddParam("x", Value::zero);
-	i.AddParam("y", Value::zero);
-	i.AddParam("z", Value::zero);
-	i.set_Code(INTRINSIC_LAMBDA {
-		float angle = context.GetArg(0).FloatValue();
-		float x = context.GetArg(1).FloatValue();
-		float y = context.GetArg(2).FloatValue();
-		float z = context.GetArg(3).FloatValue();
-		rlRotatef(angle, x, y, z);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlRotatef", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("x", Value(1));
-	i.AddParam("y", Value(1));
-	i.AddParam("z", Value(1));
-	i.set_Code(INTRINSIC_LAMBDA {
-		float x = context.GetArg(0).FloatValue();
-		float y = context.GetArg(1).FloatValue();
-		float z = context.GetArg(2).FloatValue();
-		rlScalef(x, y, z);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlScalef", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("matf");
-	i.set_Code(INTRINSIC_LAMBDA {
-		Value listVal = context.GetArg(0);
-		ValueList list = listVal.GetList();
-		float matf[16];
-		for (int j = 0; j < 16; j++) {
-			matf[j] = (j < list.Count()) ? list[j].FloatValue() : 0.0f;
-		}
-		rlMultMatrixf(matf);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlMultMatrixf", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("left");
-	i.AddParam("right");
-	i.AddParam("bottom");
-	i.AddParam("top");
-	i.AddParam("znear");
-	i.AddParam("zfar");
-	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetArg(0).FloatValue();
-		double right = context.GetArg(1).FloatValue();
-		double bottom = context.GetArg(2).FloatValue();
-		double top = context.GetArg(3).FloatValue();
-		double znear = context.GetArg(4).FloatValue();
-		double zfar = context.GetArg(5).FloatValue();
-		rlFrustum(left, right, bottom, top, znear, zfar);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlFrustum", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("left");
-	i.AddParam("right");
-	i.AddParam("bottom");
-	i.AddParam("top");
-	i.AddParam("znear");
-	i.AddParam("zfar");
-	i.set_Code(INTRINSIC_LAMBDA {
-		double left = context.GetArg(0).FloatValue();
-		double right = context.GetArg(1).FloatValue();
-		double bottom = context.GetArg(2).FloatValue();
-		double top = context.GetArg(3).FloatValue();
-		double znear = context.GetArg(4).FloatValue();
-		double zfar = context.GetArg(5).FloatValue();
-		rlOrtho(left, right, bottom, top, znear, zfar);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlOrtho", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("x");
-	i.AddParam("y");
-	i.AddParam("width");
-	i.AddParam("height");
-	i.set_Code(INTRINSIC_LAMBDA {
-		int x = context.GetArg(0).IntValue();
-		int y = context.GetArg(1).IntValue();
-		int width = context.GetArg(2).IntValue();
-		int height = context.GetArg(3).IntValue();
-		rlViewport(x, y, width, height);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlViewport", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("nearPlane");
-	i.AddParam("farPlane");
-	i.set_Code(INTRINSIC_LAMBDA {
-		double nearPlane = context.GetArg(0).FloatValue();
-		double farPlane = context.GetArg(1).FloatValue();
-		rlSetClipPlanes(nearPlane, farPlane);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetClipPlanes", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(Value(rlGetCullDistanceNear()));
-	});
-	raylibModule.SetValue("rlGetCullDistanceNear", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(Value(rlGetCullDistanceFar()));
-	});
-	raylibModule.SetValue("rlGetCullDistanceFar", i.GetFunc());
-
-	// Get the currently active render texture (fbo); 0 for the default framebuffer
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(Value((double)GetActiveFramebuffer()));
-	});
-	raylibModule.SetValue("rlGetActiveFramebuffer", i.GetFunc());
-
-	// Render state toggles (rlgl)
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlEnableBackfaceCulling();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlEnableBackfaceCulling", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDisableBackfaceCulling();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDisableBackfaceCulling", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlEnableDepthTest();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlEnableDepthTest", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDisableDepthTest();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDisableDepthTest", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlEnableDepthMask();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlEnableDepthMask", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDisableDepthMask();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDisableDepthMask", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlEnableWireMode();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlEnableWireMode", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDisableWireMode();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDisableWireMode", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlEnableSmoothLines();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlEnableSmoothLines", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDisableSmoothLines();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDisableSmoothLines", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("width", Value(1));
-	i.set_Code(INTRINSIC_LAMBDA {
-		float width = context.GetArg(0).FloatValue();
-		rlSetLineWidth(width);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetLineWidth", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(Value(rlGetLineWidth()));
-	});
-	raylibModule.SetValue("rlGetLineWidth", i.GetFunc());
-
-	// Render batch (rlgl)
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		rlDrawRenderBatchActive();
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlDrawRenderBatchActive", i.GetFunc());
-
-	// Get/set matrices (rlgl)
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(MatrixToValue(rlGetMatrixModelview()));
-	});
-	raylibModule.SetValue("rlGetMatrixModelview", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(MatrixToValue(rlGetMatrixProjection()));
-	});
-	raylibModule.SetValue("rlGetMatrixProjection", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("proj");
-	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix proj = ValueToMatrix(context.GetArg(0));
-		rlSetMatrixProjection(proj);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetMatrixProjection", i.GetFunc());
-
-	i = Intrinsic::Create("");
-	i.AddParam("view");
-	i.set_Code(INTRINSIC_LAMBDA {
-		Matrix view = ValueToMatrix(context.GetArg(0));
-		rlSetMatrixModelview(view);
-		return IntrinsicResult::Null;
-	});
-	raylibModule.SetValue("rlSetMatrixModelview", i.GetFunc());
 
 	// Scissor mode functions
 

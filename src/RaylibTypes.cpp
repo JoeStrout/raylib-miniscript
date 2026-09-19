@@ -211,13 +211,22 @@ const Value& ModelAnimationClass() {
 	return classValue;
 }
 
+// A frozen Vector3 map, for a class default.  Instances inherit these maps
+// rather than copying them, so without freezing, `cam.position.y = 5` on a new
+// camera would change the default for every camera.
+static Value FrozenVector3(Vector3 v) {
+	Value result = Vector3ToValue(v);
+	result.Freeze();
+	return result;
+}
+
 const Value& Camera3DClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("position"), Vector3ToValue(Vector3{0, 10, 10}));
-		map.SetValue(String("target"), Vector3ToValue(Vector3{0, 0, 0}));
-		map.SetValue(String("up"), Vector3ToValue(Vector3{0, 1, 0}));
+		map.SetValue(String("position"), FrozenVector3(Vector3{0, 10, 10}));
+		map.SetValue(String("target"), FrozenVector3(Vector3{0, 0, 0}));
+		map.SetValue(String("up"), FrozenVector3(Vector3{0, 1, 0}));
 		map.SetValue(String("fovy"), Value(45.0));
 		map.SetValue(String("projection"), Value(CAMERA_PERSPECTIVE));
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage

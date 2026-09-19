@@ -239,6 +239,17 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("UnloadWaveSamples", i.GetFunc());
 
+	i = Intrinsic::Create("");
+	i.AddParam("wave");
+	i.AddParam("fileName");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Wave wave = ValueToWave(context.GetArg(0));
+		String path;
+		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
+		return IntrinsicResult(ExportWave(wave, path.c_str()));
+	});
+	raylibModule.SetValue("ExportWave", i.GetFunc());
+
 	// Wave manipulation
 
 	i = Intrinsic::Create("");
