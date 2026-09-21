@@ -165,7 +165,7 @@ end function
 // Add a width x height block whose bottom edge is at y; return its top.
 block = function(world, x, y, width, height)
 	b = world.addBox(x, y - height / 2, width, height)
-	b.shapes[0].setFriction 0.6
+	b.shapes[0].friction = 0.6
 	b.shapes[0].color = woodColor
 	return y - height
 end function
@@ -188,7 +188,7 @@ makeWorld = function
 	w = P.World.make(0, gravity)
 	sw = rl.GetScreenWidth
 	ground = w.addBox(sw / 2, groundTop + 20, sw, 40, P.STATIC)
-	ground.shapes[0].setFriction 0.8
+	ground.shapes[0].friction = 0.8
 	ground.shapes[0].color = groundColor
 	x = sw * 0.72
 	buildStructure w, x, groundTop
@@ -204,11 +204,11 @@ end function
 loadBall = function(world)
 	b = world.addBody(sling[0], sling[1], P.KINEMATIC)
 	s = b.addCircle(ballRadius, 0, 0, 4)
-	s.setRestitution 0.3
-	s.setFriction 0.5
+	s.restitution = 0.3
+	s.friction = 0.5
 	s.color = ballColor
 	s.data = "ball"
-	b.setDamping 0, 1   // (so it eventually stops rolling)
+	b.damping = [0, 1]   // (so it eventually stops rolling)
 	return b
 end function
 
@@ -386,7 +386,7 @@ run = function
 					dx *= maxPull / d; dy *= maxPull / d
 					d = maxPull
 				end if
-				ball.setPosition sling[0] + dx, sling[1] + dy
+				ball.position = [sling[0] + dx, sling[1] + dy]
 				// Creak as the band stretches (but not as it relaxes).
 				if d > pullDist then stretch += d - pullDist
 				pullDist = d
@@ -399,8 +399,8 @@ run = function
 				if not rl.IsMouseButtonDown(rl.MOUSE_BUTTON_LEFT) then
 					aiming = false
 					if d > 10 then
-						ball.setType P.DYNAMIC
-						ball.setVelocity(-dx * launchScale, -dy * launchScale)
+						ball.type = P.DYNAMIC
+						ball.velocity = [-dx * launchScale, -dy * launchScale]
 						// woosh: faster launches are louder and higher
 						rl.SetSoundVolume woosh, 0.2 + 0.8 * d / maxPull
 						rl.SetSoundPitch woosh, 0.6 + 0.8 * d / maxPull
@@ -409,7 +409,7 @@ run = function
 						shots += 1
 						reloadTime = time + reloadDelay
 					else
-						ball.setPosition sling[0], sling[1]
+						ball.position = [sling[0], sling[1]]
 					end if
 				end if
 			end if

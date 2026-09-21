@@ -77,7 +77,15 @@ struct MatrixData {
 ### `rows` / `columns`
 
 Plain map entries, written by the C++ side on every resize. Keeps `m.rows` syntax and
-map-lookup speed. Documented as read-only; assigning them desyncs from the handle.
+map-lookup speed. A plain store would desync them from the handle, so each has a
+**property setter** (`"rows="`, `"columns="`, and `"size="` for the pair) that resizes
+instead: `m.rows = 5` is `m.resize(5, m.columns)`. They are installed on the class map
+by host code, which the VM's setter cache cannot see on its own, so the class is stamped
+with `NoteSetterDefined` once it is wrapped (see `src/HostSetters.h`).
+
+`capacity` gets a **null setter**, making it read-only by name: capacity is always a
+whole number of rows, and there is no element count worth assigning. Grow it with
+`m.reserve`.
 
 ### `==` gotcha (document prominently)
 
@@ -216,7 +224,8 @@ Matrix.fromRawData(rd, dtype="auto", startPos=0, rows=null, columns=null)
 ### Shape
 
 ```
-m.rows, m.columns                  // map entries, read-only; number of rows and columns
+m.rows, m.columns                  // map entries; number of rows and columns
+m.size                             // [rows, columns]
 m.capacity                         // read-only report on current element capacity
 ```
 
@@ -228,6 +237,8 @@ conveniences, so a hypothetical N-D future wouldn't break the shape API.  We'll 
 ```
 m.reshape(rows, columns)           // in place, O(1); null infers one dimension
 m.resize(rows, columns)            // preserve overlapping submatrix, zero-fill growth
+m.size = [rows, columns]           // the same resize, as an assignment
+m.rows = n, m.columns = n          // likewise, one dimension at a time
 m.reserve(rows)                    // pre-allocate, no visible change
 m.removeRow(index)                 // order-preserving, O((rows-index)*columns)
 m.removeRowFast(index)             // swap-with-last, O(columns) — REORDERS

@@ -260,6 +260,30 @@ matches z2, 0, 2, [], "resizing to zero rows empties it"
 ok isErr(g.resize(-1, 2)), "a negative size is an error"
 
 print
+print "-- the shape setters (rows=, columns=, size=) --"
+// In a function: a top-level local would hold a matrix alive into the
+// storage-reclaimed checks at the end of this file.
+shapeSetterTests = function
+	// These are the same operation as resize, so this checks that they are
+	// wired to it, and that the map entries stay in step with the buffer.
+	// (Their error paths halt at the assignment, by design, so they are not
+	// testable from here.)
+	g = Matrix.fromList([[1,2],[3,4]])
+	g.rows = 3
+	matches g, 3, 2, [1,2,3,4,0,0], "m.rows = n grows like resize"
+	g.rows = 1
+	matches g, 1, 2, [1,2], "m.rows = n shrinks like resize"
+	g.columns = 3
+	matches g, 1, 3, [1,2,0], "m.columns = n re-lays out the rows"
+	g.size = [2, 2]
+	matches g, 2, 2, [1,2,0,0], "m.size = [rows, columns] sets both"
+	eq g.size, [2,2], "m.size reads back what was assigned"
+	g.fill 5
+	eq g.toFlatList, [5,5,5,5], "the buffer really is the shape the map reports"
+end function
+shapeSetterTests
+
+print
 print "-- reserve (capacity without a visible change) --"
 p = Matrix.ofSize(2, 3, 9)
 before = p.capacity

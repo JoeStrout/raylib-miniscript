@@ -31,7 +31,7 @@ dropShape = function(world, kind, x, y)
 	b = world.addBody(x, y, P.DYNAMIC, rnd * 2 * pi)
 	if kind == 1 then
 		b.addCircle 12 + rnd * 20
-		b.shapes[0].setRestitution 0.5
+		b.shapes[0].restitution = 0.5
 	else if kind == 2 then
 		b.addBox 20 + rnd * 40, 20 + rnd * 40
 	else if kind == 3 then
@@ -76,7 +76,7 @@ makeWorld = function
 	peg.addBox 120, 12, 0, 0, 0.8
 	// a spinning kinematic paddle
 	paddle = w.addBox(sw * 0.55, sh * 0.35, 160, 14, P.KINEMATIC)
-	paddle.setAngularVelocity 1.5
+	paddle.angularVelocity = 1.5
 	for kind in range(1, 5)
 		dropShape w, kind, 150 + kind * 120, 80
 	end for
@@ -126,8 +126,8 @@ run = function
 			o = grabbed.position; a = grabbed.angle
 			gx = o[0] + cos(a) * grabLocal[0] - sin(a) * grabLocal[1]
 			gy = o[1] + sin(a) * grabLocal[0] + cos(a) * grabLocal[1]
-			grabbed.setVelocity 15 * (mx - gx), 15 * (my - gy)
-			grabbed.setAngularVelocity grabbed.angularVelocity * 0.9
+			grabbed.velocity = [15 * (mx - gx), 15 * (my - gy)]
+			grabbed.angularVelocity = grabbed.angularVelocity * 0.9
 		end if
 		for kind in range(1, 5)
 			if rl.IsKeyPressed(rl.KEY_ZERO + kind) then dropShape world, kind, mx, my

@@ -320,6 +320,41 @@ static BinaryData* GetBinaryData(Context context) {
     return data;
 }
 
+// Resize this RawData's buffer, allocating it if it had none and releasing it
+// if the new size is zero.  Shared by rd.resize and the rd.len setter.
+static IntrinsicResult ResizeRawData(Context context, int newSize) {
+    if (newSize < 0) {
+        return raiseError(context, "size must be >= 0");
+    }
+
+    Value self = context.GetArg(0);
+    ValueDict map = self.GetDict();
+    BinaryData* oldData = GetBinaryData(context);
+
+    if (oldData != nullptr && oldData->length == newSize) {
+        return IntrinsicResult::Null;
+    }
+
+    if (newSize == 0) {
+        // Dropping the handle is the release: the finalizer deletes the
+        // BinaryData once nothing else refers to it.  Deleting it here
+        // instead would leave the handle dangling and double-free on sweep.
+        map.SetValue(kHandle(), Value::Null);
+        return IntrinsicResult::Null;
+    }
+
+    // Create new data or resize existing
+    if (oldData == nullptr) {
+        BinaryData* newData = new BinaryData(newSize);
+        map.SetValue(kHandle(), MakeHandle(newData));
+    } else {
+        if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
+        oldData->Resize(newSize);
+    }
+
+    return IntrinsicResult::Null;
+}
+
 const Value& RawDataClass() {
     static ValueDict rawDataClass;
     static Value classValue;   // wrapped and GC-rooted at the end of the build
@@ -345,40 +380,26 @@ const Value& RawDataClass() {
     f.AddParam("self");
     f.AddParam("bytes", 32);
     f.set_Code(INTRINSIC_LAMBDA {
-        int newSize = context.GetArg(1).IntValue();
-        if (newSize < 0) {
-            return raiseError(context, "bytes parameter must be >= 0");
-        }
-
-        Value self = context.GetArg(0);
-        ValueDict map = self.GetDict();
-        BinaryData* oldData = GetBinaryData(context);
-
-        if (oldData != nullptr && oldData->length == newSize) {
-            return IntrinsicResult::Null;
-        }
-
-        if (newSize == 0) {
-            // Dropping the handle is the release: the finalizer deletes the
-            // BinaryData once nothing else refers to it.  Deleting it here
-            // instead would leave the handle dangling and double-free on sweep.
-            map.SetValue(kHandle(), Value::Null);
-            return IntrinsicResult::Null;
-        }
-
-        // Create new data or resize existing
-        if (oldData == nullptr) {
-            BinaryData* newData = new BinaryData(newSize);
-            map.SetValue(kHandle(), MakeHandle(newData));
-        } else {
-            if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
-            oldData->Resize(newSize);
-        }
-
-        return IntrinsicResult::Null;
+        return ResizeRawData(context, context.GetArg(1).IntValue());
     });
     // resize this RawData object to the given number of bytes
     rawDataClass.SetValue(String("resize"), f.GetFunc());
+
+    // rd.len = n
+    //
+    // The same operation as rd.resize, spelled as an assignment.  resize stays:
+    // this class is Mini Micro's, and there is public code that calls it.
+
+    f = Intrinsic::Create("");
+    f.AddParam("self");
+    f.AddParam("value");
+    f.set_Code(INTRINSIC_LAMBDA {
+        Value v = context.GetArg(1);
+        if (v.Type() != ValueType::Number) return raiseError(context, "number required");
+        return ResizeRawData(context, v.IntValue());
+    });
+    // set the size of this RawData object in bytes (same as resize)
+    rawDataClass.SetValue(String("len="), f.GetFunc());
 
     f = Intrinsic::Create("");
     f.AddParam("self");

@@ -363,6 +363,71 @@ static bool ApplyCallback(Context context, MatrixData* m, Value fn,
 	return true;
 }
 
+// Change the shape to newRows x newCols, keeping the top-left block and
+// zero-filling anything new.  Shared by m.resize and by the rows/columns/size
+// setters, which are the same operation spelled as an assignment.  `who` names
+// the caller in any error message.  Returns false and sets *outErr on failure.
+static bool ResizeMatrix(MatrixData* m, int newRows, int newCols, const char* who, Value* outErr) {
+	char msg[128];
+	if (newRows < 0 || newCols < 0) {
+		snprintf(msg, sizeof(msg), "%s: rows and columns must be >= 0", who);
+		*outErr = ErrorTypes::RuntimeError(String(msg));
+		return false;
+	}
+	long needed = (long)newRows * (long)newCols;
+	if (needed > kMaxMatrixElems) {
+		snprintf(msg, sizeof(msg), "%s: requested size exceeds the maximum matrix size", who);
+		*outErr = ErrorTypes::RuntimeError(String(msg));
+		return false;
+	}
+
+	if (newCols == m->columns) {
+		// Stride unchanged: rows keep their positions.
+		if (!EnsureCapacity(m, needed)) {
+			snprintf(msg, sizeof(msg), "%s: out of memory", who);
+			*outErr = ErrorTypes::RuntimeError(String(msg));
+			return false;
+		}
+		// Zero any newly-live region.  EnsureCapacity only zeroes capacity
+		// it just added, and a shrink-then-grow would otherwise resurrect
+		// the old contents of rows that had gone out of the live region.
+		if (newRows > m->rows && m->data != nullptr) {
+			long from = (long)m->rows * m->columns;
+			memset(m->data + from, 0, (size_t)(needed - from) * sizeof(double));
+		}
+		m->rows = newRows;
+	} else {
+		// Stride changes, so every row moves: lay out a fresh buffer.
+		// Capacity never shrinks, so the new buffer is at least as large
+		// as the old one.
+		long cap = needed > m->capacityElems ? needed : m->capacityElems;
+		if (cap > kMaxMatrixElems) cap = kMaxMatrixElems;
+		double* nd = nullptr;
+		if (cap > 0) {
+			nd = AllocElems(cap);
+			if (nd == nullptr) {
+				snprintf(msg, sizeof(msg), "%s: out of memory", who);
+				*outErr = ErrorTypes::RuntimeError(String(msg));
+				return false;
+			}
+		}
+		int copyRows = newRows < m->rows ? newRows : m->rows;
+		int copyCols = newCols < m->columns ? newCols : m->columns;
+		for (int r = 0; r < copyRows; r++) {
+			memcpy(nd + (long)r * newCols,
+			       m->data + (long)r * m->columns,
+			       (size_t)copyCols * sizeof(double));
+		}
+		free(m->data);
+		m->data = nd;
+		m->capacityElems = cap;
+		m->rows = newRows;
+		m->columns = newCols;
+	}
+	*outErr = Value::Null;
+	return true;
+}
+
 //--------------------------------------------------------------------------------
 // The Matrix class
 //--------------------------------------------------------------------------------
@@ -974,55 +1039,7 @@ const Value& MatrixClass() {
 		if (!vc.IsNull() && vc.Type() != ValueType::Number) return IntrinsicResult(ErrorTypes::TypeError("number", vc));
 		int newRows = vr.IsNull() ? m->rows : vr.IntValue();
 		int newCols = vc.IsNull() ? m->columns : vc.IntValue();
-		if (newRows < 0 || newCols < 0) {
-			return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.resize: rows and columns must be >= 0"));
-		}
-		long needed = (long)newRows * (long)newCols;
-		if (needed > kMaxMatrixElems) {
-			return IntrinsicResult(ErrorTypes::RuntimeError(
-				"Matrix.resize: requested size exceeds the maximum matrix size"));
-		}
-
-		if (newCols == m->columns) {
-			// Stride unchanged: rows keep their positions.
-			if (!EnsureCapacity(m, needed)) {
-				return IntrinsicResult(ErrorTypes::RuntimeError("Matrix.resize: out of memory"));
-			}
-			// Zero any newly-live region.  EnsureCapacity only zeroes capacity
-			// it just added, and a shrink-then-grow would otherwise resurrect
-			// the old contents of rows that had gone out of the live region.
-			if (newRows > m->rows && m->data != nullptr) {
-				long from = (long)m->rows * m->columns;
-				memset(m->data + from, 0, (size_t)(needed - from) * sizeof(double));
-			}
-			m->rows = newRows;
-		} else {
-			// Stride changes, so every row moves: lay out a fresh buffer.
-			// Capacity never shrinks, so the new buffer is at least as large
-			// as the old one.
-			long cap = needed > m->capacityElems ? needed : m->capacityElems;
-			if (cap > kMaxMatrixElems) cap = kMaxMatrixElems;
-			double* nd = nullptr;
-			if (cap > 0) {
-				nd = AllocElems(cap);
-				if (nd == nullptr) {
-					return IntrinsicResult(ErrorTypes::RuntimeError("Matrix.resize: out of memory"));
-				}
-			}
-			int copyRows = newRows < m->rows ? newRows : m->rows;
-			int copyCols = newCols < m->columns ? newCols : m->columns;
-			for (int r = 0; r < copyRows; r++) {
-				memcpy(nd + (long)r * newCols,
-				       m->data + (long)r * m->columns,
-				       (size_t)copyCols * sizeof(double));
-			}
-			free(m->data);
-			m->data = nd;
-			m->capacityElems = cap;
-			m->rows = newRows;
-			m->columns = newCols;
-		}
+		if (!ResizeMatrix(m, newRows, newCols, "Matrix.resize", &err)) return IntrinsicResult(err);
 		Value self = context.GetVar("self");
 		SyncShape(self, m);
 		return IntrinsicResult(self);
@@ -2014,6 +2031,70 @@ const Value& MatrixClass() {
 	});
 	matrixClass.SetValue(String("size"), f.GetFunc());
 
+	// m.size = [rows, columns], m.rows = n, m.columns = n
+	//
+	// `rows` and `columns` are plain map entries (see above), so without these
+	// setters an assignment would store a number beside a buffer that never
+	// changed, and every later reader -- script or intrinsic -- would work from
+	// a shape that is simply a lie.  Assigning one resizes instead, exactly as
+	// m.resize does: the top-left block survives and anything new is zero.
+	//
+	// Set the shape, keeping the top-left block and zero-filling any new elements
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("value");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		Value v = context.GetVar("value");
+		if (v.Type() != ValueType::List) return IntrinsicResult(ErrorTypes::TypeError("list", v));
+		ValueList dims = v.GetList();
+		if (dims.Count() != 2 || dims[0].Type() != ValueType::Number
+		    || dims[1].Type() != ValueType::Number) {
+			return IntrinsicResult(ErrorTypes::RuntimeError(
+				"Matrix.size: expected [rows, columns]"));
+		}
+		if (!ResizeMatrix(m, dims[0].IntValue(), dims[1].IntValue(), "Matrix.size", &err)) {
+			return IntrinsicResult(err);
+		}
+		SyncShape(context.GetVar("self"), m);
+		return IntrinsicResult::Null;
+	});
+	matrixClass.SetValue(String("size="), f.GetFunc());
+
+	// Set the number of rows, keeping the top-left block and zero-filling any new elements
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("value");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int rows;
+		if (!IntArg(context, "value", &rows, &err)) return IntrinsicResult(err);
+		if (!ResizeMatrix(m, rows, m->columns, "Matrix.rows", &err)) return IntrinsicResult(err);
+		SyncShape(context.GetVar("self"), m);
+		return IntrinsicResult::Null;
+	});
+	matrixClass.SetValue(String("rows="), f.GetFunc());
+
+	// Set the number of columns, keeping the top-left block and zero-filling any new elements
+	f = Intrinsic::Create("");
+	f.AddParam("self");
+	f.AddParam("value");
+	f.set_Code(INTRINSIC_LAMBDA {
+		Value err;
+		MatrixData* m = SelfMatrix(context, &err);
+		if (m == nullptr) return IntrinsicResult(err);
+		int columns;
+		if (!IntArg(context, "value", &columns, &err)) return IntrinsicResult(err);
+		if (!ResizeMatrix(m, m->rows, columns, "Matrix.columns", &err)) return IntrinsicResult(err);
+		SyncShape(context.GetVar("self"), m);
+		return IntrinsicResult::Null;
+	});
+	matrixClass.SetValue(String("columns="), f.GetFunc());
+
 	// m.capacity -> current element capacity (read-only report)
 	// Get how many elements the matrix can hold without reallocating
 	f = Intrinsic::Create("");
@@ -2025,6 +2106,11 @@ const Value& MatrixClass() {
 		return IntrinsicResult(Value((double)m->capacityElems));
 	});
 	matrixClass.SetValue(String("capacity"), f.GetFunc());
+
+	// Capacity is always a whole number of rows (reserve takes rows, and every
+	// resize path keeps it that way), so there is no sensible element count to
+	// assign.  Grow it with m.reserve instead; this just refuses, by name.
+	matrixClass.SetValue(String("capacity="), Value::Null);
 
 	// Register the class under a short name.  Value.CodeForm consults it when
 	// stringifying an __isa entry, which is the difference between str(m)

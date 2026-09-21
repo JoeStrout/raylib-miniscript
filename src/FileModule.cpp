@@ -552,6 +552,16 @@ void AddFileModuleIntrinsics() {
 	i.set_Code(&intrinsic_chdir);
 	fileModule.SetValue("setdir", i.GetFunc());
 
+	// The same change of directory, spelled as an assignment: file.curdir = p.
+	// setdir stays too -- this module is Mini Micro's, and there is public code
+	// that calls it -- so these two are deliberately the same thing twice.
+	//
+	// Change current working directory (same as setdir)
+	i = Intrinsic::Create("");
+	i.AddParam("path");
+	i.set_Code(&intrinsic_chdir);
+	fileModule.SetValue("curdir=", i.GetFunc());
+
 	// Get list of file and directory names in the given directory
 	i = Intrinsic::Create("");
 	i.AddParam("path");
@@ -741,6 +751,16 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("pos", Value::zero);
 	i.set_Code(&intrinsic_fseek);
 	fileHandleClass.SetValue("seek", i.GetFunc());
+
+	// The same seek, spelled as an assignment: f.position = n.  seek stays,
+	// for the same reason file.setdir does.
+	//
+	// Move the read/write position within the file (same as seek)
+	i = Intrinsic::Create("");
+	i.AddParam("self");
+	i.AddParam("pos", Value::zero);
+	i.set_Code(&intrinsic_fseek);
+	fileHandleClass.SetValue("position=", i.GetFunc());
 
 	// Get whether the file position is at the end of the file
 	i = Intrinsic::Create("");

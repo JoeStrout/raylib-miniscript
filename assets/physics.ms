@@ -100,8 +100,10 @@ end function
 // vertex matrix -- see World.  That is where its world-space geometry is;
 // read it with worldCenter, worldVertices and bounds.
 //
-// Set friction, restitution, category and mask before adding the shape to a
-// body, or use the set methods after; assigning them after has no effect.
+// friction, restitution, category, mask and density may be assigned at any
+// time, before or after the shape is added to a body; so may a circle's
+// radius.  (A circle's ox/oy and a polygon's vertices may not: they are set
+// when the shape is made.)
 //----------------------------------------------------------------------
 
 Shape = {}
@@ -118,25 +120,38 @@ Shape.color = null      // for debug drawing; null for the default
 Shape.data = null       // for your own use
 
 // Write one column of this shape's row in the shape matrix, if it has one.
-Shape.setColumn = function(column, value)
+Shape.writeColumn = function(column, value)
 	if self.body == null or self.body.world == null then return
 	self.body.world.shapeData.setElem self.row, column, value
 end function
 
-Shape.setFriction = function(friction)
-	self.friction = friction
-	self.setColumn physicsCore.ShapeFriction, friction
+// The engine works from the shape matrix, not from these keys, so assigning
+// one has to update the row too (once the shape is in a world).
+Shape["friction="] = function(value)
+	super.friction = value
+	self.writeColumn physicsCore.ShapeFriction, value
 end function
 
-Shape.setRestitution = function(restitution)
-	self.restitution = restitution
-	self.setColumn physicsCore.ShapeRestitution, restitution
+Shape["restitution="] = function(value)
+	super.restitution = value
+	self.writeColumn physicsCore.ShapeRestitution, value
 end function
 
-Shape.setFilter = function(category=1, mask=65535)
-	self.category = category; self.mask = mask
-	self.setColumn physicsCore.ShapeCategory, category
-	self.setColumn physicsCore.ShapeMask, mask
+Shape["category="] = function(value)
+	super.category = value
+	self.writeColumn physicsCore.ShapeCategory, value
+end function
+
+Shape["mask="] = function(value)
+	super.mask = value
+	self.writeColumn physicsCore.ShapeMask, value
+end function
+
+// The density decides the body's mass, center of mass and inertia, so
+// changing it means working those out again.
+Shape["density="] = function(value)
+	super.density = value
+	if self.body != null then self.body.updateMass
 end function
 
 // World bounding box, as [minX, minY, maxX, maxY].
@@ -147,11 +162,20 @@ Shape.bounds = function
 	r = w.shapeData.getRow(self.row)
 	return [r[C.ShapeMinX], r[C.ShapeMinY], r[C.ShapeMaxX], r[C.ShapeMaxY]]
 end function
+Shape["bounds="] = null
 
 Circle = new Shape
 Circle.kind = CIRCLE
 Circle.radius = 1
 Circle.ox = 0; Circle.oy = 0    // center, relative to body origin
+
+// The radius is in the shape matrix as well as here, and it decides the mass,
+// so changing it means updating both -- the same two jobs density= has.
+Circle["radius="] = function(value)
+	super.radius = value
+	self.writeColumn physicsCore.ShapeRadius, value
+	if self.body != null then self.body.updateMass
+end function
 
 Circle.make = function(radius, ox=0, oy=0, density=1)
 	c = new Circle
@@ -168,6 +192,7 @@ Circle.worldCenter = function
 	r = w.shapeData.getRow(self.row)
 	return [r[physicsCore.ShapeCx], r[physicsCore.ShapeCy]]
 end function
+Circle["worldCenter="] = null
 
 // Returns [mass, centroidX, centroidY, inertia about the body origin].
 Circle.massInfo = function
@@ -177,8 +202,8 @@ end function
 
 // Store the center relative to the body's center of mass (lcx, lcy).
 Circle.setCenterOfMass = function(lcx, lcy)
-	self.setColumn physicsCore.ShapeLx, self.ox - lcx
-	self.setColumn physicsCore.ShapeLy, self.oy - lcy
+	self.writeColumn physicsCore.ShapeLx, self.ox - lcx
+	self.writeColumn physicsCore.ShapeLy, self.oy - lcy
 end function
 
 Polygon = new Shape
@@ -224,6 +249,7 @@ Polygon.worldVertices = function
 	end for
 	return result
 end function
+Polygon["worldVertices="] = null
 
 // A width x height box centered on (ox, oy), rotated by angle.
 Polygon.makeBox = function(width, height, ox=0, oy=0, angle=0, density=1)
@@ -274,10 +300,9 @@ end function
 // Body
 //
 // A body's position, angle, velocity and so on live in its world's state
-// matrices (see World), in row self.index.  Read them through the methods
-// below -- b.x, b.y, b.angle, b.vx, b.vy, b.angularVelocity -- and change them
-// with the set methods.  Don't assign b.x etc. directly; that would just hide
-// the method.
+// matrices (see World), in row self.index.  They are ordinary properties --
+// b.position, b.x, b.y, b.angle, b.velocity, b.vx, b.vy, b.angularVelocity --
+// and reading or assigning one reads or writes that row.
 //
 // The body's position is its origin, the point its shapes were placed
 // relative to.  Internally the engine tracks the center of mass instead;
@@ -373,7 +398,7 @@ Body.updateMass = function
 	for s in self.shapes
 		s.setCenterOfMass self.lcx, self.lcy
 	end for
-	self.setPosition ox, oy
+	self.position = [ox, oy]
 	self.updateInvMass
 end function
 
@@ -388,95 +413,121 @@ Body.updateInvMass = function
 	w.gravMask.setElem i, 0, self.gravityScale * (self.type == DYNAMIC)
 end function
 
-Body.setType = function(type)
-	self.type = type
-	if type == STATIC then self.world.vel.setRow self.index, 0
+// STATIC, KINEMATIC or DYNAMIC.
+Body["type="] = function(value)
+	super.type = value
+	if value == STATIC then self.world.vel.setRow self.index, 0
 	self.updateInvMass
-	self.world.movingMask.setElem self.index, 0, type != STATIC
+	self.world.movingMask.setElem self.index, 0, value != STATIC
 	self.world.markDirty self
 end function
 
-Body.setFixedRotation = function(fixed=true)
-	self.fixedRotation = fixed
-	if fixed then self.world.vel.setElem self.index, 2, 0
+Body["fixedRotation="] = function(value)
+	super.fixedRotation = value
+	if value then self.world.vel.setElem self.index, 2, 0
 	self.updateInvMass
 end function
 
-Body.setGravityScale = function(scale)
-	self.gravityScale = scale
+Body["gravityScale="] = function(value)
+	super.gravityScale = value
 	self.updateInvMass
 end function
 
-Body.setDamping = function(linear=0, angular=0)
-	self.world.damping.setRow self.index, [linear, linear, angular]
-	if linear != 0 or angular != 0 then self.world.hasDamping = true
+// Damping rates, as [linear, angular].
+Body.damping = function
+	d = self.world.damping.getRow(self.index)
+	return [d[0], d[2]]
 end function
 
-// Position of the body origin, as [x, y].
+Body["damping="] = function(value)
+	self.world.damping.setRow self.index, [value[0], value[0], value[1]]
+	if value[0] != 0 or value[1] != 0 then self.world.hasDamping = true
+end function
+
+// Position of the body origin, as [x, y].  Assigning it moves the body.
 Body.position = function
 	p = self.world.pos.getRow(self.index)
 	c = cos(p[2]); s = sin(p[2])
 	return [p[0] - (c*self.lcx - s*self.lcy), p[1] - (s*self.lcx + c*self.lcy)]
 end function
 
+Body["position="] = function(value)
+	a = self.angle
+	c = cos(a); s = sin(a)
+	self.world.pos.setRow self.index, [value[0] + c*self.lcx - s*self.lcy,
+	  value[1] + s*self.lcx + c*self.lcy, a]
+	self.world.markDirty self
+end function
+
 Body.x = function
 	return self.position[0]
+end function
+
+Body["x="] = function(value)
+	self.position = [value, self.position[1]]
 end function
 
 Body.y = function
 	return self.position[1]
 end function
 
+Body["y="] = function(value)
+	self.position = [self.position[0], value]
+end function
+
+// Rotation of the body about its origin, in radians.
 Body.angle = function
 	return self.world.pos.getElem(self.index, 2)
 end function
 
-// Center of mass in world coordinates, as [x, y].
+Body["angle="] = function(value)
+	o = self.position
+	c = cos(value); s = sin(value)
+	self.world.pos.setRow self.index, [o[0] + c*self.lcx - s*self.lcy,
+	  o[1] + s*self.lcx + c*self.lcy, value]
+	self.world.markDirty self
+end function
+
+// Center of mass in world coordinates, as [x, y].  Read-only; it is where
+// the shapes put it.  Move the body with b.position instead.
 Body.centerOfMass = function
 	p = self.world.pos.getRow(self.index)
 	return [p[0], p[1]]
 end function
+Body["centerOfMass="] = null
 
 Body.velocity = function
 	v = self.world.vel.getRow(self.index)
 	return [v[0], v[1]]
 end function
 
+Body["velocity="] = function(value)
+	self.world.vel.setElem self.index, 0, value[0]
+	self.world.vel.setElem self.index, 1, value[1]
+end function
+
 Body.vx = function
 	return self.world.vel.getElem(self.index, 0)
+end function
+
+Body["vx="] = function(value)
+	self.world.vel.setElem self.index, 0, value
 end function
 
 Body.vy = function
 	return self.world.vel.getElem(self.index, 1)
 end function
 
+Body["vy="] = function(value)
+	self.world.vel.setElem self.index, 1, value
+end function
+
 Body.angularVelocity = function
 	return self.world.vel.getElem(self.index, 2)
 end function
 
-// Move the body so its origin is at (x, y).
-Body.setPosition = function(x, y)
-	a = self.angle
-	c = cos(a); s = sin(a)
-	self.world.pos.setRow self.index, [x + c*self.lcx - s*self.lcy, y + s*self.lcx + c*self.lcy, a]
-	self.world.markDirty self
-end function
-
-// Rotate the body about its origin.
-Body.setAngle = function(angle)
-	o = self.position
-	c = cos(angle); s = sin(angle)
-	self.world.pos.setRow self.index, [o[0] + c*self.lcx - s*self.lcy, o[1] + s*self.lcx + c*self.lcy, angle]
-	self.world.markDirty self
-end function
-
-Body.setVelocity = function(vx, vy)
-	self.world.vel.setElem self.index, 0, vx
-	self.world.vel.setElem self.index, 1, vy
-end function
-
-Body.setAngularVelocity = function(w)
-	self.world.vel.setElem self.index, 2, w
+Body["angularVelocity="] = function(value)
+	self.world.vel.setElem self.index, 2, value
 end function
 
 // Velocity of a world point (px, py) attached to the body, as [vx, vy].
@@ -601,7 +652,6 @@ World.addBody = function(x=0, y=0, type=null, angle=0)
 	b.world = self
 	b.id = self.nextId
 	self.nextId += 1
-	b.type = type
 	b.shapes = []
 	b.index = self.bodies.len
 	self.bodies.push b
@@ -609,8 +659,7 @@ World.addBody = function(x=0, y=0, type=null, angle=0)
 		m.resize b.index + 1, m.columns
 	end for
 	self.pos.setRow b.index, [x, y, angle]
-	self.movingMask.setElem b.index, 0, type != STATIC
-	b.updateInvMass
+	b.type = type   // (fills in movingMask and invMass, once the row exists)
 	return b
 end function
 

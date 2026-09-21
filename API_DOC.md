@@ -957,6 +957,7 @@
 |-----|------------|---------|
 |curdir | |Get current working directory |
 |setdir |**path** |Change current working directory |
+|curdir= |**path** |Change current working directory (same as setdir) |
 |children |**path** |Get list of file and directory names in the given directory |
 |name |**path** |Get the filename (last path component) of a path string |
 |exists |**path** |Get whether a file or directory exists at the given path |
@@ -992,6 +993,7 @@
 |readLine | |Read the next line from the file |
 |position | |Get the current read/write position in the file |
 |seek |**pos**=0 |Move the read/write position within the file |
+|position= |**pos**=0 |Move the read/write position within the file (same as seek) |
 |atEnd | |Get whether the file position is at the end of the file |
 
 ## http module
@@ -1006,6 +1008,7 @@
 |-----|------------|---------|
 |len | |get the size of this RawData object in bytes |
 |resize |**bytes**=32 |resize this RawData object to the given number of bytes |
+|len= |**value** |set the size of this RawData object in bytes (same as resize) |
 |byte |**offset**=0 |get unsigned byte (0-255) at the given byte offset |
 |setByte |**offset**=0, **value**=0 |set unsigned byte at the given byte offset |
 |sbyte |**offset**=0 |get signed byte (-128 to 127) at the given byte offset |
@@ -1083,6 +1086,9 @@
 |readRawData |**rd**, **dtype**="auto", **startPos**=0 |Read data from a RawData buffer into this matrix, returning the position after what was read |
 |format |**fieldWidth**=10, **precision**, **columnSep**="", **rowSep** |Get the matrix as a human-readable table string |
 |size | |Get the shape of the matrix as [rows, columns] |
+|size= |**value** |Set the shape, keeping the top-left block and zero-filling any new elements |
+|rows= |**value** |Set the number of rows, keeping the top-left block and zero-filling any new elements |
+|columns= |**value** |Set the number of columns, keeping the top-left block and zero-filling any new elements |
 |capacity | |Get how many elements the matrix can hold without reallocating |
 
 ## physicsCore

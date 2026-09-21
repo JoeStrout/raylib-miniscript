@@ -92,9 +92,9 @@ buildSparse = function
 		else
 			b = w.addBox(x, y, 12, 12, P.DYNAMIC, rnd * pi)
 		end if
-		b.shapes[0].setRestitution 1
-		b.setVelocity 120 * (rnd - 0.5), 120 * (rnd - 0.5)
-		b.setAngularVelocity 4 * (rnd - 0.5)
+		b.shapes[0].restitution = 1
+		b.velocity = [120 * (rnd - 0.5), 120 * (rnd - 0.5)]
+		b.angularVelocity = 4 * (rnd - 0.5)
 	end for
 	return w
 end function
