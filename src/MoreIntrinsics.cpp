@@ -305,7 +305,10 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 		if (pair.second.fetch == fetch) {
 			pair.second.completed = true;
 			pair.second.status = fetch->status;
-			printf("import_fetch_completed: Fetch ID %ld completed with status %d\n", pair.first, fetch->status);
+			// 404 is the normal outcome of probing an import dir without the file.
+			if (fetch->status != 200 && fetch->status != 404) {
+				printf("import: fetch of %s failed with status %d\n", fetch->url, fetch->status);
+			}
 			break;
 		}
 	}
@@ -482,6 +485,9 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 			String dir = GetImportDir(i);
 			if (dir.empty()) break;
 			String path = dir + "/" + libname + ".ms";
+			// Probe first: LoadFileText logs a FILEIO warning on every miss,
+			// and most search dirs are expected to miss.
+			if (!FileExists(path.c_str())) continue;
 			char* text = LoadFileText(path.c_str());
 			if (text != nullptr) {
 				moduleSource = String(text);
