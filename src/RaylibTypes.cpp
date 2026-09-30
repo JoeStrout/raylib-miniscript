@@ -87,6 +87,9 @@ const Value& MusicClass() {
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("looping"), Value::zero);
+		map.SetValue(String("sampleRate"), Value::zero);
+		map.SetValue(String("sampleSize"), Value::zero);
+		map.SetValue(String("channels"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
 		Intrinsic::AddShortName(classValue, String("raylib.Music"));
@@ -100,6 +103,9 @@ const Value& SoundClass() {
 		ValueDict map;
 		map.SetValue(String("_handle"), Value::zero);
 		map.SetValue(String("frameCount"), Value::zero);
+		map.SetValue(String("sampleRate"), Value::zero);
+		map.SetValue(String("sampleSize"), Value::zero);
+		map.SetValue(String("channels"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
 		Intrinsic::AddShortName(classValue, String("raylib.Sound"));
@@ -401,6 +407,9 @@ Value MusicToValue(Music music) {
 	map.SetValue(String("_handle"), Value((double)(intptr_t)musicPtr));
 	map.SetValue(String("frameCount"), Value((int)music.frameCount));
 	map.SetValue(String("looping"), Value(music.looping ? 1 : 0));
+	map.SetValue(String("sampleRate"), Value((int)music.stream.sampleRate));
+	map.SetValue(String("sampleSize"), Value((int)music.stream.sampleSize));
+	map.SetValue(String("channels"), Value((int)music.stream.channels));
 	return DynamicMap(map);
 }
 
@@ -425,6 +434,9 @@ Value SoundToValue(Sound sound) {
 	map.SetValue(Value::magicIsA, SoundClass());
 	map.SetValue(String("_handle"), Value((double)(intptr_t)soundPtr));
 	map.SetValue(String("frameCount"), Value((int)sound.frameCount));
+	map.SetValue(String("sampleRate"), Value((int)sound.stream.sampleRate));
+	map.SetValue(String("sampleSize"), Value((int)sound.stream.sampleSize));
+	map.SetValue(String("channels"), Value((int)sound.stream.channels));
 	return DynamicMap(map);
 }
 
