@@ -2,7 +2,7 @@
 //  MoreIntrinsics.cpp
 //  raylib-miniscript
 //
-//  Additional intrinsics (import, exit, env) for the MiniScript environment.
+//  Additional intrinsics (import, exit, env, shellArgs) for the MiniScript environment.
 //
 
 #include "MoreIntrinsics.h"
@@ -153,6 +153,32 @@ static String ExpandVariables(String path) {
 		break;
 	}
 	return path;
+}
+
+//--------------------------------------------------------------------------------
+// Shell arguments
+//--------------------------------------------------------------------------------
+
+// The script path and the command-line arguments after it, as plain strings until
+// script first asks for them.  The list Value is then built, frozen (as in
+// command-line MiniScript 2), and rooted in one step, so there is no window in
+// which it exists but is unreachable -- the same trap envMapValue avoids.
+static std::vector<String> shellArgStrings;
+static Value shellArgsValue;
+
+void SetShellArgs(const std::vector<String>& args) {
+	shellArgStrings = args;
+}
+
+static IntrinsicResult intrinsic_shellArgs(Context context, IntrinsicResult partialResult) {
+	if (shellArgsValue.IsNull()) {
+		ValueList list;
+		for (size_t i = 0; i < shellArgStrings.size(); i++) list.Add(Value(shellArgStrings[i]));
+		shellArgsValue = DynamicList(list);
+		shellArgsValue.Freeze();
+		GCManager::AddRoot(shellArgsValue);
+	}
+	return IntrinsicResult(shellArgsValue);
 }
 
 static IntrinsicResult intrinsic_env(Context context, IntrinsicResult partialResult) {
@@ -741,6 +767,10 @@ void AddMoreIntrinsics() {
 	// Get a map of all environment variables
 	Intrinsic envFunc = Intrinsic::Create("env");
 	envFunc.set_Code(&intrinsic_env);
+
+	// Get the script path and the command-line arguments following it
+	Intrinsic shellArgsFunc = Intrinsic::Create("shellArgs");
+	shellArgsFunc.set_Code(&intrinsic_shellArgs);
 
 	// Load and run a MiniScript file in the current interpreter context
 	Intrinsic runFunc = Intrinsic::Create("run");

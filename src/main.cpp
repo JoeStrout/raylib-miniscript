@@ -392,6 +392,12 @@ int main(int argc, char *argv[]) {
 	if (!FileExists(defaultScript.c_str())) defaultScript = exeDir + "/assets/main.ms";
 	const char* scriptPath = args.scriptPath.empty() ? defaultScript.c_str() : args.scriptPath.c_str();
 
+	// shellArgs: the script path, then the script's own arguments, as in MS1.
+	std::vector<String> shellArgs;
+	shellArgs.push_back(String(scriptPath));
+	shellArgs.insert(shellArgs.end(), args.scriptArgs.begin(), args.scriptArgs.end());
+	SetShellArgs(shellArgs);
+
 	// MS_SCRIPT_DIR: directory containing the script being run
 	UpdateScriptDir(scriptPath);
 
@@ -428,6 +434,7 @@ int main(int argc, char *argv[]) {
 
 	// Load the main script
 #ifdef PLATFORM_WEB
+	SetShellArgs({ String("assets/main.ms") });
 	fetchScript("assets/main.ms");
 #else
 	loadScriptFromFile(scriptPath);

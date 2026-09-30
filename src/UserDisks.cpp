@@ -191,6 +191,8 @@ Args ParseArgs(int argc, char* argv[]) {
 			result.ignorePrefs = true;
 		} else if (result.scriptPath.empty()) {
 			result.scriptPath = String(a);
+		} else {
+			result.scriptArgs.push_back(String(a));
 		}
 	}
 	return result;

@@ -63,13 +63,15 @@ void LoadHostOptions(const String& payloadDir);
 // are a testing and scripting affordance, not a change to what the user chose.
 void MountAtBoot();
 
-// Command line, parsed by main before anything else here.  Unrecognized
-// arguments are left alone; the first one that is not ours is the script path.
+// Command line, parsed by main before anything else here.  Our own options are
+// recognized wherever they appear; the first argument that is not ours is the
+// script path, and the rest (in order) are the script's own, for shellArgs.
 struct Args {
 	String usrPath;         // -usr <path>
 	String usr2Path;        // -usr2 <path>
 	bool ignorePrefs = false;   // --ignore-prefs
 	String scriptPath;      // first non-option argument
+	std::vector<String> scriptArgs;   // non-option arguments after scriptPath
 };
 Args ParseArgs(int argc, char* argv[]);
 void SetArgs(const Args& args);

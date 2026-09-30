@@ -2,19 +2,25 @@
 //  MoreIntrinsics.h
 //  raylib-miniscript
 //
-//  Additional intrinsics (import, exit, env, run) for the MiniScript environment.
+//  Additional intrinsics (import, exit, env, shellArgs, run) for the MiniScript environment.
 //
 
 #ifndef MOREINTRINSICS_H
 #define MOREINTRINSICS_H
 
 #include "miniscript.h"
+#include <vector>
 
 namespace MiniScript { struct Interpreter; }
 
-/// Add the import, exit, env, and run intrinsics to the MiniScript environment.
+/// Add the import, exit, env, shellArgs, and run intrinsics to the MiniScript environment.
 /// Call after the interpreter is created.
 void AddMoreIntrinsics();
+
+/// Remember the list for the shellArgs intrinsic: the script path, then the
+/// arguments following it on the command line (as in MiniScript 1).  Call
+/// before the script runs; if never called, shellArgs is an empty list.
+void SetShellArgs(const std::vector<MiniScript::String>& args);
 
 /// Update the MS_SCRIPT_DIR environment variable to the directory containing
 /// the given file path.
