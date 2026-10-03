@@ -86,9 +86,7 @@ static int CubemapDataSize(int size, int format, int mipmapCount) {
 static rlRenderBatch* activeRenderBatch = nullptr;
 
 static rlRenderBatch* ValueToRenderBatch(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (rlRenderBatch*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return NativePtrFromMap<rlRenderBatch>(value);
 }
 
 // rlSetShader keeps the locs pointer it is given, so the locations must live
@@ -1010,7 +1008,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		rlRenderBatch batch = rlLoadRenderBatch(numBuffers, bufferElements);
 		if (batch.vertexBuffer == nullptr) return IntrinsicResult::Null;
 		ValueDict map;
-		map.SetValue(String("_handle"), PointerToValue(new rlRenderBatch(batch)));
+		map.SetValue(kHandleKey(), NewNativeHandle(batch));
 		map.SetValue(String("bufferCount"), Value(batch.bufferCount));
 		return IntrinsicResult(DynamicMap(map));
 	});
@@ -1020,15 +1018,13 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.AddParam("batch");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value batchValue = context.GetArg(0);
-		rlRenderBatch* batch = ValueToRenderBatch(batchValue);
+		rlRenderBatch* batch = TakeNative<rlRenderBatch>(batchValue);
 		if (batch == nullptr) return IntrinsicResult::Null;
 		if (batch == activeRenderBatch) {
 			rlSetRenderBatchActive(nullptr);
 			activeRenderBatch = nullptr;
 		}
 		rlUnloadRenderBatch(*batch);
-		delete batch;
-		batchValue.GetDict().SetValue(String("_handle"), Value::zero);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadRenderBatch", i.GetFunc());

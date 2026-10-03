@@ -38,15 +38,15 @@ const Value& Camera3DClass();
 void AddTypeClasses(ValueDict& raylibModule);
 
 // Convert a Raylib Texture to a MiniScript map
-// Allocates the Texture on the heap and stores pointer in _handle
+// Allocates the Texture on the heap and stores it in a GC handle in _handle
 Value TextureToValue(Texture texture);
 
 // Extract a Raylib Texture from a MiniScript map
-// Returns the Texture by dereferencing the _handle pointer
+// Returns the Texture from the _handle handle
 Texture ValueToTexture(Value value);
 
 // Convert a Raylib Image to a MiniScript map
-// Allocates the Image on the heap and stores pointer in _handle
+// Allocates the Image on the heap and stores it in a GC handle in _handle
 Value ImageToValue(Image image);
 
 // Extract a Raylib Image from a MiniScript map (read-only reference)
@@ -89,11 +89,11 @@ Value AudioStreamToValue(AudioStream stream);
 AudioStream ValueToAudioStream(Value value);
 
 // Convert a Raylib RenderTexture2D to a MiniScript map
-// Allocates the RenderTexture2D on the heap and stores pointer in _handle
+// Allocates the RenderTexture2D on the heap and stores it in a GC handle in _handle
 Value RenderTextureToValue(RenderTexture2D renderTexture);
 
 // Extract a Raylib RenderTexture2D from a MiniScript map
-// Returns the RenderTexture2D by dereferencing the _handle pointer
+// Returns the RenderTexture2D from the _handle handle
 RenderTexture2D ValueToRenderTexture(Value value);
 
 // Convert a Raylib Shader to a MiniScript map
@@ -202,15 +202,71 @@ Value RayToValue(Ray ray);
 // Convert a Raylib RayCollision to a MiniScript map
 Value RayCollisionToValue(RayCollision collision);
 
-// Convert a raw pointer to a MiniScript value
-inline Value PointerToValue(void* ptr) {
-	return Value((double)(intptr_t)ptr);
+// Native raylib structs live in GC handles (Value::NewHandle), which script code
+// cannot forge from a number.  A script can still copy a real handle, so two more
+// guards apply:
+//  - the finalizer pointer doubles as a type tag (each T has its own
+//    FreeNative<T>), so a Sound handle copied into an Image map is rejected;
+//  - `live` goes false on Unload*, so every copy of the handle dies together
+//    instead of dangling.
+// The finalizer frees only the box, never the raylib resource: resources are
+// still released by the explicit Unload* call.
+template<typename T> struct NativeBox { T obj; bool live; };
+
+template<typename T> void FreeNative(void* p) { delete (NativeBox<T>*)p; }
+
+// The "_handle" key, built lazily (a string Value can't be made at static-init
+// time) and GC-rooted.
+inline const Value& kHandleKey() {
+	static Value k = [] { Value v("_handle"); GCManager::AddRoot(v); return v; }();
+	return k;
 }
 
-// Convert a MiniScript value (containing a pointer) to a raw pointer
-inline void* ValueToPointer(Value v) {
-	return (void*)(intptr_t)v.DoubleValue();
+template<typename T> Value NewNativeHandle(const T& v) {
+	return Value::NewHandle(new NativeBox<T>{v, true}, &FreeNative<T>);
 }
+
+template<typename T> NativeBox<T>* NativeBoxOf(Value h) {
+	if (!h.IsHandle()) return nullptr;
+	GCHandle gh = GCManager::GetHandle(h);
+	if (gh.Callback != &FreeNative<T>) return nullptr;
+	return (NativeBox<T>*)gh.UserData;
+}
+
+// The live object behind a handle Value, or null.
+template<typename T> T* NativeHandlePtr(Value h) {
+	NativeBox<T>* box = NativeBoxOf<T>(h);
+	return (box && box->live) ? &box->obj : nullptr;
+}
+
+// The live object behind a map's _handle, or null.
+template<typename T> T* NativePtrFromMap(Value m) {
+	if (m.Type() != ValueType::Map) return nullptr;
+	return NativeHandlePtr<T>(m.GetDict().Lookup(kHandleKey(), Value::Null));
+}
+
+// As above, for a handle stored under another key of an already-extracted dict.
+template<typename T> T* NativePtrFromMapKey(ValueDict map, const String& key) {
+	return NativeHandlePtr<T>(map.Lookup(Value(key), Value::Null));
+}
+
+// For Unload*: mark the object dead and clear the map's _handle.  Returns the
+// object (valid until the GC frees the box), or null if it was already dead or
+// invalid -- so a counter decremented on a non-null result drops at most once.
+template<typename T> T* TakeNative(Value m) {
+	if (m.Type() != ValueType::Map) return nullptr;
+	ValueDict map = m.GetDict();
+	NativeBox<T>* box = NativeBoxOf<T>(map.Lookup(kHandleKey(), Value::Null));
+	if (!box || !box->live) return nullptr;
+	box->live = false;
+	map.SetValue(kHandleKey(), Value::Null);
+	return &box->obj;
+}
+
+// A raylib-allocated array of ModelAnimation (LoadModelAnimations).  Each item
+// map refers to the array through an `_arrayHandle`, plus an index; the count
+// comes from here, never from the (script-writable) `_arrayCount` field.
+struct ModelAnimationArray { ModelAnimation* anims; int count; };
 
 // Resource allocation counters (for leak detection by MiniScript users)
 extern int rcImage;

@@ -60,6 +60,21 @@ struct InterpHandle {
 	}
 };
 
+// What a script-visible "_handle" actually holds: a GC handle wrapping this box,
+// which script cannot forge from a number.  The box (not the InterpHandle) is
+// freed by the GC, and `h` is nulled by dispose so copies of the handle see
+// "disposed" instead of a dangling pointer.  An Interp that is never disposed
+// is still leaked, as before.  The finalizer pointer is also the type tag.
+struct InterpBox { InterpHandle* h; };
+static void FreeInterpBox(void* p) { delete (InterpBox*)p; }
+
+static InterpBox* BoxOf(Value handleVal) {
+	if (!handleVal.IsHandle()) return nullptr;
+	GCHandle gh = GCManager::GetHandle(handleVal);
+	if (gh.Callback != &FreeInterpBox) return nullptr;
+	return (InterpBox*)gh.UserData;
+}
+
 InterpHandle::InterpHandle() {
 	GCManager::RegisterMarkCallback(MarkRoots, this);
 }
@@ -123,11 +138,12 @@ static InterpHandle* GetHandle(Context context) {
 		return nullptr;
 	}
 	Value handleVal = self.GetDict().Lookup(kHandle(), Value::Null);
-	if (handleVal.Type() != ValueType::Number) {
+	InterpBox* box = BoxOf(handleVal);
+	if (box == nullptr || box->h == nullptr) {
 		context.vm.RaiseRuntimeError("Interp has been disposed");
 		return nullptr;
 	}
-	return (InterpHandle*)(intptr_t)handleVal.DoubleValue();
+	return box->h;
 }
 
 // Point a child's output at our capture buffers.
@@ -218,7 +234,7 @@ const Value& InterpClass() {
 
 		ValueDict inst;
 		inst.SetValue(Value::magicIsA, InterpClass());
-		inst.SetValue(kHandle(), Value((double)(intptr_t)h));
+		inst.SetValue(kHandle(), Value::NewHandle(new InterpBox{h}, &FreeInterpBox));
 		return IntrinsicResult(DynamicMap(inst));
 	});
 	// create a new child interpreter, with empty globals
@@ -230,13 +246,15 @@ const Value& InterpClass() {
 		Value self = context.GetArg(0);
 		if (self.Type() != ValueType::Map) return IntrinsicResult::Null;
 		Value handleVal = self.GetDict().Lookup(kHandle(), Value::Null);
-		if (handleVal.Type() != ValueType::Number) return IntrinsicResult::Null;
-		InterpHandle* h = (InterpHandle*)(intptr_t)handleVal.DoubleValue();
+		InterpBox* box = BoxOf(handleVal);
+		if (box == nullptr || box->h == nullptr) return IntrinsicResult::Null;
+		InterpHandle* h = box->h;
 		if (h == g_activeChild) {
 			context.vm.RaiseRuntimeError("cannot dispose an Interp while it is running");
 			return IntrinsicResult::Null;
 		}
 		delete h;
+		box->h = nullptr;
 		self.MapSet(kHandle(), Value::Null);
 		return IntrinsicResult::Null;
 	});
