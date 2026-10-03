@@ -191,10 +191,21 @@ void AddRTextMethods(ValueDict& raylibModule) {
 			font.glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
 			font.glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
 			font.glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
-			font.glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::Null));
+			// Copy the pixels: UnloadFont frees them, and the script's glyph images
+			// keep their own buffers (released by UnloadImage / UnloadFontData).
+			font.glyphs[i].image = ImageCopy(ValueToImage(glyphDict.Lookup(String("image"), Value::Null)));
 		}
 
-		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		if (!IsFontValid(font)) {
+			for (int i = 0; i < glyphCount; i++) UnloadImage(font.glyphs[i].image);
+			RL_FREE(font.glyphs);
+			RL_FREE(font.recs);
+			return IntrinsicResult::Null;
+		}
+		// The Font now owns the texture (UnloadFont releases it), so the script's own
+		// Texture value is retired: it can no longer be used or unloaded (which
+		// would free the same GL texture twice), and its count moves to the Font.
+		if (TakeNative<Texture2D>(context.GetArg(3)) != nullptr) rcTexture--;
 		rcFont++;
 		return IntrinsicResult(FontToValue(font));
 	});
@@ -556,9 +567,13 @@ void AddRTextMethods(ValueDict& raylibModule) {
 				glyphDict.SetValue(String("offsetX"), Value(glyphs[i].offsetX));
 				glyphDict.SetValue(String("offsetY"), Value(glyphs[i].offsetY));
 				glyphDict.SetValue(String("advanceX"), Value(glyphs[i].advanceX));
+				// The script now owns this pixel buffer (release with UnloadImage or UnloadFontData).
+				rcImage++;
 				glyphDict.SetValue(String("image"), ImageToValue(glyphs[i].image));
 				result.Add(DynamicMap(glyphDict));
 			}
+			// Free only the array: raylib's UnloadFontData would also free the images handed out above.
+			RL_FREE(glyphs);
 		}
 		return IntrinsicResult(DynamicList(result));
 	});
@@ -567,9 +582,19 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("glyphs");
 	i.set_Code(INTRINSIC_LAMBDA {
-		// In our implementation, glyphs is a list of dictionaries
-		// We don't need to explicitly free them as MiniScript manages the memory
-		// This is a no-op for our purposes
+		// glyphs is the list of maps returned by LoadFontData; each owns its image.
+		// Entries already unloaded (or not glyph maps) are skipped.
+		Value glyphsVal = context.GetArg(0);
+		if (glyphsVal.Type() != ValueType::List) return IntrinsicResult::Null;
+		ValueList glyphsList = glyphsVal.GetList();
+		for (int n = 0; n < glyphsList.Count(); n++) {
+			Value g = glyphsList[n];
+			if (g.Type() != ValueType::Map) continue;
+			Image* img = TakeNative<Image>(g.GetDict().Lookup(String("image"), Value::Null));
+			if (img == nullptr) continue;
+			UnloadImage(*img);
+			rcImage--;
+		}
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadFontData", i.GetFunc());

@@ -198,6 +198,40 @@ static void testInterpCopies() {
 	ok(errContains("disposed"), "using a copy after dispose is an error, not a dangling pointer");
 }
 
+static void testDrawElementsBuffer() {
+	printf("\n-- rlDrawVertexArrayElements refuses a nonzero buffer --\n");
+	run("raylib.rlDrawVertexArrayElements 0, 3, 12345\n");
+	ok(errContains("buffer must be 0"), "a script-supplied number is not turned into an address");
+	run("raylib.rlDrawVertexArrayElementsInstanced 0, 3, 12345, 1\n");
+	ok(errContains("buffer must be 0"), "...for the instanced variant too");
+	run("raylib.rlDrawVertexArrayElements -1, 3\n");
+	ok(errContains(">= 0"), "a negative offset is refused");
+}
+
+static void testFontData() {
+	printf("\n-- LoadFontData / UnloadFontData --\n");
+	int before = rcImage;
+	Interpreter a = run(
+		"data = raylib.LoadFileData(\"assets/Merkin.ttf\")\n"
+		"glyphs = raylib.LoadFontData(data, 16, null, 95, 0)\n"
+		"n = glyphs.len\n");
+	ok(g_err.empty(), "LoadFontData runs clean");
+	eqNum(readGlobal(a, "n"), 95, "...and returns 95 glyphs");
+	eqNum(Value(rcImage - before), 95, "...each counted as a live image");
+	a = run(
+		"data = raylib.LoadFileData(\"assets/Merkin.ttf\")\n"
+		"glyphs = raylib.LoadFontData(data, 16, null, 95, 0)\n"
+		"raylib.UnloadImage glyphs[0].image\n"
+		"raylib.UnloadFontData glyphs\n"
+		"raylib.UnloadFontData glyphs\n"
+		"raylib.UnloadFontData 42\n"
+		"survived = 1\n");
+	ok(g_err.empty(), "UnloadFontData after a manual UnloadImage, twice, and on junk, is not an error");
+	eqNum(readGlobal(a, "survived"), 1, "...and does not double free");
+	eqNum(Value(rcImage - before), 95, "...and releases every glyph image exactly once (first batch still live)");
+	rcImage = before;
+}
+
 int main() {
 	GCManager::Init();
 	value_init_constants();
@@ -211,6 +245,8 @@ int main() {
 	testUseAfterUnload();
 	testLegitimateUse();
 	testInterpCopies();
+	testDrawElementsBuffer();
+	testFontData();
 
 	printf("\n%d checks, %d failures\n", checks, failures);
 	return failures == 0 ? 0 : 1;

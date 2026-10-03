@@ -551,9 +551,9 @@
 |rlSetVertexAttributeDivisor |**index**, **divisor** |Set vertex attribute divisor |
 |rlSetVertexAttributeDefault |**locIndex**, **value**, **attribType**=RL_SHADER_ATTRIB_FLOAT, **count**=0 |Set shader value attribute |
 |rlDrawVertexArray |**offset**=0, **count** |Draw vertex array |
-|rlDrawVertexArrayElements |**offset**=0, **count**, **buffer**=0 |Draw vertex array elements |
+|rlDrawVertexArrayElements |**offset**=0, **count**, **buffer**=0 |Draw vertex array elements (buffer must be 0) |
 |rlDrawVertexArrayInstanced |**offset**=0, **count**, **instances**=1 |Draw vertex array instanced |
-|rlDrawVertexArrayElementsInstanced |**offset**=0, **count**, **buffer**=0, **instances**=1 |Draw vertex array elements instanced |
+|rlDrawVertexArrayElementsInstanced |**offset**=0, **count**, **buffer**=0, **instances**=1 |Draw vertex array elements instanced (buffer must be 0) |
 |rlLoadTexture |**data**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |data may be null for an empty texture |
 |rlLoadTextureDepth |**width**, **height**, **useRenderBuffer**=0 | |
 |rlLoadTextureCubemap |**data**, **size**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |or null for an empty cubemap |
