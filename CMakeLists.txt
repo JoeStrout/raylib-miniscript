@@ -126,6 +126,10 @@ if(EMSCRIPTEN)
         -sASYNCIFY
         -sFETCH=1
         -sALLOW_MEMORY_GROWTH=1
+        # Emscripten 6 backs growable memory with a resizable ArrayBuffer by default, and Chrome's
+        # TextDecoder refuses views of one: any string over 16 bytes passed to UTF8ToString (e.g. the
+        # window title in InitWindow) then throws "ArrayBuffer value must not be resizable".
+        -sGROWABLE_ARRAYBUFFERS=0
         -sTOTAL_MEMORY=67108864
         -sSTACK_SIZE=5242880
         -fexceptions

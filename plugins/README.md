@@ -80,6 +80,15 @@ endif()
 
 Leave plugins out of a build with `-DMS_DISABLE_PLUGINS="mything;other"`.
 
+## Optional dependencies
+
+A plugin that needs a system library finds it in `plugin.cmake` and degrades gracefully: define a macro when
+the library is there (`target_compile_definitions(raylib-miniscript PRIVATE HAVE_FOO=1)`), link it with
+`target_link_libraries(raylib-miniscript PkgConfig::FOO)` (use `pkg_check_modules(FOO IMPORTED_TARGET foo)`),
+and have `init` return `false` when it is missing so the build never fails and scripts can check
+`plugins.<name>.loaded`.  `plugins/video` does this for libvpx and libvorbis.  A web-only JavaScript half goes in
+a `web/` folder and is linked with `target_link_options(raylib-miniscript PRIVATE "SHELL:--pre-js ${PLUGIN_DIR}/web/<file>.js")`.
+
 ## Plugins outside this repo
 
 Some SDKs (Steamworks, most ad and purchase SDKs) can't be redistributed in a public tree.  Keep

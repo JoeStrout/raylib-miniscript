@@ -1106,3 +1106,4 @@
 Each plugin documents its own API, in an API.md next to its source.
 
 - [quadtree](plugins/quadtree/API.md)
+- [video](plugins/video/API.md)
