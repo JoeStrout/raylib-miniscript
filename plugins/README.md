@@ -22,8 +22,8 @@ pass `nullptr` for any you don't need (only `init` is required):
 static void Fill(MiniScript::ValueDict& m) { /* m.SetValue(String("fn"), f.GetFunc()); */ }
 
 static bool Init() {                       // once, at interpreter creation
-    PluginAddModule<&Fill>("mything");
-    return true;                           // false: unavailable on this run
+    return PluginAddModule<&Fill>("mything");   // false: name taken, or return false yourself
+                                           // when unavailable on this run
 }
 static void Update()   { }                 // every frame, main thread
 static void Reset()    { }                 // before the script (re)starts
@@ -32,24 +32,28 @@ static void Shutdown() { }                 // app closing (reverse load order)
 MS_PLUGIN(mything, "1.0", Init, Update, Reset, Shutdown)
 ```
 
-Because the compiler, not the build system, decides which hooks exist, they can sit inside
-`#ifdef` blocks, with `nullptr` in their place in the `MS_PLUGIN` line:
+To make a hook conditional, choose its name with `#define` *outside* the macro; a preprocessor
+directive inside the macro's arguments is undefined behavior and not portable:
 
 ```cpp
-MS_PLUGIN(mything, "1.0", Init,
 #ifdef PLATFORM_DESKTOP
-    Update,
+  #define MYTHING_UPDATE Update
 #else
-    nullptr,
+  #define MYTHING_UPDATE nullptr
 #endif
-    nullptr, Shutdown)
+MS_PLUGIN(mything, "1.0", Init, MYTHING_UPDATE, nullptr, Shutdown)
 ```
 (To leave a whole plugin out on a platform, set `MS_PLUGIN_SKIP` in `plugin.cmake` instead.)
 
 ### When init fails
 An SDK often can't start (Steam isn't running, the app wasn't launched from Steam).  Have `init`
 return `false`: the engine logs a warning, never calls the plugin's other hooks, and marks it
-unavailable.  Clean up after your own partial setup before returning false.
+unavailable.  Release any SDK resources you acquired.  Intrinsics cannot be unregistered, so pick
+one convention: call `PluginAddModule` last, only on success (the module then doesn't exist when
+unavailable), or register it always and have its functions fail safely (return `false`/null) when
+the SDK is unavailable, so a script that forgets to check doesn't crash.  Scripts should use
+`plugins.<name>.loaded` as the authoritative check.  `PluginAddModule` itself returns false (and
+logs an error) if the module name collides with an existing intrinsic; return that from `init`.
 
 ### Telling scripts what loaded
 A global `plugins` map lists every plugin that was built in, so one script can ship to Steam, itch
@@ -127,8 +131,14 @@ only what is between the markers.  Run it from the repo root: `./build/raylib-mi
   Push plain C++ structs onto a `PluginEventQueue<T>` (`src/PluginEvents.h`; thread-safe, bounded) from the
   SDK's callback, and have a script-callable `poll` return them with `PluginDrainEvents`, which builds
   the MiniScript maps on the main thread.  Pump the SDK itself (e.g. `SteamAPI_RunCallbacks`) in your update hook.
+- The queue's default (drop oldest when full) suits lossy events (overlay, ad status).  For purchases
+  and entitlements use `PluginEventQueue<T>(0)` (unbounded), expose `Dropped()` to scripts (e.g.
+  `iap.droppedEvents`), and don't finish a store transaction until the script acknowledges it;
+  StoreKit and Play Billing redeliver unfinished transactions, so a lost event is recoverable.
 - A `Value` you keep across frames (a stored callback, a cached map) must be GC-rooted: hold it in a
   `PluginRooted` (also in `src/PluginEvents.h`), or call `GCManager::AddRoot` yourself.
+  Call `Clear()` on each `PluginRooted` in your shutdown hook, and in your reset hook if it holds a
+  script's closure (so a dead script's callback isn't kept alive).
 - Never grant an in-app purchase entitlement on the client's "purchase succeeded" callback alone;
   verify the receipt on a server (the `http` module can make that call).
 - Log through raylib (`TraceLog(LOG_INFO / LOG_WARNING / LOG_ERROR, "MYTHING: ...", ...)`), not `printf`, so plugin messages follow the engine's log level and callback.

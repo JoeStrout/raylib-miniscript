@@ -12,27 +12,32 @@
 #define PLUGIN_H
 
 #include "miniscript.h"
+#include "raylib.h"
 
 // What a plugin provides, in one descriptor.  A plugin's plugin.cpp contains
-// exactly one MS_PLUGIN(...) line, naming its hooks; the preprocessor (not the
-// build system) decides which are null, so hooks may sit inside #ifdef blocks:
+// exactly one MS_PLUGIN(...) line, naming its hooks.  To make a hook conditional,
+// pick the name with #define OUTSIDE the macro (a directive inside the macro's
+// arguments is undefined behavior and not portable):
 //
 //     static bool Init() { ...; return true; }   // false: unavailable on this run
-//     MS_PLUGIN(steam, "1.0", Init,
 //     #ifdef PLATFORM_DESKTOP
-//         Update,
+//         #define STEAM_UPDATE Update
 //     #else
-//         nullptr,
+//         #define STEAM_UPDATE nullptr
 //     #endif
-//         nullptr, Shutdown)
+//     MS_PLUGIN(steam, "1.0", Init, STEAM_UPDATE, nullptr, Shutdown)
 //
 // The folder name <name> must be a valid C identifier.
 struct MSPluginHooks {
 	const char* version;     // reported to scripts by `plugins`; "" if none
 	bool (*init)();          // required: add intrinsics, once, at interpreter creation.
 	                         //   Return false if the plugin cannot work this run (Steam
-	                         //   not running...); it is then marked unavailable, its other
-	                         //   hooks never run, and it must undo its own partial setup.
+	                         //   not running...); it is then marked unavailable and its
+	                         //   other hooks never run.  Release any SDK resources you
+	                         //   acquired.  Intrinsics cannot be unregistered, so either
+	                         //   call PluginAddModule last (only on success), or register
+	                         //   always and have the functions fail safely (false/null)
+	                         //   when the SDK is unavailable.
 	void (*update)();        // optional: once per frame, on the main thread
 	void (*reset)();         // optional: the interpreter is about to be reset
 	void (*shutdown)();      // optional: the app is closing
@@ -62,12 +67,18 @@ void PluginsShutdown();
 // adds to the map it is given.  Call from your init hook:
 //
 //     static void Fill(MiniScript::ValueDict& m) { ... m.SetValue(String("new"), f.GetFunc()); }
-//     static bool Init() { PluginAddModule<&Fill>("quadtree"); return true; }
+//     static bool Init() { return PluginAddModule<&Fill>("quadtree"); }
 //
-// Registering under its own name keeps a plugin from clobbering core intrinsics.
+// Registering under its own name keeps a plugin from clobbering core intrinsics:
+// if an intrinsic of that name already exists, logs an error and returns false
+// (so returning it from init marks the plugin unavailable).
 template<void (*Fill)(MiniScript::ValueDict&)>
-void PluginAddModule(const char* name) {
+bool PluginAddModule(const char* name) {
 	using namespace MiniScript;
+	if (!IsNull(Intrinsic::GetByName(String(name)))) {
+		TraceLog(LOG_ERROR, "PLUGIN: module name '%s' is already taken", name);
+		return false;
+	}
 	Intrinsic f = Intrinsic::Create(String(name));
 	f.set_Code([](Context context, IntrinsicResult partialResult) -> IntrinsicResult {
 		// Built on first use, then wrapped and GC-rooted (see PhysicsCore.cpp).
@@ -80,6 +91,7 @@ void PluginAddModule(const char* name) {
 		}
 		return IntrinsicResult(moduleValue);
 	});
+	return true;
 }
 
 #endif // PLUGIN_H

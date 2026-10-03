@@ -16,6 +16,9 @@
 #include <thread>
 #include <vector>
 
+// Plugin.cpp is not part of this test; the engine defines this.
+bool PluginsAreShutDown() { return false; }
+
 using namespace MiniScript;
 
 static int failures = 0;

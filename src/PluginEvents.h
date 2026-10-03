@@ -20,7 +20,8 @@
 //      }
 //      // in the poll intrinsic:  return IntrinsicResult(PluginDrainEvents(events, EventToValue));
 //
-//  Also here: PluginRooted, for a Value a plugin keeps across frames.
+//  Also here: PluginRooted, for a Value a plugin keeps across frames.  Clear() each
+//  one in your shutdown hook (and reset hook, if it holds script closures).
 //
 
 #ifndef PLUGINEVENTS_H
@@ -30,8 +31,12 @@
 #include <deque>
 #include <mutex>
 
+// True once PluginsShutdown has finished; GC roots are gone by then.
+bool PluginsAreShutDown();
+
 // A thread-safe, bounded FIFO.  When full, Push drops the OLDEST event (a script
-// that never polls must not grow memory without limit) and counts the drop.
+// that never polls must not grow memory without limit) and counts the drop.  That
+// suits lossy events; for purchases/entitlements pass capacity 0 (unbounded).
 template<typename T>
 class PluginEventQueue {
 public:
@@ -108,7 +113,7 @@ public:
 	}
 	void Clear() {
 		if (!held_) return;
-		MiniScript::GCManager::RemoveRoot(value_);
+		if (!PluginsAreShutDown()) MiniScript::GCManager::RemoveRoot(value_);
 		value_ = MiniScript::Value::Null;
 		held_ = false;
 	}

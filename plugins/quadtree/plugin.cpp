@@ -169,8 +169,7 @@ void Fill(ValueDict& m) {
 }
 
 bool Init() {
-	PluginAddModule<&Fill>("quadtree");
-	return true;
+	return PluginAddModule<&Fill>("quadtree");
 }
 
 } // namespace

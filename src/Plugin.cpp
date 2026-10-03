@@ -13,6 +13,8 @@
 
 namespace {
 
+bool gShutDown = false;
+
 struct PluginState {
 	const char* name;
 	const MSPluginHooks* hooks;
@@ -47,7 +49,10 @@ void AddPluginsIntrinsic() {
 
 } // namespace
 
+bool PluginsAreShutDown() { return gShutDown; }
+
 void PluginsInit() {
+	gShutDown = false;
 	std::vector<PluginState>& states = States();
 	states.clear();
 	for (const MSPluginEntry* e = kMSPlugins; e->name != nullptr; e++) {
@@ -79,4 +84,5 @@ void PluginsShutdown() {
 		const PluginState& p = states[i - 1];
 		if (p.loaded && p.hooks->shutdown) p.hooks->shutdown();
 	}
+	gShutDown = true;
 }

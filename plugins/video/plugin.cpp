@@ -23,8 +23,7 @@ static bool Init() {
 #if !defined(PLATFORM_WEB) && !HAVE_LIBVORBIS
 	TraceLog(LOG_WARNING, "PLUGIN: video: built without libvorbis; videos will play without sound");
 #endif
-	PluginAddModule<&Fill>("video");
-	return true;
+	return PluginAddModule<&Fill>("video");
 #endif
 }
 
