@@ -86,9 +86,7 @@ static int CubemapDataSize(int size, int format, int mipmapCount) {
 static rlRenderBatch* activeRenderBatch = nullptr;
 
 static rlRenderBatch* ValueToRenderBatch(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (rlRenderBatch*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return NativePtrFromMap<rlRenderBatch>(value);
 }
 
 // rlSetShader keeps the locs pointer it is given, so the locations must live
@@ -1010,7 +1008,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		rlRenderBatch batch = rlLoadRenderBatch(numBuffers, bufferElements);
 		if (batch.vertexBuffer == nullptr) return IntrinsicResult::Null;
 		ValueDict map;
-		map.SetValue(String("_handle"), PointerToValue(new rlRenderBatch(batch)));
+		map.SetValue(kHandleKey(), NewNativeHandle(batch));
 		map.SetValue(String("bufferCount"), Value(batch.bufferCount));
 		return IntrinsicResult(DynamicMap(map));
 	});
@@ -1020,15 +1018,13 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.AddParam("batch");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value batchValue = context.GetArg(0);
-		rlRenderBatch* batch = ValueToRenderBatch(batchValue);
+		rlRenderBatch* batch = TakeNative<rlRenderBatch>(batchValue);
 		if (batch == nullptr) return IntrinsicResult::Null;
 		if (batch == activeRenderBatch) {
 			rlSetRenderBatchActive(nullptr);
 			activeRenderBatch = nullptr;
 		}
 		rlUnloadRenderBatch(*batch);
-		delete batch;
-		batchValue.GetDict().SetValue(String("_handle"), Value::zero);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadRenderBatch", i.GetFunc());
@@ -1286,6 +1282,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		int offset = context.GetArg(0).IntValue();
 		int count = context.GetArg(1).IntValue();
+		if (offset < 0 || count < 0) return RaiseError(context, "rlDrawVertexArray: offset and count must be >= 0");
 		rlDrawVertexArray(offset, count);
 		return IntrinsicResult::Null;
 	});
@@ -1293,7 +1290,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 
 	// Draws indexed RL_TRIANGLES from the bound element buffer, whose indices
 	// must be 16-bit (ushort).  offset is in indices; buffer is a byte offset
-	// into the element buffer (usually 0).
+	// into the element buffer, and must be 0: raylib takes it as a pointer, and
+	// script-supplied numbers must never become addresses.
 	i = Intrinsic::Create("");
 	i.AddParam("offset", Value::zero);
 	i.AddParam("count");
@@ -1301,8 +1299,9 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		int offset = context.GetArg(0).IntValue();
 		int count = context.GetArg(1).IntValue();
-		intptr_t buffer = (intptr_t)context.GetArg(2).IntValue();
-		rlDrawVertexArrayElements(offset, count, (const void*)buffer);
+		if (context.GetArg(2).IntValue() != 0) return RaiseError(context, "rlDrawVertexArrayElements: buffer must be 0");
+		if (offset < 0 || count < 0) return RaiseError(context, "rlDrawVertexArrayElements: offset and count must be >= 0");
+		rlDrawVertexArrayElements(offset, count, nullptr);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArrayElements", i.GetFunc());
@@ -1315,6 +1314,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		int offset = context.GetArg(0).IntValue();
 		int count = context.GetArg(1).IntValue();
 		int instances = context.GetArg(2).IntValue();
+		if (offset < 0 || count < 0 || instances < 0) return RaiseError(context, "rlDrawVertexArrayInstanced: offset, count and instances must be >= 0");
 		rlDrawVertexArrayInstanced(offset, count, instances);
 		return IntrinsicResult::Null;
 	});
@@ -1328,9 +1328,10 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		int offset = context.GetArg(0).IntValue();
 		int count = context.GetArg(1).IntValue();
-		intptr_t buffer = (intptr_t)context.GetArg(2).IntValue();
 		int instances = context.GetArg(3).IntValue();
-		rlDrawVertexArrayElementsInstanced(offset, count, (const void*)buffer, instances);
+		if (context.GetArg(2).IntValue() != 0) return RaiseError(context, "rlDrawVertexArrayElementsInstanced: buffer must be 0");
+		if (offset < 0 || count < 0 || instances < 0) return RaiseError(context, "rlDrawVertexArrayElementsInstanced: offset, count and instances must be >= 0");
+		rlDrawVertexArrayElementsInstanced(offset, count, nullptr, instances);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArrayElementsInstanced", i.GetFunc());

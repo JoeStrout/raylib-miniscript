@@ -285,4 +285,34 @@ else()
     )
 
     target_compile_options(interp_tests PRIVATE -O0 -g -Wall -DPLATFORM_DESKTOP -fexceptions)
+
+    #---------------------------------------------------------------------------
+    # handle_tests - the native _handle fields of the raylib types
+    #
+    # Runs hostile scripts (forged numeric handles, wrong-type handles, use after
+    # Unload) through the real raylib intrinsics.  It is the whole app minus
+    # main.cpp, so it takes its include paths, defines and libraries from the
+    # raylib-miniscript target rather than repeating them.  No window is opened.
+    #
+    #   cmake --build build --target handle_tests && ./build/handle_tests
+    #---------------------------------------------------------------------------
+    set(HANDLE_TEST_APP_SOURCES ${APP_SOURCES})
+    list(REMOVE_ITEM HANDLE_TEST_APP_SOURCES src/main.cpp)
+
+    add_executable(handle_tests EXCLUDE_FROM_ALL
+        tests/handle_tests.cpp
+        ${HANDLE_TEST_APP_SOURCES}
+        ${MINISCRIPT_SOURCES}
+    )
+
+    target_include_directories(handle_tests PRIVATE
+        $<TARGET_PROPERTY:raylib-miniscript,INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(handle_tests PRIVATE
+        $<TARGET_PROPERTY:raylib-miniscript,COMPILE_DEFINITIONS>
+    )
+    target_compile_options(handle_tests PRIVATE -O0 -g -Wall -DPLATFORM_DESKTOP -fexceptions)
+    target_link_libraries(handle_tests
+        $<TARGET_PROPERTY:raylib-miniscript,LINK_LIBRARIES>
+    )
 endif()

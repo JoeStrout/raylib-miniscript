@@ -76,10 +76,7 @@ static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
 }
 
 static Shader* GetShaderPtr(Value shaderValue) {
-	if (shaderValue.Type() != ValueType::Map) return nullptr;
-	ValueDict map = shaderValue.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	return (Shader*)ValueToPointer(handleVal);
+	return NativePtrFromMap<Shader>(shaderValue);
 }
 
 #ifdef PLATFORM_WEB
@@ -294,16 +291,12 @@ static Value AutomationEventToValue(const AutomationEvent& event) {
 }
 
 static AutomationEventList* GetAutomationEventListPtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (AutomationEventList*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return NativePtrFromMap<AutomationEventList>(value);
 }
 
 static Value AutomationEventListToValue(const AutomationEventList& list) {
-	AutomationEventList* listPtr = new AutomationEventList(list);
-
 	ValueDict map;
-	map.SetValue(String("_handle"), PointerToValue(listPtr));
+	map.SetValue(kHandleKey(), NewNativeHandle(list));
 	map.SetValue(String("capacity"), Value((double)list.capacity));
 	map.SetValue(String("count"), Value((double)list.count));
 
@@ -1214,16 +1207,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value shaderValue = context.GetArg(0);
-		Shader shader = ValueToShader(shaderValue);
-		UnloadShader(shader);
-
-		Shader* shaderPtr = GetShaderPtr(shaderValue);
-		if (shaderPtr != nullptr) {
-			delete shaderPtr;
-			rcShader--;
-			ValueDict map = shaderValue.GetDict();
-			map.SetValue(String("_handle"), Value::zero);
-		}
+		Shader* shaderPtr = TakeNative<Shader>(shaderValue);
+		if (shaderPtr == nullptr) return IntrinsicResult::Null;
+		UnloadShader(*shaderPtr);
+		rcShader--;
 
 		SyncShaderValue(shaderValue, Shader{0, NULL});
 		return IntrinsicResult::Null;
@@ -1877,9 +1864,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWindowHandle");
-		return IntrinsicResult(PointerToValue(nullptr));
+		return IntrinsicResult(Value(0.0));
 	#endif
-		return IntrinsicResult(PointerToValue(GetWindowHandle()));
+		return IntrinsicResult(Value((double)(intptr_t)GetWindowHandle()));
 	});
 	raylibModule.SetValue("GetWindowHandle", i.GetFunc());
 
@@ -3320,15 +3307,13 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	#endif
 		Value listValue = context.GetArg(0);
-		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
+		AutomationEventList* listPtr = TakeNative<AutomationEventList>(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
 
 		UnloadAutomationEventList(*listPtr);
-		delete listPtr;
 
 		if (listValue.Type() == ValueType::Map) {
 			ValueDict map = listValue.GetDict();
-			map.SetValue(String("_handle"), Value::zero);
 			map.SetValue(String("capacity"), Value::zero);
 			map.SetValue(String("count"), Value::zero);
 			map.SetValue(String("events"), Value::make_list(0));
