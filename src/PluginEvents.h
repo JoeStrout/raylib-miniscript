@@ -109,6 +109,7 @@ public:
 
 	void Set(MiniScript::Value v) {
 		Clear();
+		if (PluginsAreShutDown()) return;   // roots are gone; hold nothing rather than a dangling Value
 		value_ = v;
 		MiniScript::GCManager::AddRoot(value_);
 		held_ = true;

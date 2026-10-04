@@ -130,6 +130,8 @@ static void testRootedAfterShutdown() {
 	r2.Set(Value(1));
 	r2.Clear();
 	ok(r2.Get().IsNull(), "Clear after shutdown still resets the holder");
+	r2.Set(Value(2));
+	ok(r2.Get().IsNull(), "Set after shutdown holds nothing");
 	PluginsShutDownFlag() = false;
 }
 
