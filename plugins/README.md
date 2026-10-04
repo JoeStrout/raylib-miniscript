@@ -107,6 +107,7 @@ plugins/mything/
 ```cmake
 if(EMSCRIPTEN)
     target_link_options(raylib-miniscript PRIVATE "SHELL:--pre-js ${PLUGIN_DIR}/web/mything.js")
+    set_property(TARGET raylib-miniscript APPEND PROPERTY LINK_DEPENDS ${PLUGIN_DIR}/web/mything.js)
 else()
     # desktop sources/libraries here
 endif()
@@ -151,8 +152,14 @@ Notes:
 - Anything the JS fetches by URL (a video file, say) must be deployed with the web build, and a seekable
   source needs a server that supports HTTP Range requests (Python's `http.server` doesn't).
 - The file is not minified or checked by CMake; a syntax error breaks the whole page, so test the web build.
-- CMake doesn't track the file as a link dependency; after editing it, touch `plugin.cpp` (or delete
-  the `.js`/`.wasm` in `build-web/`) so the web build relinks.
+- The `LINK_DEPENDS` line makes the web build relink when the file changes (Makefile and Ninja generators);
+  without it, CMake wouldn't notice an edit to the `.js`.
+- `EM_ASYNC_JS` suspends the whole wasm call stack until its Promise resolves (the web build uses
+  `-sASYNCIFY`), so the frame loop stops meanwhile.  That is fine for a quick fetch, but never use it
+  for anything that waits on the user (a purchase dialog, a rewarded ad): the game would freeze.  For
+  those, keep the async model the same as on desktop: JS starts the flow and returns at once, pushes
+  the result onto its own array when done, your update hook drains that array with a plain `EM_JS`
+  call into a `PluginEventQueue`, and scripts `poll` it as they would natively.
 
 `plugins/video/plugin.cmake`, `plugins/video/web/video.js` and the `EM_JS` wrappers in
 `plugins/video/RVideo.cpp` are a complete example.

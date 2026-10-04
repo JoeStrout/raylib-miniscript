@@ -8,6 +8,7 @@
 
 if(EMSCRIPTEN)
     target_link_options(raylib-miniscript PRIVATE "SHELL:--pre-js ${PLUGIN_DIR}/web/video.js")
+    set_property(TARGET raylib-miniscript APPEND PROPERTY LINK_DEPENDS ${PLUGIN_DIR}/web/video.js)
 else()
     find_package(PkgConfig QUIET)
     if(PKG_CONFIG_FOUND)
