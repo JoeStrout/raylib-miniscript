@@ -16,9 +16,6 @@
 #include <thread>
 #include <vector>
 
-// Plugin.cpp is not part of this test; the engine defines this.
-bool PluginsAreShutDown() { return false; }
-
 using namespace MiniScript;
 
 static int failures = 0;
@@ -118,6 +115,24 @@ static void testRooted() {
 	ok(r.Get().IsNull(), "Clear releases the value");
 }
 
+static void testRootedAfterShutdown() {
+	Value s = String("still alive after shutdown");
+	{
+		PluginRooted r;
+		r.Set(s);
+		PluginsShutDownFlag() = true;   // as at the end of PluginsShutdown
+		ok(PluginsAreShutDown(), "the shutdown flag reads true once set");
+	}   // destroyed after shutdown: must not touch the released GC roots
+	// The destructor skipped RemoveRoot, so the root (and value) are untouched.
+	GCManager::FullCollectGarbage();
+	ok(s.ToString() == "still alive after shutdown", "a PluginRooted destroyed after shutdown skips RemoveRoot");
+	PluginRooted r2;
+	r2.Set(Value(1));
+	r2.Clear();
+	ok(r2.Get().IsNull(), "Clear after shutdown still resets the holder");
+	PluginsShutDownFlag() = false;
+}
+
 int main() {
 	GCManager::Init();
 	value_init_constants();
@@ -128,6 +143,7 @@ int main() {
 	testThreads();
 	testDrain();
 	testRooted();
+	testRootedAfterShutdown();
 
 	printf("\n%d checks, %d failures\n", checks, failures);
 	return failures ? 1 : 0;

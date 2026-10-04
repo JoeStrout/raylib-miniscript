@@ -31,8 +31,10 @@
 #include <deque>
 #include <mutex>
 
-// True once PluginsShutdown has finished; GC roots are gone by then.
-bool PluginsAreShutDown();
+// True once PluginsShutdown has finished; GC roots are gone by then.  Defined here
+// (not in Plugin.cpp) so anything that includes this header links without the engine.
+inline bool& PluginsShutDownFlag() { static bool flag = false; return flag; }
+inline bool PluginsAreShutDown() { return PluginsShutDownFlag(); }
 
 // A thread-safe, bounded FIFO.  When full, Push drops the OLDEST event (a script
 // that never polls must not grow memory without limit) and counts the drop.  That
