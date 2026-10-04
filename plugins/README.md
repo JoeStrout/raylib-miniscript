@@ -90,8 +90,72 @@ A plugin that needs a system library finds it in `plugin.cmake` and degrades gra
 the library is there (`target_compile_definitions(raylib-miniscript PRIVATE HAVE_FOO=1)`), link it with
 `target_link_libraries(raylib-miniscript PkgConfig::FOO)` (use `pkg_check_modules(FOO IMPORTED_TARGET foo)`),
 and have `init` return `false` when it is missing so the build never fails and scripts can check
-`plugins.<name>.loaded`.  `plugins/video` does this for libvpx and libvorbis.  A web-only JavaScript half goes in
-a `web/` folder and is linked with `target_link_options(raylib-miniscript PRIVATE "SHELL:--pre-js ${PLUGIN_DIR}/web/<file>.js")`.
+`plugins.<name>.loaded`.  `plugins/video` does this for libvpx and libvorbis.
+
+## JavaScript for the web build
+
+A plugin can ship a browser half in JavaScript (the video plugin uses `<video>` elements and a canvas on
+web, instead of libvpx).  Put the file in a `web/` folder and link it in `plugin.cmake`:
+
+```
+plugins/mything/
+  plugin.cpp
+  plugin.cmake
+  web/mything.js
+```
+
+```cmake
+if(EMSCRIPTEN)
+    target_link_options(raylib-miniscript PRIVATE "SHELL:--pre-js ${PLUGIN_DIR}/web/mything.js")
+else()
+    # desktop sources/libraries here
+endif()
+```
+
+`--pre-js` makes Emscripten put the file's contents at the top of the generated `.js`, before the
+runtime starts, so it can define things on `Module`.  The `SHELL:` prefix is needed so CMake keeps the
+flag and its path together as one option (without it CMake may merge repeated `--pre-js` flags).  Each
+plugin may add its own `--pre-js`; they are all included.  Wrap the file in an
+IIFE so its variables don't leak into the global scope:
+
+```js
+// web/mything.js
+(function () {
+    var things = {};
+    Module['mythingOpen'] = function (url) { /* ... return a Promise or a value ... */ };
+    Module['mythingClose'] = function (id) { /* ... */ };
+})();
+```
+
+The C++ side calls those functions with `EM_JS` (synchronous) or `EM_ASYNC_JS` (waits for a Promise),
+guarded by `#ifdef PLATFORM_WEB`.  Check that the function exists, so a missing or failed script
+degrades instead of throwing:
+
+```cpp
+#ifdef PLATFORM_WEB
+#include <emscripten.h>
+EM_ASYNC_JS(int, WebOpen, (const char* urlPtr), {
+    if (!Module.mythingOpen) return 0;
+    return await Module.mythingOpen(UTF8ToString(urlPtr));
+});
+EM_JS(void, WebClose, (int id), {
+    if (Module.mythingClose) Module.mythingClose(id);
+});
+#endif
+```
+
+Notes:
+- Name `Module` members with a plugin-specific prefix (`vpxVideo*`) so plugins can't collide.
+- Pass data to C++ by returning numbers, or by writing into engine memory (`HEAPU8`, `HEAPF64`) at a
+  pointer C++ gave you; strings go in with `UTF8ToString(ptr)`.
+- Anything the JS fetches by URL (a video file, say) must be deployed with the web build, and a seekable
+  source needs a server that supports HTTP Range requests (Python's `http.server` doesn't).
+- The file is not minified or checked by CMake; a syntax error breaks the whole page, so test the web build.
+- CMake doesn't track the file as a link dependency; after editing it, touch `plugin.cpp` (or delete
+  the `.js`/`.wasm` in `build-web/`) so the web build relinks.
+
+`plugins/video/plugin.cmake`, `plugins/video/web/video.js` and the `EM_JS` wrappers in
+`plugins/video/RVideo.cpp` are a complete example.
 
 ## Plugins outside this repo
 
