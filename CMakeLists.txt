@@ -115,10 +115,10 @@ if(EMSCRIPTEN)
     target_include_directories(raylib-miniscript PRIVATE ${CMAKE_SOURCE_DIR}/raylib/src)
 
     target_compile_options(raylib-miniscript PRIVATE
-        -Os
+        -O2
         -Wall
         -DPLATFORM_WEB
-        -fexceptions
+        -fwasm-exceptions
     )
 
     target_link_options(raylib-miniscript PRIVATE
@@ -128,7 +128,7 @@ if(EMSCRIPTEN)
         -sALLOW_MEMORY_GROWTH=1
         -sTOTAL_MEMORY=67108864
         -sSTACK_SIZE=5242880
-        -fexceptions
+        -fwasm-exceptions
         -sEXPORTED_FUNCTIONS=['_main','_malloc']
         --pre-js ${CMAKE_SOURCE_DIR}/web/prevent-defaults.js
     )
