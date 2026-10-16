@@ -123,8 +123,8 @@
 |MatrixOrtho |**left**=-1, **right**=1, **bottom**=-1, **top**=1, **nearPlane**=0.01, **farPlane**=1000 |Get orthographic projection matrix |
 |MatrixLookAt |**eye**=[0, 0, 1], **target**=[0, 0, 0], **up**=[0, 1, 0] |Get camera look-at matrix (view matrix) |
 |MatrixToFloatV |**mat**=MatrixIdentity |Get float array of matrix data |
-|MatrixCompose |**translation**=[0, 0, 0], **rotation**=QuaternionIdentity, **scale**=[1, 1, 1] |Compose a transformation matrix from rotational, translational and scaling components TODO: This function is not following raymath conventions defined in header: NOT self-contained |
-|MatrixDecompose |**mat**=MatrixIdentity |Decompose a transformation matrix into its rotational, translational and scaling components and remove shear TODO: This function is not following raymath conventions defined in header: NOT self-contained |
+|MatrixCompose |**translation**=[0, 0, 0], **rotation**=QuaternionIdentity, **scale**=[1, 1, 1] |Compose a transformation matrix from rotational, translational and scaling components |
+|MatrixDecompose |**mat**=MatrixIdentity |Decompose a transformation matrix into its rotational, translational and scaling components and remove shear TODO: WARNING: Following raymath convention and make the function self-contained |
 |QuaternionAdd |**q1**=QuaternionIdentity, **q2**=QuaternionIdentity |Add two quaternions |
 |QuaternionAddValue |**q**=QuaternionIdentity, **add**=0 |Add quaternion and float value |
 |QuaternionSubtract |**q1**=QuaternionIdentity, **q2**=QuaternionIdentity |Subtract two quaternions |
@@ -166,22 +166,25 @@
 |DrawEllipseLines |**centerX**=100, **centerY**=100, **radiusH**=32, **radiusV**=32, **color**=WHITE |Draw ellipse outline |
 |DrawRing |**center**=[100, 100], **innerRadius**=20, **outerRadius**=32, **startAngle**=0, **endAngle**=360, **segments**=36, **color**=WHITE |Draw ring |
 |DrawRingLines |**center**=[100, 100], **innerRadius**=20, **outerRadius**=32, **startAngle**=0, **endAngle**=360, **segments**=36, **color**=WHITE |Draw ring outline |
+|DrawRingLinesEx |**center**=[100, 100], **innerRadius**=20, **outerRadius**=32, **startAngle**=0, **endAngle**=360, **segments**=36, **thick**=1.0, **color**=WHITE |Draw ring outline with line thickness |
 |DrawRectangle |**x**=0, **y**=0, **width**=256, **height**=256, **color**=WHITE |Draw a color-filled rectangle |
 |DrawRectangleV |**position**=[0, 0], **size**=[256, 256], **color**=WHITE |Draw a color-filled rectangle (Vector version) NOTE: On OpenGL 3.3 and ES2 using QUADS to avoid drawing order issues |
 |DrawRectangleRec |**rec**, **color**=WHITE |Draw a color-filled rectangle |
 |DrawRectanglePro |**rec**, **origin**=[0, 0], **rotation**=0, **color**=WHITE |Draw a color-filled rectangle with pro parameters |
 |DrawRectangleLines |**x**=0, **y**=0, **width**=256, **height**=256, **color** |Draw rectangle outline WARNING: All Draw*Lines() functions use RL_LINES for drawing, it implies flushing the current batch and changing draw mode to RL_LINES but it solves another issue: https://github.com/raysan5/raylib/issues/3884 |
-|DrawRectangleLinesEx |**rec**, **lineThick**=1, **color**=WHITE |Draw rectangle outline with extended parameters |
+|DrawRectangleLinesEx |**rec**, **thick**=1, **color**=WHITE |Draw rectangle outline with line thickness |
 |DrawRectangleRounded |**rec**, **roundness**=0.5, **segments**=36, **color**=WHITE |Draw rectangle with rounded edges |
 |DrawRectangleRoundedLines |**rec**, **roundness**=0.5, **segments**=36, **color**=WHITE |Draw rectangle with rounded edges |
 |DrawRectangleGradientV |**posX**=0, **posY**=0, **width**=256, **height**=256, **color1**=WHITE, **color2**=BLACK |Draw a vertical-gradient-filled rectangle |
 |DrawRectangleGradientH |**posX**=0, **posY**=0, **width**=256, **height**=256, **color1**=WHITE, **color2**=BLACK |Draw a horizontal-gradient-filled rectangle |
-|DrawRectangleGradientEx |**rec**, **col1**, **col2**, **col3**, **col4** |Draw a gradient-filled rectangle |
+|DrawRectangleGradientEx |**rec**, **col1**, **col2**, **col3**, **col4** |Draw a gradient-filled rectangle with custom vertex colors, counter-clockwise color order |
 |DrawTriangle |**v1**, **v2**, **v3**, **color**=WHITE |Draw a triangle NOTE: Vertex must be provided in counter-clockwise order |
+|DrawTriangleGradient |**v1**, **v2**, **v3**, **c1**, **c2**, **c3** |Draw triangle with interpolated colors (vertex in counter-clockwise order!) |
 |DrawTriangleLines |**v1**, **v2**, **v3**, **color**=WHITE |Draw a triangle using lines NOTE: Vertex must be provided in counter-clockwise order |
-|DrawPoly |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **color**=WHITE |Draw a regular polygon of n sides (Vector version) |
+|DrawTriangleLinesEx |**v1**, **v2**, **v3**, **thick**=1.0, **color**=WHITE |Draw a triangle using lines with thickness NOTE: Vertex must be provided in counter-clockwise order |
+|DrawPoly |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **color**=WHITE |Draw a polygon of n sides |
 |DrawPolyLines |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **color**=WHITE |Draw a polygon outline of n sides |
-|DrawPolyLinesEx |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **lineThick**=1, **color**=WHITE | |
+|DrawPolyLinesEx |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **thick**=1, **color**=WHITE | |
 |CheckCollisionRecs |**rec1**, **rec2** |Check collision between two rectangles |
 |CheckCollisionCircles |**center1**, **radius1**, **center2**, **radius2** |Check collision between two circles |
 |CheckCollisionCircleRec |**center**, **radius**, **rec** |Check collision between circle and rectangle NOTE: Reviewed version to take into account corner limit case |
@@ -195,14 +198,17 @@
 |CheckCollisionPointPoly |**point**, **points** |Check if point is within a polygon described by array of vertices NOTE: Based on http://jeffreythompson.org/collision-detection/poly-point.php |
 |DrawCircleGradient |**centerX**=0, **centerY**=0, **radius**=10.0, **colorInner**=WHITE, **colorOuter**=BLACK |Draw a gradient-filled circle |
 |DrawCircleLinesV |**center**, **radius**=10.0, **color**=WHITE |Draw circle outline (Vector version) |
+|DrawCircleLinesEx |**center**, **radius**=10.0, **thick**=1.0, **color**=WHITE |Draw circle outline with line thickness |
 |DrawCircleSector |**center**, **radius**=10.0, **startAngle**=0, **endAngle**=90.0, **segments**=36, **color**=WHITE |Draw a piece of a circle |
 |DrawCircleSectorLines |**center**, **radius**=10.0, **startAngle**=0, **endAngle**=90.0, **segments**=36, **color**=WHITE |Draw a piece of a circle outlines |
+|DrawCircleSectorLinesEx |**center**, **radius**=10.0, **startAngle**=0, **endAngle**=90.0, **segments**=36, **thick**=1.0, **color**=WHITE |Draw a piece of a circle outlines with thickness |
 |DrawEllipseV |**center**, **radiusH**=10.0, **radiusV**=5.0, **color**=WHITE |Draw ellipse (Vector version) |
 |DrawEllipseLinesV |**center**, **radiusH**=10.0, **radiusV**=5.0, **color**=WHITE |Draw ellipse outline |
+|DrawEllipseLinesEx |**center**, **radiusH**=10.0, **radiusV**=5.0, **thick**=1.0, **color**=WHITE |Draw ellipse outline with thickness |
 |DrawLineBezier |**startPos**, **endPos**, **thick**=1.0, **color**=WHITE |Draw line using cubic-bezier spline, in-out interpolation, no control points |
 |DrawLineDashed |**startPos**, **endPos**, **dashSize**, **spaceSize**, **color**=WHITE |Draw a dashed line |
-|DrawLineStrip |**points**, **color**=WHITE |Draw lines sequuence (using gl lines) |
-|DrawRectangleRoundedLinesEx |**rec**, **roundness**=0.0, **segments**=0, **lineThick**=1.0, **color**=WHITE |Draw rectangle with rounded edges outline |
+|DrawLineStrip |**points**, **color**=WHITE |Draw lines sequence (using gl lines) |
+|DrawRectangleRoundedLinesEx |**rec**, **roundness**=0.0, **segments**=0, **thick**=1.0, **color**=WHITE |Draw rectangle with rounded edges outline with line thickness |
 |DrawSplineLinear |**points**, **thick**=1.0, **color**=WHITE |Draw spline: linear, minimum 2 points |
 |DrawSplineBasis |**points**, **thick**=1.0, **color**=WHITE |Draw spline: B-Spline, minimum 4 points |
 |DrawSplineCatmullRom |**points**, **thick**=1.0, **color**=WHITE |Draw spline: Catmull-Rom, minimum 4 points |
@@ -216,11 +222,11 @@
 |GetSplinePointLinear |**startPos**, **endPos**, **t** |Get spline point for a given t [0.0f .. 1.0f], Linear |
 |GetSplinePointBasis |**p1**, **p2**, **p3**, **p4**, **t** |Get spline point for a given t [0.0f .. 1.0f], B-Spline |
 |GetSplinePointCatmullRom |**p1**, **p2**, **p3**, **p4**, **t** |Get spline point for a given t [0.0f .. 1.0f], Catmull-Rom |
-|GetSplinePointBezierQuad |**p1**, **c2**, **p3**, **t** |Get spline point for a given t [0.0f .. 1.0f], Quadratic Bezier |
+|GetSplinePointBezierQuadratic |**p1**, **c2**, **p3**, **t** |Get spline point for a given t [0.0f .. 1.0f], Quadratic Bezier |
 |GetSplinePointBezierCubic |**p1**, **c2**, **c3**, **p4**, **t** |Get spline point for a given t [0.0f .. 1.0f], Cubic Bezier |
 |DrawTriangleFan |**points**, **color**=WHITE |Draw a triangle fan defined by points NOTE: First vertex provided is the center, shared by all triangles By default, following vertex should be provided in counter-clockwise order |
 |DrawTriangleStrip |**points**, **color**=WHITE |Draw a triangle strip defined by points NOTE: Every new vertex connects with previous two |
-|SetShapesTexture |**texture**, **source** |Set texture and rectangle to be used on shapes drawing NOTE: It can be useful when using basic shapes and one single font, defining a font char white rectangle would allow drawing everything in a single draw call |
+|SetShapesTexture |**texture**, **rec** |Set texture and rectangle to be used on shapes drawing NOTE: It can be useful when using basic shapes and one single font, defining a font char white rectangle would allow drawing everything in a single draw call |
 |GetShapesTexture | |Get texture that is used for shapes drawing |
 |GetShapesTextureRectangle | |Get texture source rectangle that is used for shapes drawing |
 
@@ -238,29 +244,29 @@
 |DrawCubeWires |**position**, **width**=1.0, **height**=1.0, **length**=1.0, **color**=WHITE |Draw cube wires |
 |DrawCubeWiresV |**position**, **size**=[1, 1, 1], **color**=WHITE |Draw cube wires (vector version) |
 |DrawSphere |**centerPos**, **radius**=1.0, **color**=WHITE |Draw sphere |
-|DrawSphereEx |**centerPos**, **radius**=1.0, **rings**=16, **slices**=16, **color**=WHITE |Draw sphere with extended parameters |
+|DrawSphereEx |**centerPos**, **radius**=1.0, **rings**=16, **slices**=16, **color**=WHITE |Draw sphere with defined rings and slices |
 |DrawSphereWires |**centerPos**, **radius**=1.0, **rings**=16, **slices**=16, **color**=WHITE |Draw sphere wires |
-|DrawCylinder |**position**, **radiusTop**=1.0, **radiusBottom**=1.0, **height**=2.0, **slices**=16, **color**=WHITE |Draw a cylinder NOTE: It could be also used for pyramid and cone |
+|DrawCylinder |**position**, **radiusTop**=1.0, **radiusBottom**=1.0, **height**=2.0, **sides**=16, **color**=WHITE |Draw a cylinder NOTE: It could be also used for pyramid and cone |
 |DrawCylinderEx |**startPos**, **endPos**, **startRadius**=1.0, **endRadius**=1.0, **sides**=16, **color**=WHITE |Draw a cylinder with base at startPos and top at endPos NOTE: It could be also used for pyramid and cone |
-|DrawCylinderWires |**position**, **radiusTop**=1.0, **radiusBottom**=1.0, **height**=2.0, **slices**=16, **color**=WHITE |Draw a wired cylinder NOTE: It could be also used for pyramid and cone |
+|DrawCylinderWires |**position**, **radiusTop**=1.0, **radiusBottom**=1.0, **height**=2.0, **sides**=16, **color**=WHITE |Draw a wired cylinder NOTE: It could be also used for pyramid and cone |
 |DrawCylinderWiresEx |**startPos**, **endPos**, **startRadius**=1.0, **endRadius**=1.0, **sides**=16, **color**=WHITE |Draw a wired cylinder with base at startPos and top at endPos NOTE: It could be also used for pyramid and cone |
-|DrawCapsule |**startPos**, **endPos**, **radius**=1.0, **slices**=16, **rings**=8, **color**=WHITE |Draw a capsule with the center of its sphere caps at startPos and endPos |
-|DrawCapsuleWires |**startPos**, **endPos**, **radius**=1.0, **slices**=16, **rings**=8, **color**=WHITE |Draw capsule wires with the center of its sphere caps at startPos and endPos |
+|DrawCapsule |**startPos**, **endPos**, **radius**=1.0, **rings**=8, **slices**=16, **color**=WHITE |Draw a capsule with the center of its sphere caps at startPos and endPos |
+|DrawCapsuleWires |**startPos**, **endPos**, **radius**=1.0, **rings**=8, **slices**=16, **color**=WHITE |Draw capsule wires with the center of its sphere caps at startPos and endPos |
 |DrawPlane |**centerPos**, **size**=[1, 1], **color**=WHITE |Draw a plane |
 |DrawRay |**ray**, **color**=WHITE |Draw a ray line |
 |DrawGrid |**slices**=10, **spacing**=1.0 |Draw a grid centered at (0, 0, 0) |
 |DrawBillboard |**camera**, **texture**, **position**, **scale**=1.0, **tint**=WHITE |Draw a billboard |
-|DrawBillboardRec |**camera**, **texture**, **source**, **position**, **size**=[1, 1], **tint**=WHITE |Draw a billboard (part of a texture defined by a rectangle) |
-|DrawBillboardPro |**camera**, **texture**, **source**, **position**, **up**=[0, 1, 0], **size**=[1, 1], **origin**=[0.5, 0.5], **rotation**=0, **tint**=WHITE |Draw a billboard with additional parameters |
+|DrawBillboardRec |**camera**, **texture**, **rec**, **position**, **size**=[1, 1], **tint**=WHITE |Draw a billboard (part of a texture defined by a rectangle) |
+|DrawBillboardPro |**camera**, **texture**, **rec**, **position**, **up**=[0, 1, 0], **size**=[1, 1], **origin**=[0.5, 0.5], **rotation**=0, **tint**=WHITE |Draw a billboard texture defined by source rectangle with scaling and rotation |
 |LoadModel |**fileName** |Load model from files (mesh and material) |
 |LoadModelFromMesh |**mesh** |Load model from generated mesh WARNING: A shallow copy of mesh is generated, passed by value, as long as struct contains pointers to data and some values, get a copy of mesh pointing to same data as original version... be careful! |
-|IsModelValid |**model** |Check if a model is valid (loaded in GPU, VAO/VBOs) |
+|IsModelValid |**model** |Check if model is valid (loaded in GPU, VAO/VBOs) |
 |UnloadModel |**model** |Unload model (meshes/materials) from memory (RAM and/or VRAM) NOTE: This function takes care of all model elements, for a detailed control over them, use UnloadMesh() and UnloadMaterial() |
 |GetModelBoundingBox |**model** |Compute model bounding box limits (considers all meshes) |
 |DrawModel |**model**, **position**=[0, 0, 0], **scale**=1.0, **tint**=WHITE |Draw a model (with texture if set) |
-|DrawModelEx |**model**, **position**=[0, 0, 0], **rotationAxis**=[0, 1, 0], **rotationAngle**=0, **scale**=[1, 1, 1], **tint**=WHITE |Draw a model with extended parameters |
+|DrawModelEx |**model**, **position**=[0, 0, 0], **rotationAxis**=[0, 1, 0], **rotationAngle**=0, **scale**=[1, 1, 1], **tint**=WHITE |Draw a model with custom transform |
 |DrawModelWires |**model**, **position**=[0, 0, 0], **scale**=1.0, **tint**=WHITE |Draw a model wires (with texture if set) |
-|DrawModelWiresEx |**model**, **position**=[0, 0, 0], **rotationAxis**=[0, 1, 0], **rotationAngle**=0, **scale**=[1, 1, 1], **tint**=WHITE |Draw a model wires (with texture if set) with extended parameters |
+|DrawModelWiresEx |**model**, **position**=[0, 0, 0], **rotationAxis**=[0, 1, 0], **rotationAngle**=0, **scale**=[1, 1, 1], **tint**=WHITE |Draw a model wires with custom transform |
 |DrawBoundingBox |**box**, **color**=WHITE |Draw a bounding box with wires |
 |UploadMesh |**mesh**, **dynamic**=0 |Upload vertex data into a VAO (if supported) and VBO |
 |UpdateMeshBuffer |**mesh**, **index**, **data**, **offset**=0 |Update mesh vertex data in GPU for a specific buffer index |
@@ -278,13 +284,13 @@
 |GenMeshHemiSphere |**radius**=1.0, **rings**=16, **slices**=16 |Generate hemisphere mesh (half sphere, no bottom cap) |
 |GenMeshCylinder |**radius**=1.0, **height**=2.0, **slices**=16 |Generate cylinder mesh |
 |GenMeshCone |**radius**=1.0, **height**=2.0, **slices**=16 |Generate cone/pyramid mesh |
-|GenMeshTorus |**radius**=1.0, **size**=0.5, **radSeg**=16, **sides**=16 |Generate torus mesh |
+|GenMeshTorus |**radius**=1.0, **size**=0.5, **radSeg**=16, **sides**=16 |Generate torus mesh NOTE: The distance between the center of the hole and the center of the tube is half size of the radius of the tube (radius*size/2) |
 |GenMeshKnot |**radius**=1.0, **size**=0.5, **radSeg**=16, **sides**=16 |Generate trefoil knot mesh |
 |GenMeshHeightmap |**heightmap**, **size**=[1, 1, 1] |Generate a mesh from heightmap NOTE: Vertex data is uploaded to GPU |
 |GenMeshCubicmap |**cubicmap**, **cubeSize**=[1, 1, 1] |Generate a cubes mesh from pixel data NOTE: Vertex data is uploaded to GPU |
 |LoadMaterials |**fileName** |Load materials from model file |
 |LoadMaterialDefault | |Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps) |
-|IsMaterialValid |**material** |Check if a material is valid (map textures loaded in GPU) |
+|IsMaterialValid |**material** |Check if material is valid (map textures loaded in GPU) |
 |UnloadMaterial |**material** |Unload material from memory |
 |SetMaterialTexture |**material**, **mapType**, **texture** |Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded |
 |GetMaterialShader |**material** | |
@@ -322,8 +328,8 @@
 |UnloadTexture |**texture** |Unload texture from GPU memory (VRAM) |
 |DrawTexture |**texture**, **posX**=0, **posY**=0, **tint**=WHITE |Draw a texture |
 |DrawTextureV |**texture**, **position**=[0, 0], **tint**=WHITE |Draw a texture with position defined as Vector2 |
-|DrawTextureEx |**texture**, **position**=[0, 0], **rotation**=0, **scale**=1.0, **tint**=WHITE |Draw a texture with extended parameters |
-|DrawTextureRec |**texture**, **source**, **position**=[0, 0], **tint**=WHITE |Draw a part of a texture (defined by a rectangle) |
+|DrawTextureEx |**texture**, **position**=[0, 0], **rotation**=0, **scale**=1.0, **tint**=WHITE |Draw a texture with rotation and scale NOTE: Rotation applied from top-left corner origin |
+|DrawTextureRec |**texture**, **rec**, **position**=[0, 0], **tint**=WHITE |Draw a part of a texture (defined by a rectangle) |
 |DrawTexturePro |**texture**, **source**, **dest**, **origin**=[0, 0], **rotation**=0, **tint**=WHITE |Draw a part of a texture (defined by a rectangle) with 'pro' parameters NOTE: origin is relative to destination rectangle size |
 |GenImageColor |**width**=256, **height**=256, **color**=WHITE |Generate image: plain color |
 |GenImageGradientRadial |**width**=256, **height**=256, **density**=0.5, **inner**=WHITE, **outer**=BLACK |Generate image: radial gradient |
@@ -353,16 +359,23 @@
 |ImageDrawCircleV |**dst**, **center**=[100, 100], **radius**=32, **color**=WHITE |Draw circle within an image (Vector version) |
 |ImageDrawRectangle |**dst**, **posX**=0, **posY**=0, **width**=256, **height**=256, **color**=WHITE |Draw rectangle within an image |
 |ImageDrawRectangleRec |**dst**, **rec**, **color**=WHITE |Draw rectangle within an image |
-|ImageDrawRectangleLines |**dst**, **rec**, **thick**=1, **color**=WHITE |Draw rectangle lines within an image |
-|ImageDraw |**dst**, **src**, **srcRec**, **dstRec**, **tint**=WHITE |Draw an image (source) within an image (destination) NOTE: Color tint is applied to source image |
+|ImageDrawRectangleLines |**dst**, **posX**=0, **posY**=0, **width**=256, **height**=256, **color**=WHITE |Draw rectangle lines within an image |
+|ImageDrawRectangleLinesEx |**dst**, **rec**, **thick**=1, **color**=WHITE |Draw rectangle lines within an image with line thickness |
+|ImageDrawRectanglePro |**dst**, **rec**, **origin**=[0, 0], **rotation**=0, **color**=WHITE |Draw a color-filled rectangle with pro parameters within and image |
+|ImageDrawRectangleGradientEx |**dst**, **rec**, **col1**, **col2**, **col3**, **col4** |Draw rectangle with gradient colors within an image, counter-clockwise color order |
+|ImageDrawImage |**dst**, **src**, **posX**=0, **posY**=0, **tint**=WHITE |Draw an image within an image |
+|ImageDrawImageEx |**dst**, **src**, **position**=[0, 0], **rotation**=0, **scale**=1.0, **tint**=WHITE |Draw an image with scaling and rotation within an image NOTE: Rotation applied from top-left corner origin |
+|ImageDrawImageRec |**dst**, **src**, **srcRec**, **position**=[0, 0], **tint**=WHITE |Draw a part of an image defined by a rectangle within an image |
+|ImageDrawImagePro |**dst**, **src**, **srcRec**, **dstRec**, **origin**=[0, 0], **rotation**=0, **tint**=WHITE |Draw a part of an image defined by a rectangle into destination rectangle, with scaling, within an image NOTE: origin and rotation are currently ignored by raylib |
 |ImageDrawText |**dst**, **text**, **posX**=0, **posY**=0, **fontSize**=20, **color**=BLACK |Draw text (default font) within an image (destination) |
 |SetTextureFilter |**texture**, **filter** |Set texture scaling filter mode |
 |SetTextureWrap |**texture**, **wrap** |Set texture wrapping mode |
 |GenTextureMipmaps |**texture** |Generate GPU mipmaps for a texture |
-|LoadRenderTexture |**width**=960, **height**=640 |Load texture for rendering (framebuffer) NOTE: Render texture is loaded by default with RGBA color attachment and depth RenderBuffer |
+|LoadRenderTexture |**width**=960, **height**=640 |Load RGBA texture for rendering (framebuffer) |
+|LoadRenderTextureEx |**width**=960, **height**=640, **format**=PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 |Load texture for rendering (framebuffer), with specific pixel format |
 |UnloadRenderTexture |**target** |Unload render texture from GPU memory (VRAM) |
 |BeginTextureMode |**target** |Initializes render texture for drawing |
-|EndTextureMode | |Ends drawing to render texture |
+|EndTextureMode | |End drawing to render texture |
 |ColorAlpha |**color**, **alpha** |Get color with alpha applied, alpha goes from 0.0f to 1.0f |
 |ColorAlphaBlend |**dst**, **src**, **tint** |Get src alpha-blended into dst color with tint |
 |ColorBrightness |**color**, **factor** |Get color with brightness correction, brightness factor goes from -1.0f to 1.0f |
@@ -383,13 +396,13 @@
 |GenImagePerlinNoise |**width**, **height**, **offsetX**, **offsetY**, **scale** |Generate image: perlin noise |
 |GenImageText |**text**, **fontSize**, **color** |Generate image: grayscale image from text data |
 |IsImageValid |**image** |Check if an image is ready |
-|IsRenderTextureValid |**target** |Check if a render texture is valid (loaded in GPU) |
-|IsTextureValid |**texture** |Check if a texture is valid (loaded in GPU) |
+|IsRenderTextureValid |**target** |Check if render texture is valid (loaded in GPU) |
+|IsTextureValid |**texture** |Check if texture is valid (loaded in GPU) |
 |LoadImageAnim |**fileName**, **frames** |Load animated image data  - Image.data buffer includes all frames: [image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' parameter  - All frames are returned in RGBA format  - Frames delay data is discarded |
 |LoadImageAnimFromMemory |**fileType**, **fileData**, **frames** |Load animated image data from memory  - Image.data buffer includes all frames: [image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' parameter  - All frames are returned in RGBA format  - Frames delay data is discarded |
 |LoadImageColors |**image** |Load color data from image as a Color array (RGBA - 32bit) NOTE: Memory allocated should be freed using UnloadImageColors(); |
 |LoadImageFromMemory |**fileType**, **fileData** |Load image from memory buffer, fileType refers to extension: i.e. ".png" WARNING: File extension must be provided in lower-case |
-|LoadImageFromScreen | |Load image from screen buffer and (screenshot) |
+|LoadImageFromScreen | |Load image from screen buffer (screenshot) |
 |LoadImageFromTexture |**texture** |Load image from GPU texture data NOTE: Compressed texture formats not supported |
 |ExportImage |**image**, **fileName** |Export image data to file NOTE: File format depends on fileName extension |
 |ExportImageToMemory |**image**, **fileType** | |
@@ -417,17 +430,19 @@
 |ImageToPOT |**image** |Convert image to POT (power-of-two) NOTE: It could be useful on OpenGL ES 2.0 (RPI, HTML5) |
 |ImageDrawCircleLines |**dst**, **centerX**, **centerY**, **radius**, **color** |Draw circle outline within an image |
 |ImageDrawCircleLinesV |**dst**, **center**, **radius**, **color** |Draw circle outline within an image (Vector version) |
+|ImageDrawCircleGradient |**dst**, **center**, **radius**, **inner**=WHITE, **outer**=BLACK |Draw a gradient-filled circle within an image |
 |ImageDrawLineEx |**dst**, **start**, **end**, **thick**, **color** |Draw a line defining thickness within an image |
+|ImageDrawLineStrip |**dst**, **points**, **color**=WHITE |Draw a lines sequence within an image |
 |ImageDrawRectangleV |**dst**, **rec**, **color** |Draw rectangle within an image (Vector version) |
 |ImageDrawTextEx |**dst**, **font**, **text**, **position**, **fontSize**, **spacing**, **tint** |Draw text (custom sprite font) within an image (destination) |
 |ImageDrawTriangle |**dst**, **v1**, **v2**, **v3**, **color** |Draw triangle within an image |
-|ImageDrawTriangleEx |**dst**, **v1**, **v2**, **v3**, **c1**, **c2**, **c3** |Draw triangle with interpolated colors within an image |
+|ImageDrawTriangleGradient |**dst**, **v1**, **v2**, **v3**, **c1**, **c2**, **c3** |Draw triangle with interpolated colors within an image |
 |ImageDrawTriangleFan |**dst**, **points**, **color** |Draw a triangle fan defined by points within an image (first vertex is the center) |
 |ImageDrawTriangleLines |**dst**, **v1**, **v2**, **v3**, **color** |Draw triangle outline within an image |
 |ImageDrawTriangleStrip |**dst**, **points**, **color** |Draw a triangle strip defined by points within an image |
 |ImageText |**text**, **fontSize**, **color** |Create an image from text (default font) |
 |ImageTextEx |**font**, **text**, **fontSize**, **spacing**, **tint** |Create an image from text (custom sprite font) WARNING: Module required: rtext |
-|DrawTextureNPatch |**texture**, **nPatchInfo**, **dest**, **origin**=[0, 0], **rotation**=0, **tint**=WHITE |Draws a texture (or part of it) that stretches or shrinks nicely using n-patch info |
+|DrawTextureNPatch |**texture**, **nPatchInfo**, **dest**, **origin**=[0, 0], **rotation**=0, **tint**=WHITE |Draw a texture (or part of it) that stretches or shrinks nicely using n-patch info |
 |UpdateTexture |**texture**, **pixels** |Update GPU texture with new data NOTE 1: pixels data must match texture.format NOTE 2: pixels data must contain at least as many pixels as texture |
 |UpdateTextureRec |**texture**, **rec**, **pixels** |Update GPU texture rectangle with new data NOTE 1: pixels data must match texture.format NOTE 2: pixels data must contain as many pixels as rec contains NOTE 3: rec must fit completely within texture's width and height |
 |LoadTextureCubemap |**image**, **layout** |Load cubemap from image, multiple image cubemap layouts supported |
@@ -585,9 +600,9 @@
 |Name | Parameters | Purpose |
 |-----|------------|---------|
 |LoadFont |**fileName** |Load Font from file into GPU memory (VRAM) |
-|LoadFontEx |**fileName**, **fontSize**=20, **codepoints**=null, **codepointCount**=0 |Load Font from TTF or BDF font file with generation parameters NOTE: You can pass an array with desired characters, those characters should be available in the font if array is NULL, default char set is selected 32..126 |
+|LoadFontEx |**fileName**, **fontSize**=20, **codepoints**=null, **codepointCount**=0 |Load font from file with defined codepoints and generation size NOTE: NULL for codepoints and 0 for codepointCount to load the default character set (32..126), font size is provided in pixels height |
 |LoadFontFromImage |**image**, **key**=Color{255, 0, 255, 255}, **firstChar**=32 |Load an Image font file (XNA style) |
-|IsFontValid |**font** |Check if a font is valid (font data loaded) WARNING: GPU texture not checked |
+|IsFontValid |**font** |Check if font is valid (font data loaded) WARNING: GPU texture not checked |
 |UnloadFont |**font** |Unload Font from GPU memory (VRAM) |
 |MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 |This is needed for manual font construction, e.g. SDF fonts |
 |DrawFPS |**posX**=0, **posY**=0 |Draw current FPS NOTE: Uses default font |
@@ -599,7 +614,7 @@
 |MeasureTextEx |**font**, **text**, **fontSize**=20, **spacing**=0 |Measure string size for Font |
 |MeasureTextCodepoints |**font**, **codepoints**, **fontSize**=20, **spacing**=0 |Measure string size for an existing array of codepoints for Font |
 |GetGlyphIndex |**font**, **codepoint** |Get index position for a unicode character on font NOTE: If codepoint is not found in the font it fallbacks to '?' |
-|GetFontDefault | |Get the default font, useful to be used with extended parameters |
+|GetFontDefault | |Get the default font |
 |SetTextLineSpacing |**spacing** |Set vertical line spacing when drawing with line-breaks |
 |GetGlyphAtlasRec |**font**, **codepoint** |Get glyph rectangle in font atlas for a codepoint (unicode character) NOTE: If codepoint is not found in the font it fallbacks to '?' |
 |GetGlyphInfo |**font**, **codepoint** |Get glyph font info data for a codepoint (unicode character) NOTE: If codepoint is not found in the font it fallbacks to '?' |
@@ -608,7 +623,7 @@
 |GetCodepointNext |**text**, **codepointSize**=null |Get next codepoint in a byte sequence and bytes processed |
 |GetCodepointPrevious |**text**, **codepointSize**=null |Get previous codepoint in a byte sequence and bytes processed |
 |CodepointToUTF8 |**codepoint** | |
-|TextIsEqual |**text1**, **text2** |Check if two text string are equal REQUIRES: strcmp() |
+|TextIsEqual |**text1**, **text2** |Check if two text strings are equal REQUIRES: strcmp() |
 |TextLength |**text** | |
 |TextCopy |**dst**, **src** |Copy one string to another, returns bytes copied NOTE: Alternative implementation to strcpy(dst, src) from C standard library |
 |LoadFontFromMemory |**fileType**, **fileData**, **fontSize**, **codepoints**=null, **codepointCount**=0 |Load font from memory buffer, fileType refers to extension: i.e. ".ttf" |
@@ -618,13 +633,13 @@
 |UnloadCodepoints |**codepoints** |Unload codepoints data from memory |
 |LoadUTF8 |**codepoints** |Encode text codepoint into UTF-8 text REQUIRES: memcpy() WARNING: Allocated memory must be manually freed |
 |UnloadUTF8 |**text** |Unload UTF-8 text encoded from codepoints array |
-|DrawTextCodepoints |**font**, **codepoints**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw multiple character (codepoints) |
+|DrawTextCodepoints |**font**, **codepoints**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw multiple characters (codepoints) |
 |GenImageFontAtlas |**glyphs**, **glyphRecs**, **fontSize**, **padding**, **packMethod** |Generate image font atlas using chars info NOTE: Packing method: 0-Default, 1-Skyline |
 |TextFormat |**text**, **args**=[] | |
 |TextFindIndex |**text**, **search** |Find first text occurrence within a string REQUIRES: strstr() |
 |GetTextBetween |**text**, **begin**, **end** |Get text between two strings |
-|TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() NOTE: Limited text replace functionality, using static string |
-|TextReplaceAlloc |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), strncpy() WARNING: Allocated memory must be manually freed |
+|TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), memcpy() NOTE: Limited text replace functionality, using static string |
+|TextReplaceAlloc |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), memcpy() WARNING: Allocated memory must be manually freed |
 |TextReplaceBetween |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) removes "begin"[ ]"end" text |
 |TextReplaceBetweenAlloc |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) remove "begin"[ ]"end" text WARNING: Returned string must be freed by user |
 |TextInsert |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward WARNING: Allocated memory must be manually freed |
@@ -634,7 +649,7 @@
 |TextSplit |**text**, **delimiter** | |
 |TextJoin |**textList**, **delimiter**="" |Join text strings with delimiter REQUIRES: memset(), memcpy() |
 |TextAppend |**text**, **append** |Append text at specific position and move cursor WARNING: It's up to the user to make sure appended text does not overflow the buffer! |
-|TextToUpper |**text** |Get upper case version of provided string WARNING: Limited functionality, only basic characters set TODO: Support UTF-8 diacritics to upper-case, check codepoints |
+|TextToUpper |**text** |Get upper case version of provided string WARNING: Limited functionality, only basic characters set TODO: Support UTF-8 diacritics (á, ñ, ü...) to upper-case, check codepoints |
 |TextToLower |**text** |Get lower case version of provided string WARNING: Limited functionality, only basic characters set |
 |TextToPascal |**text** |Get Pascal case notation version of provided string WARNING: Limited functionality, only basic characters set |
 |TextToSnake |**text** |Get snake case notation version of provided string WARNING: Limited functionality, only basic characters set |
@@ -648,15 +663,15 @@
 
 |Name | Parameters | Purpose |
 |-----|------------|---------|
-|BeginDrawing | |Setup canvas (framebuffer) to start drawing |
-|EndDrawing | |End canvas drawing and swap buffers (double buffering) |
-|ClearBackground |**color**=BLACK |Set background color (framebuffer clear color) |
+|BeginDrawing | |Begin canvas (framebuffer) drawing |
+|EndDrawing | |End canvas (framebuffer) drawing and swap buffers (double buffering) |
+|ClearBackground |**color**=BLACK |Clear background (framebuffer) to color |
 |BeginMode3D |**camera** |Initializes 3D mode with custom camera (3D) |
-|EndMode3D | |Ends 3D mode and returns to default 2D orthographic mode |
+|EndMode3D | |End 3D mode and returns to default 2D orthographic mode |
 |GetScreenToWorldRay |**position**, **camera** |Get a ray trace from screen position (i.e mouse) |
 |GetScreenToWorldRayEx |**position**, **camera**, **width**=0, **height**=0 |Get a ray trace from the screen position (i.e mouse) within a specific section of the screen |
-|GetWorldToScreen |**position**, **camera** |Get the screen space position from a 3d world space position |
-|GetWorldToScreenEx |**position**, **camera**, **width**=0, **height**=0 |Get size position for a 3d world space position (useful for texture drawing) |
+|GetWorldToScreen |**position**, **camera** |Get screen space position from a 3d world space position |
+|GetWorldToScreenEx |**position**, **camera**, **width**=0, **height**=0 |Get sized screen space position for a 3d world space position (useful for texture drawing) |
 |GetCameraMatrix |**camera** |Get transform matrix for camera |
 |UpdateCamera |**camera**, **mode**=CAMERA_CUSTOM |Update camera position for selected mode Camera mode: CAMERA_FREE, CAMERA_FIRST_PERSON, CAMERA_THIRD_PERSON, CAMERA_ORBITAL or CUSTOM |
 |UpdateCameraPro |**camera**, **movement**=[0, 0, 0], **rotation**=[0, 0, 0], **zoom**=0 |Update camera movement, movement/rotation values should be provided by user |
@@ -674,7 +689,7 @@
 |GetCameraProjectionMatrix |**camera**, **aspect**=0 |Returns the camera projection matrix |
 |LoadShader |**vsFileName**=String(), **fsFileName**=String() |Load shader from files and bind default locations NOTE: If shader filename is NULL, using default vertex/fragment shaders |
 |LoadShaderFromMemory |**vsCode**=String(), **fsCode**=String() |Load shader from code strings and bind default locations |
-|IsShaderValid |**shader** |Check if a shader is valid (loaded on GPU) |
+|IsShaderValid |**shader** |Check if shader is valid (loaded on GPU) |
 |BeginShaderMode |**shader** |Begin custom shader mode |
 |EndShaderMode | |End custom shader mode (returns to default shader) |
 |GetShaderLocation |**shader**, **uniformName** |Get shader uniform location |
@@ -688,30 +703,30 @@
 |GetFrameTime | |Get time in seconds for last frame drawn (delta time) |
 |GetTime | |Get elapsed time measure in seconds since InitTimer() |
 |GetFPS | |Get current FPS NOTE: Calculating an average framerate |
-|IsKeyPressed |**key** |Check if a key has been pressed once |
-|IsKeyPressedRepeat |**key** |Check if a key has been pressed again |
-|IsKeyDown |**key** |Check if a key is being pressed (key held down) |
-|IsKeyReleased |**key** |Check if a key has been released once |
-|IsKeyUp |**key** |Check if a key is NOT being pressed (key not held down) |
+|IsKeyPressed |**key** |Check if key has been pressed once |
+|IsKeyPressedRepeat |**key** |Check if key has been pressed again |
+|IsKeyDown |**key** |Check if key is being pressed (key held down) |
+|IsKeyReleased |**key** |Check if key has been released once |
+|IsKeyUp |**key** |Check if key is NOT being pressed (key not held down) |
 |GetKeyPressed | |Get the last key pressed |
 |GetCharPressed | |Get the last char pressed |
 |GetKeyName |**key** | |
 |SetExitKey |**key** |Set a custom key to exit program NOTE: default exitKey is set to ESCAPE |
-|IsGamepadAvailable |**gamepad**=0 |Check if a gamepad is available |
+|IsGamepadAvailable |**gamepad**=0 |Check if gamepad is available |
 |GetGamepadName |**gamepad**=0 | |
-|IsGamepadButtonPressed |**gamepad**=0, **button** |Check if a gamepad button has been pressed once |
-|IsGamepadButtonDown |**gamepad**=0, **button** |Check if a gamepad button is being pressed |
-|IsGamepadButtonReleased |**gamepad**=0, **button** |Check if a gamepad button has NOT been pressed once |
-|IsGamepadButtonUp |**gamepad**=0, **button** |Check if a gamepad button is NOT being pressed |
+|IsGamepadButtonPressed |**gamepad**=0, **button** |Check if gamepad button has been pressed once |
+|IsGamepadButtonDown |**gamepad**=0, **button** |Check if gamepad button is being pressed |
+|IsGamepadButtonReleased |**gamepad**=0, **button** |Check if gamepad button has NOT been pressed once |
+|IsGamepadButtonUp |**gamepad**=0, **button** |Check if gamepad button is NOT being pressed |
 |GetGamepadButtonPressed | |Get the last gamepad button pressed NOTE: Returns last gamepad button down, down->up change not considered |
 |GetGamepadAxisCount |**gamepad**=0 |Get gamepad axis count |
 |GetGamepadAxisMovement |**gamepad**=0, **axis** |Get axis movement vector for a gamepad |
 |SetGamepadMappings |**mappings** |Set internal gamepad mappings |
 |SetGamepadVibration |**gamepad**=0, **leftMotor**=0.0, **rightMotor**=0.0, **duration**=0.0 |Set gamepad vibration |
-|IsMouseButtonPressed |**button** |Check if a mouse button has been pressed once |
-|IsMouseButtonDown |**button** |Check if a mouse button is being pressed |
-|IsMouseButtonReleased |**button** |Check if a mouse button has been released once |
-|IsMouseButtonUp |**button** |Check if a mouse button is NOT being pressed |
+|IsMouseButtonPressed |**button** |Check if mouse button has been pressed once |
+|IsMouseButtonDown |**button** |Check if mouse button is being pressed |
+|IsMouseButtonReleased |**button** |Check if mouse button has been released once |
+|IsMouseButtonUp |**button** |Check if mouse button is NOT being pressed |
 |GetMouseX | |Get mouse position X |
 |GetMouseY | |Get mouse position Y |
 |GetMousePosition | |Get mouse position XY |
@@ -719,7 +734,7 @@
 |GetMouseWheelMove | |Get mouse wheel movement Y |
 |SetMouseCursor |**cursor** |Set mouse cursor |
 |ShowCursor | |Show mouse cursor |
-|HideCursor | |Hides mouse cursor |
+|HideCursor | |Hide mouse cursor |
 |IsCursorHidden | |Check if cursor is not visible |
 |IsCursorOnScreen | |Check if cursor is on the current screen |
 |SetWindowTitle |**caption**="raylib-miniscript" |Set title for window |
@@ -752,7 +767,7 @@
 |SetWindowSize |**width**, **height** |Set window dimensions |
 |SetWindowOpacity |**opacity** |Set window opacity, value opacity is between 0.0 and 1.0 |
 |SetWindowFocused | |Set window focused |
-|GetWindowHandle | |Local storage for the window handle returned by glfwGetX11Window This is needed as X11 handles are integers and may not fit inside a pointer depending on platform Storing the handle locally and returning a pointer in GetWindowHandle allows the code to work regardless of pointer width Get native window handle |
+|GetWindowHandle | |Get native window handle |
 |GetMonitorCount | |Get number of monitors |
 |GetCurrentMonitor | |Get current monitor where window is placed |
 |GetMonitorPosition |**monitor**=0 |Get selected monitor position |
@@ -770,15 +785,15 @@
 |SetMousePosition |**x**, **y** |Set mouse position XY |
 |SetMouseOffset |**offsetX**, **offsetY** |Set mouse offset NOTE: Useful when rendering to different size targets |
 |SetMouseScale |**scaleX**, **scaleY** |Set mouse scaling NOTE: Useful when rendering to different size targets |
-|EnableCursor | |Enables cursor (unlock cursor) |
-|DisableCursor | |Disables cursor (lock cursor) |
+|EnableCursor | |Enable cursor (unlock cursor) |
+|DisableCursor | |Disable cursor (lock cursor) |
 |GetTouchX | |Get touch position X for touch point 0 (relative to screen size) |
 |GetTouchY | |Get touch position Y for touch point 0 (relative to screen size) |
 |GetTouchPosition |**index**=0 |Get touch position XY for a touch point index (relative to screen size) |
-|GetTouchPointId |**index**=0 |Get touch point identifier for given index |
+|GetTouchPointId |**index**=0 |Get touch point identifier for provided index |
 |GetTouchPointCount | |Get number of touch points |
 |SetGesturesEnabled |**flags** |Enable only desired gestures to be detected |
-|IsGestureDetected |**gesture** |Check if a gesture have been detected |
+|IsGestureDetected |**gesture** |Check if gesture have been detected |
 |GetGestureDetected | |Get latest detected gesture |
 |GetGestureHoldDuration | |Hold time measured in seconds |
 |GetGestureDragVector | |Get drag vector (between initial touch point to current) |
@@ -786,10 +801,10 @@
 |GetGesturePinchVector | |Get distance between two pinch points |
 |GetGesturePinchAngle | |Get angle between two pinch points NOTE: Angle in degrees, horizontal-right is 0, counterclockwise |
 |BeginMode2D |**camera** |Initialize 2D mode with custom camera (2D) |
-|EndMode2D | |Ends 2D mode with custom camera |
+|EndMode2D | |End 2D mode with custom camera |
 |GetCameraMatrix2D |**camera** |Get camera 2d transform matrix |
-|GetWorldToScreen2D |**position**, **camera** |Get the screen space position for a 2d camera world space position |
-|GetScreenToWorld2D |**position**, **camera** |Get the world space position for a 2d camera screen space position |
+|GetWorldToScreen2D |**position**, **camera** |Get screen space position for a 2d camera world space position |
+|GetScreenToWorld2D |**position**, **camera** |Get world space position for a 2d camera screen space position |
 |BeginBlendMode |**mode** |Begin blending mode (alpha, additive, multiplied, subtract, custom) NOTE: Blend modes supported are enumerated in BlendMode enum |
 |EndBlendMode | |End blending mode (reset to default: alpha blending) |
 |BeginScissorMode |**x**, **y**, **width**, **height** |Begin scissor mode (define screen area for following drawing) NOTE: Scissor rec refers to bottom-left corner, changing it to upper-left |
@@ -798,15 +813,15 @@
 |EndVrStereoMode | |End VR drawing process (and desktop mirror) |
 |LoadVrStereoConfig |**device** |Load VR stereo config for VR simulator device parameters |
 |UnloadVrStereoConfig |**config** |Unload VR stereo config properties |
-|OpenURL |**url** |Open URL with default system browser (if available) NOTE: This function is only safe to use if you control the URL given A user could craft a malicious string performing another action Only call this function yourself not with user input or make sure to check the string yourself REF: https://github.com/raysan5/raylib/issues/686 |
+|OpenURL |**url** |Open URL with default system browser (if available) WARNING: This function is only safe to use if you control the URL given, a user could craft a malicious string to perform and undesired action NOTE: Some safety checks have been added to mitigate security issues |
 |SetClipboardText |**text** |Set clipboard text content |
 |GetClipboardText | | |
 |EnableEventWaiting | |Enable waiting for events on EndDrawing(), no automatic event polling |
 |DisableEventWaiting | |Disable waiting for events on EndDrawing(), automatic events polling |
 |GetClipboardImage | |Get clipboard image |
 |IsFileExtension |**fileName**, **ext** |Check file extension |
-|TakeScreenshot |**fileName** |Takes a screenshot of current screen NOTE: Provided fileName should not contain paths, saving to working directory |
-|SetConfigFlags |**flags** |Setup window configuration flags (view FLAGS) NOTE: This function is expected to be called before window creation, because it sets up some flags for the window creation process To configure window states after creation, use SetWindowState() |
+|TakeScreenshot |**fileName** |Takes a screenshot of current screen |
+|SetConfigFlags |**flags** |Set up window configuration flags (view FLAGS) NOTE: This function is expected to be called before window creation, because it sets up some flags for the window creation process To configure window states after creation, use SetWindowState() |
 |EncodeDataBase64 |**data**, **dataSize** |Encode data to Base64 string NOTE: Returned string includes NULL terminator, considered on outputSize |
 |WaitTime |**seconds**=1.0 |Wait for some time (stop program execution) NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could take longer than expected... for that reason a busy wait loop is used REF: http://stackoverflow.com/questions/43057578/c-programming-win32-games-sleep-taking-longer-than-expected REF: http://www.geisswerks.com/ryan/FAQS/timing.html --> All about timing on Win32! |
 |SwapScreenBuffer | |Swap back buffer with front buffer (screen drawing) |
@@ -829,7 +844,7 @@
 |FileTextReplace |**fileName**, **search**, **replacement** |Replace text in an existing file WARNING: DEPENDENCY: [rtext] module |
 |FileTextFindIndex |**fileName**, **search** |Find text index position in existing file WARNING: DEPENDENCY: [rtext] module |
 |FileExists |**fileName** |Check if the file exists |
-|DirectoryExists |**dirPath** |Check if a directory path exists |
+|DirectoryExists |**dirPath** |Check if directory path exists |
 |GetFileLength |**fileName** |Get file length in bytes NOTE: GetFileSize() conflicts with windows.h |
 |GetFileModTime |**fileName** |Get file modification time (last write time) |
 |GetFileExtension |**fileName** | |
@@ -840,13 +855,16 @@
 |GetWorkingDirectory | | |
 |GetApplicationDirectory | | |
 |MakeDirectory |**dirPath** |Create directories (including full path requested), returns 0 on success |
-|ChangeDirectory |**dirPath** |Change working directory, returns true on success |
-|IsPathFile |**path** |Check if a given path point to a file |
+|ChangeDirectory |**dirPath** |Change working directory, returns 0 on success (nonzero on failure) |
+|IsPathFile |**path** |Check if provided path point to a file |
+|IsPathDirectory |**path** |Check if provided path points to an existing directory |
+|IsPathAbsolute |**path** |Check if provided path is an absolute path |
+|IsFileHidden |**filePath** |Check if file path (file or directory) is hidden by OS |
 |IsFileNameValid |**fileName** |Check if fileName is valid for the platform/OS |
 |LoadDirectoryFiles |**dirPath** |Load directory filepaths NOTE: Base path is prepended to the scanned filepaths WARNING: Directory is scanned twice, first time to get paths count Scanneed files and directories, no recursive/subdirs scanning |
 |LoadDirectoryFilesEx |**basePath**, **filter**, **scanSubdirs**=0 |Load directory filepaths with extension filtering and recursive directory scan Use "*.*" to include all files and directories on scan Use "FILES*" to include only files on scan Use "DIRS*" to include only directories on scan WARNING: Directory is scanned twice, first time to get paths count |
 |UnloadDirectoryFiles |**files** |Unload directory filepaths WARNING: files.count is not reseted to 0 after unloading |
-|IsFileDropped | |Check if a file has been dropped into window |
+|IsFileDropped | |Check if file has been dropped into window |
 |LoadDroppedFiles | |Load dropped filepaths |
 |UnloadDroppedFiles |**files** |Unload dropped filepaths |
 |GetDirectoryFileCount |**dirPath** | |
@@ -886,7 +904,7 @@
 |LoadWave |**fileName** |Load wave data from file |
 |LoadWaveFromMemory |**fileType**, **fileData**, **dataSize** |Load wave from memory buffer, fileType refers to extension: i.e. ".wav" WARNING: File extension must be provided in lower-case |
 |CreateWave |**frameCount**, **sampleRate**, **sampleSize**, **channels**, **samples** | |
-|IsWaveValid |**wave** |Checks if wave data is valid (data loaded and parameters) |
+|IsWaveValid |**wave** |Check if wave data is valid (data loaded and parameters) |
 |UnloadWave |**wave** |Unload wave data |
 |LoadWaveSamples |**wave** |Load samples data from wave as a floats array NOTE 1: Returned sample values are normalized to range [-1..1] NOTE 2: Sample data allocated should be freed with UnloadWaveSamples() |
 |UnloadWaveSamples |**samples** |Unload samples data loaded with LoadWaveSamples() |
@@ -896,7 +914,7 @@
 |WaveFormat |**wave**, **sampleRate**=44100, **sampleSize**=16, **channels**=2 |Convert wave data to desired format |
 |LoadMusicStream |**fileName** |Load music stream from file |
 |LoadMusicStreamFromMemory |**fileType**, **data**, **dataSize** |Load music stream from memory buffer, fileType refers to extension: i.e. ".wav" WARNING: File extension must be provided in lower-case |
-|IsMusicValid |**music** |Checks if a music stream is valid (context and buffers initialized) |
+|IsMusicValid |**music** |Check if music stream is valid (context and buffers initialized) |
 |UnloadMusicStream |**music** |Unload music stream |
 |PlayMusicStream |**music** |Start music playing (open stream) from beginning |
 |IsMusicStreamPlaying |**music** |Check if any music is playing |
@@ -907,26 +925,26 @@
 |SeekMusicStream |**music**, **position**=0 |Seek music to a certain position (in seconds) |
 |SetMusicVolume |**music**, **volume**=1.0 |Set volume for music |
 |SetMusicPitch |**music**, **pitch**=1.0 |Set pitch for music |
-|SetMusicPan |**music**, **pan**=0.5 |Set pan for a music |
+|SetMusicPan |**music**, **pan**=0.5 |Set pan for music |
 |GetMusicTimeLength |**music** |Get music time length (in seconds) |
 |GetMusicTimePlayed |**music** |Get current music time played (in seconds) |
 |LoadSound |**fileName** |Load sound from file NOTE: The entire file is loaded to memory to be played (no-streaming) |
 |LoadSoundFromWave |**wave** |Load sound from wave data NOTE: Wave data must be unallocated manually |
-|LoadSoundAlias |**source** |Clone sound from existing sound data, clone does not own wave data NOTE: Wave data must be unallocated manually and will be shared across all clones |
-|IsSoundValid |**sound** |Checks if a sound is valid (data loaded and buffers initialized) |
+|LoadSoundAlias |**source** |Load sound alias, clone sound from existing sound data, clone does not own wave data NOTE: Wave data must be unallocated manually and will be shared across all clones |
+|IsSoundValid |**sound** |Check if sound is valid (data loaded and buffers initialized) |
 |UnloadSound |**sound** |Unload sound |
 |UnloadSoundAlias |**alias** |Also delete the heap-allocated Sound |
 |PlaySound |**sound** |Play a sound |
 |StopSound |**sound** |Stop reproducing a sound |
 |PauseSound |**sound** |Pause a sound |
 |ResumeSound |**sound** |Resume a paused sound |
-|IsSoundPlaying |**sound** |Check if a sound is playing |
-|UpdateSound |**sound**, **data**, **sampleCount** |Update sound buffer with new data PARAMS: [data], format must match sound.stream.sampleSize, default 32 bit float - stereo PARAMS: [frameCount] must not exceed sound.frameCount |
+|IsSoundPlaying |**sound** |Check if sound is playing |
+|UpdateSound |**sound**, **data**, **frameCount** |Update sound buffer with new data PARAMS: [data], format must match sound.stream.sampleSize, default 32 bit float - stereo PARAMS: [frameCount] must not exceed sound.frameCount |
 |SetSoundVolume |**sound**, **volume**=1.0 |Set volume for a sound |
 |SetSoundPitch |**sound**, **pitch**=1.0 |Set pitch for a sound |
 |SetSoundPan |**sound**, **pan**=0.5 |Set pan for a sound |
 |LoadAudioStream |**sampleRate**=44100, **sampleSize**=32, **channels**=1 |Load audio stream (to stream audio pcm data) |
-|IsAudioStreamValid |**stream** |Checks if an audio stream is valid (buffers initialized) |
+|IsAudioStreamValid |**stream** |Check if an audio stream is valid (buffers initialized) |
 |UnloadAudioStream |**stream** |Unload audio stream and free memory |
 |UpdateAudioStream |**stream**, **data** |Update audio stream buffers with data NOTE 1: Only updates one buffer of the stream source: dequeue -> update -> queue NOTE 2: To dequeue a buffer it needs to be processed: IsAudioStreamProcessed() |
 |IsAudioStreamProcessed |**stream** |Check if any audio stream buffers requires refill |
@@ -944,9 +962,10 @@
 
 |Name | Parameters | Purpose |
 |-----|------------|---------|
-|import |**libname**="" |Import a MiniScript library by name, searching MS_IMPORT_PATH |
+|import |**libname**="" |Import a MiniScript library by name, searching MS_IMPORT_PATH; stores the module under that name and returns it |
 |exit |**resultCode** |Exit the program with the given result code |
 |env | |Get a map of all environment variables |
+|shellArgs | |Get the script path and the command-line arguments following it |
 |run |**path**="" |Load and run a MiniScript file in the current interpreter context |
 |resourceCounts | |Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.) |
 |hostMemory | |see HostBytesInUse above. |

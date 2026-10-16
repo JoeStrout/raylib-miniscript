@@ -270,59 +270,61 @@ end function
 // Main.
 //----------------------------------------------------------------------
 
-print "Loading network..."
-t0 = time
-net = AZNet.load
-if net isa error then
-	print "Failed to load the network: " + net
-	print "Run export_msmx.py in ML-work-2026/rl_connect4 to write " +
-	   "assets/az_c4.msmx."
-	exit
-end if
-MCTS.net = net
-print "Loaded " + net.w.len + " weight matrices in " + round(time - t0, 2) + "s"
-print "Click a column to play.  [ and ] change search strength, " +
-   "R restarts, S swaps sides, ESC quits."
-
-newGame
-
-while true
-	if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
-	if rl.IsKeyPressed(rl.KEY_R) then newGame
-	if rl.IsKeyPressed(rl.KEY_S) then
-		humanFirst = not humanFirst
-		newGame
+run = function
+	print "Loading network..."
+	t0 = time
+	net = AZNet.load
+	if net isa error then
+		print "Failed to load the network: " + net
+		print "Run export_msmx.py in ML-work-2026/rl_connect4 to write " +
+		   "assets/az_c4.msmx."
+		exit
 	end if
-	if rl.IsKeyPressed(rl.KEY_LEFT_BRACKET) and MCTS.sims > 1 then
-		MCTS.sims = floor(MCTS.sims / 2)
-	end if
-	if rl.IsKeyPressed(rl.KEY_RIGHT_BRACKET) and MCTS.sims < 800 then
-		MCTS.sims = MCTS.sims * 2
-	end if
-
-	hover = -1
-	if state == "human" then
-		hover = mouseCol
-		if hover >= 0 and rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT) then
-			if playMove(hover, HUMAN) then hover = -1
+	MCTS.net = net
+	print "Loaded " + net.w.len + " weight matrices in " + round(time - t0, 2) + "s"
+	print "Click a column to play.  [ and ] change search strength, " +
+	   "R restarts, S swaps sides, ESC quits."
+	
+	newGame
+	
+	while true
+		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
+		if rl.IsKeyPressed(rl.KEY_R) then newGame
+		if rl.IsKeyPressed(rl.KEY_S) then
+			globals.humanFirst = not humanFirst
+			newGame
 		end if
-	end if
-
-	// One frame's worth of simulations, then back to drawing.
-	if state == "thinking" then
-		if MCTS.step then
-			globals.thinkTime = time - thinkStart
-			playMove MCTS.bestMove, AI
+		if rl.IsKeyPressed(rl.KEY_LEFT_BRACKET) and MCTS.sims > 1 then
+			MCTS.sims = floor(MCTS.sims / 2)
 		end if
-	end if
+		if rl.IsKeyPressed(rl.KEY_RIGHT_BRACKET) and MCTS.sims < 800 then
+			MCTS.sims = MCTS.sims * 2
+		end if
+	
+		hover = -1
+		if state == "human" then
+			hover = mouseCol
+			if hover >= 0 and rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT) then
+				if playMove(hover, HUMAN) then hover = -1
+			end if
+		end if
+	
+		// One frame's worth of simulations, then back to drawing.
+		if state == "thinking" then
+			if MCTS.step then
+				globals.thinkTime = time - thinkStart
+				playMove MCTS.bestMove, AI
+			end if
+		end if
+	
+		rl.BeginDrawing
+		rl.ClearBackground BG_COLOR
+		drawStatus
+		drawBoard hover
+		drawVisits
+		rl.EndDrawing
+		yield
+	end while
+end function
 
-	rl.BeginDrawing
-	rl.ClearBackground BG_COLOR
-	drawStatus
-	drawBoard hover
-	drawVisits
-	rl.EndDrawing
-	yield
-end while
-
-rl.CloseWindow
+if locals == globals then run

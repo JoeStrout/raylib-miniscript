@@ -2,10 +2,9 @@
 // Simple test script for MSRLWeb
 
 if not raylib.IsWindowReady then raylib.InitWindow 
-raylib.SetWindowTitle "MSRLWeb Demo"
 
 wumpusImg = raylib.LoadImage("assets/Wumpus.png")
-raylib.SetWindowIcon wumpusImg
+raylib.SetWindowIcon wumpusImg  // (does not work on MacOS)
 
 print "basic.ms running!  Version info:"
 print version
@@ -51,7 +50,7 @@ run = function
 	
 		if raylib.IsMouseButtonPressed(raylib.MOUSE_BUTTON_LEFT) then
 			pos = raylib.GetMousePosition
-			print "Clicked at " + pos.x + ", " + pos.y
+			print "Clicked at " + round(pos.x) + ", " + round(pos.y)
 			x = pos.x
 			y = pos.y
 			raylib.SetSoundPitch woobleSnd, 1 - (pos.y - 320) / 640
@@ -61,9 +60,9 @@ run = function
 		
 		raylib.DrawFPS
 		raylib.EndDrawing
+		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) then break
 		yield
 	end while
 end function
 
-print "in basic.ms with " + locals.len + " locals and " + globals.len + " globals"
 if locals == globals then run

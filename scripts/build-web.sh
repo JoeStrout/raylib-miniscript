@@ -62,10 +62,14 @@ if ! command -v emcmake &> /dev/null; then
     fi
 fi
 
-# Check if raylib web library exists; build it if not.
+# Build the raylib web library if it is missing or was built from a different
+# raylib commit (e.g. after moving the submodule to a new release). The stamp
+# file records which commit the current libraylib.web.a came from.
 RAYLIB_LIB="raylib/src/libraylib.web.a"
-if [ ! -f "$RAYLIB_LIB" ]; then
-    echo -e "${YELLOW}Raylib web library not found; building raylib for web...${NC}"
+RAYLIB_COMMIT=$(git -C raylib rev-parse HEAD 2>/dev/null)
+RAYLIB_STAMP="build-web/raylib-commit.txt"
+if [ ! -f "$RAYLIB_LIB" ] || [ "$(cat "$RAYLIB_STAMP" 2>/dev/null)" != "$RAYLIB_COMMIT" ]; then
+    echo -e "${YELLOW}Raylib web library missing or out of date; building raylib for web...${NC}"
     # Desktop and web builds share the raylib/src object directory, and their
     # .o files are not interchangeable. Remove any stray objects before building
     # (forcing a fresh web compile) and again afterward (so a later desktop build
@@ -79,6 +83,8 @@ if [ ! -f "$RAYLIB_LIB" ]; then
         echo -e "${RED}Failed to build raylib for web!${NC}"
         exit 1
     fi
+    mkdir -p build-web
+    echo "$RAYLIB_COMMIT" > "$RAYLIB_STAMP"
     echo -e "${GREEN}Raylib web library built!${NC}"
 fi
 

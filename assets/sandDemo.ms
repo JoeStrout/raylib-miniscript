@@ -65,14 +65,22 @@ drawObstacles = function(rtA, rtB, simW, simH, layoutName)
 	end for
 end function
 
+resetSand = function
+	drawObstacles rtA, rtB, simW, simH, obsNames[obstacleIdx]
+end function
+
+simW = 256
+simH = 256
+
+obsNames = ["Hourglass", "Pegs", "Shelves"]
+obstacleIdx = 0
+
 run = function
 	rl.SetWindowTitle "Sand Simulation"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth
 	screenH = rl.GetScreenHeight
 
-	simW = 256
-	simH = 256
 
 	// Load shaders
 	simCode = rl.LoadFileText("assets/shaders/sandSim.fs")
@@ -106,13 +114,11 @@ run = function
 	print "Disp locs: bg=" + dispLocBgColor
 
 	// Ping-pong render textures
-	rtA = rl.LoadRenderTexture(simW, simH)
-	rtB = rl.LoadRenderTexture(simW, simH)
+	outer.rtA = rl.LoadRenderTexture(simW, simH)
+	outer.rtB = rl.LoadRenderTexture(simW, simH)
 	rl.SetTextureFilter rtA.texture, rl.TEXTURE_FILTER_POINT
 	rl.SetTextureFilter rtB.texture, rl.TEXTURE_FILTER_POINT
 
-	obsNames = ["Hourglass", "Pegs", "Shelves"]
-	obstacleIdx = 0
 	drawObstacles rtA, rtB, simW, simH, obsNames[obstacleIdx]
 
 	if simLocTexelSize >= 0 then
@@ -125,9 +131,6 @@ run = function
 
 	current = 0
 
-	resetSand = function
-		drawObstacles rtA, rtB, simW, simH, obsNames[obstacleIdx]
-	end function
 
 	print "Sand simulation. SPACE=cycle obstacles, R=reset, ESC=exit."
 
@@ -135,10 +138,13 @@ run = function
 		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 
 		if rl.IsKeyPressed(rl.KEY_SPACE) then
-			obstacleIdx = (obstacleIdx + 1) % obsNames.len
+			outer.obstacleIdx = (obstacleIdx + 1) % obsNames.len
 			resetSand
 		end if
-		if rl.IsKeyPressed(rl.KEY_R) then resetSand
+		// R resets.  Read typed characters rather than KEY_R, which is a physical
+		// (QWERTY) key position, so this works with any keyboard layout.
+		ch = rl.GetCharPressed
+		if ch == code("r") or ch == code("R") then resetSand
 
 		t = rl.GetTime
 

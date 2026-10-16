@@ -158,15 +158,15 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
-	i.AddParam("source");
+	i.AddParam("rec");
 	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Texture tex = ValueToTexture(context.GetArg(0));
-		Rectangle source = ValueToRectangle(context.GetArg(1));
+		Rectangle rec = ValueToRectangle(context.GetArg(1));
 		Vector2 position = ValueToVector2(context.GetArg(2));
 		Color tint = ValueToColor(context.GetArg(3));
-		DrawTextureRec(tex, source, position, tint);
+		DrawTextureRec(tex, rec, position, tint);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextureRec", i.GetFunc());
@@ -432,7 +432,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image* img = ValueToImagePtr(context.GetArg(0));
 		if (!img) return IntrinsicResult::Null;
-		float contrast = context.GetArg(1).FloatValue();
+		int contrast = context.GetArg(1).IntValue();
 		ImageColorContrast(img, contrast);
 		return IntrinsicResult::Null;
 	});
@@ -600,6 +600,26 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
+	i.AddParam("posX", Value::zero);
+	i.AddParam("posY", Value::zero);
+	i.AddParam("width", Value(256));
+	i.AddParam("height", Value(256));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		int posX = context.GetArg(1).IntValue();
+		int posY = context.GetArg(2).IntValue();
+		int width = context.GetArg(3).IntValue();
+		int height = context.GetArg(4).IntValue();
+		Color color = ValueToColor(context.GetArg(5));
+		ImageDrawRectangleLines(dst, posX, posY, width, height, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawRectangleLines", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
 	i.AddParam("rec");
 	i.AddParam("thick", Value(1));
 	i.AddParam("color", ColorToValue(WHITE));
@@ -609,16 +629,112 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		Rectangle rec = ValueToRectangle(context.GetArg(1));
 		int thick = context.GetArg(2).IntValue();
 		Color color = ValueToColor(context.GetArg(3));
-		ImageDrawRectangleLines(dst, rec, thick, color);
+		ImageDrawRectangleLinesEx(dst, rec, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ImageDrawRectangleLines", i.GetFunc());
+	raylibModule.SetValue("ImageDrawRectangleLinesEx", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("rec");
+	i.AddParam("origin", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("rotation", Value::zero);
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		Rectangle rec = ValueToRectangle(context.GetArg(1));
+		Vector2 origin = ValueToVector2(context.GetArg(2));
+		float rotation = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
+		ImageDrawRectanglePro(dst, rec, origin, rotation, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawRectanglePro", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("rec");
+	i.AddParam("col1");
+	i.AddParam("col2");
+	i.AddParam("col3");
+	i.AddParam("col4");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		Rectangle rec = ValueToRectangle(context.GetArg(1));
+		Color col1 = ValueToColor(context.GetArg(2));
+		Color col2 = ValueToColor(context.GetArg(3));
+		Color col3 = ValueToColor(context.GetArg(4));
+		Color col4 = ValueToColor(context.GetArg(5));
+		ImageDrawRectangleGradientEx(dst, rec, col1, col2, col3, col4);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawRectangleGradientEx", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("src");
+	i.AddParam("posX", Value::zero);
+	i.AddParam("posY", Value::zero);
+	i.AddParam("tint", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		const Image& src = ValueToImage(context.GetArg(1));
+		int posX = context.GetArg(2).IntValue();
+		int posY = context.GetArg(3).IntValue();
+		Color tint = ValueToColor(context.GetArg(4));
+		ImageDrawImage(dst, src, posX, posY, tint);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawImage", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("src");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("rotation", Value::zero);
+	i.AddParam("scale", Value(1.0));
+	i.AddParam("tint", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		const Image& src = ValueToImage(context.GetArg(1));
+		Vector2 position = ValueToVector2(context.GetArg(2));
+		float rotation = context.GetArg(3).FloatValue();
+		float scale = context.GetArg(4).FloatValue();
+		Color tint = ValueToColor(context.GetArg(5));
+		ImageDrawImageEx(dst, src, position, rotation, scale, tint);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawImageEx", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("src");
+	i.AddParam("srcRec");
+	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("tint", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		const Image& src = ValueToImage(context.GetArg(1));
+		Rectangle srcRec = ValueToRectangle(context.GetArg(2));
+		Vector2 position = ValueToVector2(context.GetArg(3));
+		Color tint = ValueToColor(context.GetArg(4));
+		ImageDrawImageRec(dst, src, srcRec, position, tint);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawImageRec", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
 	i.AddParam("src");
 	i.AddParam("srcRec");
 	i.AddParam("dstRec");
+	i.AddParam("origin", Vector2ToValue(Vector2{0, 0}));
+	i.AddParam("rotation", Value::zero);
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image* dst = ValueToImagePtr(context.GetArg(0));
@@ -626,11 +742,13 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		const Image& src = ValueToImage(context.GetArg(1));
 		Rectangle srcRec = ValueToRectangle(context.GetArg(2));
 		Rectangle dstRec = ValueToRectangle(context.GetArg(3));
-		Color tint = ValueToColor(context.GetArg(4));
-		ImageDraw(dst, src, srcRec, dstRec, tint);
+		Vector2 origin = ValueToVector2(context.GetArg(4));
+		float rotation = context.GetArg(5).FloatValue();
+		Color tint = ValueToColor(context.GetArg(6));
+		ImageDrawImagePro(dst, src, srcRec, dstRec, origin, rotation, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ImageDraw", i.GetFunc());
+	raylibModule.SetValue("ImageDrawImagePro", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -698,6 +816,20 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RenderTextureToValue(renderTexture));
 	});
 	raylibModule.SetValue("LoadRenderTexture", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("width", Value(960));
+	i.AddParam("height", Value(640));
+	i.AddParam("format", Value(PIXELFORMAT_UNCOMPRESSED_R8G8B8A8));
+	i.set_Code(INTRINSIC_LAMBDA {
+		int width = context.GetArg(0).IntValue();
+		int height = context.GetArg(1).IntValue();
+		int format = context.GetArg(2).IntValue();
+		RenderTexture2D renderTexture = LoadRenderTextureEx(width, height, format);
+		rcRenderTexture++;
+		return IntrinsicResult(RenderTextureToValue(renderTexture));
+	});
+	raylibModule.SetValue("LoadRenderTextureEx", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("target");
@@ -1460,6 +1592,24 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
+	i.AddParam("center");
+	i.AddParam("radius");
+	i.AddParam("inner", ColorToValue(WHITE));
+	i.AddParam("outer", ColorToValue(BLACK));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		Vector2 center = ValueToVector2(context.GetArg(1));
+		float radius = context.GetArg(2).FloatValue();
+		Color inner = ValueToColor(context.GetArg(3));
+		Color outer = ValueToColor(context.GetArg(4));
+		ImageDrawCircleGradient(dst, center, radius, inner, outer);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawCircleGradient", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
 	i.AddParam("start");
 	i.AddParam("end");
 	i.AddParam("thick");
@@ -1475,6 +1625,27 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawLineEx", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("dst");
+	i.AddParam("points");
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Image* dst = ValueToImagePtr(context.GetArg(0));
+		if (!dst) return IntrinsicResult::Null;
+		ValueList pointsList = context.GetArg(1).GetList();
+		int pointCount = pointsList.Count();
+		if (pointCount < 2) return IntrinsicResult::Null;
+		Vector2* points = new Vector2[pointCount];
+		for (int i = 0; i < pointCount; i++) {
+			points[i] = ValueToVector2(pointsList[i]);
+		}
+		Color color = ValueToColor(context.GetArg(2));
+		ImageDrawLineStrip(dst, points, pointCount, color);
+		delete[] points;
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("ImageDrawLineStrip", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1547,10 +1718,10 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		Color c1 = ValueToColor(context.GetArg(4));
 		Color c2 = ValueToColor(context.GetArg(5));
 		Color c3 = ValueToColor(context.GetArg(6));
-		ImageDrawTriangleEx(dst, v1, v2, v3, c1, c2, c3);
+		ImageDrawTriangleGradient(dst, v1, v2, v3, c1, c2, c3);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ImageDrawTriangleEx", i.GetFunc());
+	raylibModule.SetValue("ImageDrawTriangleGradient", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");

@@ -39,6 +39,15 @@ end function
 
 functionNotes = {}  // key: API name; value: notes from Raylib source
 
+// Notes to use instead of what the Raylib source says, where its comment is
+// stale, missing, or doesn't describe our wrapper's behavior.
+noteOverrides = {
+	"ChangeDirectory": "Change working directory, returns 0 on success (nonzero on failure)",
+	"IsPathDirectory": "Check if provided path points to an existing directory",
+	"LoadRenderTextureEx": "Load texture for rendering (framebuffer), with specific pixel format",
+	"DrawCircleLinesEx": "Draw circle outline with line thickness",
+	"ImageDrawImagePro": "Draw a part of an image defined by a rectangle into destination rectangle, with scaling, within an image NOTE: origin and rotation are currently ignored by raylib" }
+
 // Process the given .c file (Raylib source), finding function notes and 
 // stuffing them into the global functionNotes map.
 processRaylibFile = function(path)
@@ -143,7 +152,9 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			end if
 			apiCount += 1
 
-			if functionNotes.hasIndex(m.api) then
+			if noteOverrides.hasIndex(m.api) then
+				note = noteOverrides[m.api]
+			else if functionNotes.hasIndex(m.api) then
 				note = functionNotes[m.api]
 			else if createNote != "" then
 				note = createNote

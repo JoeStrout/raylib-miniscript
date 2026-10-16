@@ -192,7 +192,7 @@ static void MountAppPayload(const char* scriptPath) {
 //--------------------------------------------------------------------------------
 
 void InitMiniScript() {
-	MiniScript::hostVersion = "0.3";   // a String in MS2, not a double
+	MiniScript::hostVersion = "0.9";
 	MiniScript::hostName = "raylib-miniscript";
 	MiniScript::hostInfo = "https://github.com/JoeStrout/raylib-miniscript";
 	ResetRaylibCallbackBridge();

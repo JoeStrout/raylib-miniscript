@@ -42,7 +42,12 @@ if [ ! -e "raylib/src" ]; then
     fi
 fi
 
-if [ ! -f "raylib/src/libraylib.a" ] || [ "raylib/.git" -nt "raylib/src/libraylib.a" ]; then
+# Rebuild raylib if the library is missing or was built from a different raylib
+# commit (e.g. after moving the submodule to a new release). The stamp file
+# records which commit the current libraylib.a came from.
+RAYLIB_COMMIT=$(git -C raylib rev-parse HEAD 2>/dev/null)
+RAYLIB_STAMP="build/raylib-commit.txt"
+if [ ! -f "raylib/src/libraylib.a" ] || [ "$(cat "$RAYLIB_STAMP" 2>/dev/null)" != "$RAYLIB_COMMIT" ]; then
     echo -e "${YELLOW}Building raylib...${NC}"
     # Desktop and web builds share the raylib/src object directory, and their
     # .o files are not interchangeable. Remove any stray objects before building
@@ -58,6 +63,8 @@ if [ ! -f "raylib/src/libraylib.a" ] || [ "raylib/.git" -nt "raylib/src/librayli
         echo -e "${RED}Failed to build raylib!${NC}"
         exit 1
     fi
+    mkdir -p build
+    echo "$RAYLIB_COMMIT" > "$RAYLIB_STAMP"
 fi
 
 mkdir -p build

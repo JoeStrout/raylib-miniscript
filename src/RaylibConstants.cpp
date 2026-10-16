@@ -24,6 +24,12 @@ static Value FrozenColor(Color color) {
 }
 
 void AddConstants(ValueDict& raylibModule) {
+	// raylib version (the one we were compiled against)
+	raylibModule.SetValue("RAYLIB_VERSION", Value(String(RAYLIB_VERSION)));
+	raylibModule.SetValue("RAYLIB_VERSION_MAJOR", Value(RAYLIB_VERSION_MAJOR));
+	raylibModule.SetValue("RAYLIB_VERSION_MINOR", Value(RAYLIB_VERSION_MINOR));
+	raylibModule.SetValue("RAYLIB_VERSION_PATCH", Value(RAYLIB_VERSION_PATCH));
+
 	// Add window flags
 	raylibModule.SetValue("FLAG_VSYNC_HINT", Value(FLAG_VSYNC_HINT         ));  // Set to try enabling V-Sync on GPU
 	raylibModule.SetValue("FLAG_FULLSCREEN_MODE", Value(FLAG_FULLSCREEN_MODE    ));  // Set to run program in fullscreen

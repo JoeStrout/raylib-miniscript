@@ -214,6 +214,29 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("DrawRingLines", i.GetFunc());
 
+	i = Intrinsic::Create("");
+	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
+	i.AddParam("innerRadius", Value(20));
+	i.AddParam("outerRadius", Value(32));
+	i.AddParam("startAngle", Value::zero);
+	i.AddParam("endAngle", Value(360));
+	i.AddParam("segments", Value(36));
+	i.AddParam("thick", Value(1.0));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 center = ValueToVector2(context.GetArg(0));
+		float innerRadius = context.GetArg(1).FloatValue();
+		float outerRadius = context.GetArg(2).FloatValue();
+		float startAngle = context.GetArg(3).FloatValue();
+		float endAngle = context.GetArg(4).FloatValue();
+		int segments = context.GetArg(5).IntValue();
+		float thick = context.GetArg(6).FloatValue();
+		Color color = ValueToColor(context.GetArg(7));
+		DrawRingLinesEx(center, innerRadius, outerRadius, startAngle, endAngle, segments, thick, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawRingLinesEx", i.GetFunc());
+
 	// Rectangle drawing
 
 	i = Intrinsic::Create("");
@@ -291,13 +314,13 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
-	i.AddParam("lineThick", Value(1));
+	i.AddParam("thick", Value(1));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Rectangle rec = ValueToRectangle(context.GetArg(0));
-		float lineThick = context.GetArg(1).FloatValue();
+		float thick = context.GetArg(1).FloatValue();
 		Color color = ValueToColor(context.GetArg(2));
-		DrawRectangleLinesEx(rec, lineThick, color);
+		DrawRectangleLinesEx(rec, thick, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawRectangleLinesEx", i.GetFunc());
@@ -415,6 +438,25 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	i.AddParam("v1");
 	i.AddParam("v2");
 	i.AddParam("v3");
+	i.AddParam("c1");
+	i.AddParam("c2");
+	i.AddParam("c3");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
+		Vector2 v3 = ValueToVector2(context.GetArg(2));
+		Color c1 = ValueToColor(context.GetArg(3));
+		Color c2 = ValueToColor(context.GetArg(4));
+		Color c3 = ValueToColor(context.GetArg(5));
+		DrawTriangleGradient(v1, v2, v3, c1, c2, c3);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawTriangleGradient", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("v1");
+	i.AddParam("v2");
+	i.AddParam("v3");
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 v1 = ValueToVector2(context.GetArg(0));
@@ -425,6 +467,23 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTriangleLines", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("v1");
+	i.AddParam("v2");
+	i.AddParam("v3");
+	i.AddParam("thick", Value(1.0));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 v1 = ValueToVector2(context.GetArg(0));
+		Vector2 v2 = ValueToVector2(context.GetArg(1));
+		Vector2 v3 = ValueToVector2(context.GetArg(2));
+		float thick = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
+		DrawTriangleLinesEx(v1, v2, v3, thick, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawTriangleLinesEx", i.GetFunc());
 
 	// Polygon drawing
 
@@ -467,16 +526,16 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	i.AddParam("sides", Value(6));
 	i.AddParam("radius", Value(32));
 	i.AddParam("rotation", Value::zero);
-	i.AddParam("lineThick", Value(1));
+	i.AddParam("thick", Value(1));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 center = ValueToVector2(context.GetArg(0));
 		int sides = context.GetArg(1).IntValue();
 		float radius = context.GetArg(2).FloatValue();
 		float rotation = context.GetArg(3).FloatValue();
-		float lineThick = context.GetArg(4).FloatValue();
+		float thick = context.GetArg(4).FloatValue();
 		Color color = ValueToColor(context.GetArg(5));
-		DrawPolyLinesEx(center, sides, radius, rotation, lineThick, color);
+		DrawPolyLinesEx(center, sides, radius, rotation, thick, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawPolyLinesEx", i.GetFunc());
@@ -668,6 +727,21 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("center");
 	i.AddParam("radius", Value(10.0));
+	i.AddParam("thick", Value(1.0));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 center = ValueToVector2(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		float thick = context.GetArg(2).FloatValue();
+		Color color = ValueToColor(context.GetArg(3));
+		DrawCircleLinesEx(center, radius, thick, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawCircleLinesEx", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("center");
+	i.AddParam("radius", Value(10.0));
 	i.AddParam("startAngle", Value::zero);
 	i.AddParam("endAngle", Value(90.0));
 	i.AddParam("segments", Value(36));
@@ -703,6 +777,27 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("DrawCircleSectorLines", i.GetFunc());
 
+	i = Intrinsic::Create("");
+	i.AddParam("center");
+	i.AddParam("radius", Value(10.0));
+	i.AddParam("startAngle", Value::zero);
+	i.AddParam("endAngle", Value(90.0));
+	i.AddParam("segments", Value(36));
+	i.AddParam("thick", Value(1.0));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 center = ValueToVector2(context.GetArg(0));
+		float radius = context.GetArg(1).FloatValue();
+		float startAngle = context.GetArg(2).FloatValue();
+		float endAngle = context.GetArg(3).FloatValue();
+		int segments = context.GetArg(4).IntValue();
+		float thick = context.GetArg(5).FloatValue();
+		Color color = ValueToColor(context.GetArg(6));
+		DrawCircleSectorLinesEx(center, radius, startAngle, endAngle, segments, thick, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawCircleSectorLinesEx", i.GetFunc());
+
 	// Additional ellipse drawing
 
 	i = Intrinsic::Create("");
@@ -734,6 +829,23 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawEllipseLinesV", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("center");
+	i.AddParam("radiusH", Value(10.0));
+	i.AddParam("radiusV", Value(5.0));
+	i.AddParam("thick", Value(1.0));
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Vector2 center = ValueToVector2(context.GetArg(0));
+		float radiusH = context.GetArg(1).FloatValue();
+		float radiusV = context.GetArg(2).FloatValue();
+		float thick = context.GetArg(3).FloatValue();
+		Color color = ValueToColor(context.GetArg(4));
+		DrawEllipseLinesEx(center, radiusH, radiusV, thick, color);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("DrawEllipseLinesEx", i.GetFunc());
 
 	// Additional line drawing
 
@@ -795,15 +907,15 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 	i.AddParam("rec");
 	i.AddParam("roundness", Value(0.0));
 	i.AddParam("segments", Value::zero);
-	i.AddParam("lineThick", Value(1.0));
+	i.AddParam("thick", Value(1.0));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Rectangle rec = ValueToRectangle(context.GetArg(0));
 		float roundness = context.GetArg(1).FloatValue();
 		int segments = context.GetArg(2).IntValue();
-		float lineThick = context.GetArg(3).FloatValue();
+		float thick = context.GetArg(3).FloatValue();
 		Color color = ValueToColor(context.GetArg(4));
-		DrawRectangleRoundedLinesEx(rec, roundness, segments, lineThick, color);
+		DrawRectangleRoundedLinesEx(rec, roundness, segments, thick, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawRectangleRoundedLinesEx", i.GetFunc());
@@ -1079,13 +1191,13 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Vector2 c2 = ValueToVector2(context.GetArg(1));
 		Vector2 p3 = ValueToVector2(context.GetArg(2));
 		float t = context.GetArg(3).FloatValue();
-		Vector2 result = GetSplinePointBezierQuad(p1, c2, p3, t);
+		Vector2 result = GetSplinePointBezierQuadratic(p1, c2, p3, t);
 		ValueDict resultMap;
 		resultMap.SetValue(String("x"), Value(result.x));
 		resultMap.SetValue(String("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointBezierQuad", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointBezierQuadratic", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1153,11 +1265,11 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
-	i.AddParam("source");
+	i.AddParam("rec");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Texture texture = ValueToTexture(context.GetArg(0));
-		Rectangle source = ValueToRectangle(context.GetArg(1));
-		SetShapesTexture(texture, source);
+		Rectangle rec = ValueToRectangle(context.GetArg(1));
+		SetShapesTexture(texture, rec);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetShapesTexture", i.GetFunc());

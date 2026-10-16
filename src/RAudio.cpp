@@ -579,22 +579,22 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.AddParam("data");
-	i.AddParam("sampleCount");
+	i.AddParam("frameCount");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Sound sound = ValueToSound(context.GetArg(0));
 		BinaryData* data = ValueToRawData(context.GetArg(1));
-		int sampleCount = context.GetArg(2).IntValue();
+		int frameCount = context.GetArg(2).IntValue();
 
 		if (data == nullptr || data->bytes == nullptr) {
 			context.vm.RaiseRuntimeError("UpdateSound: RawData required for data parameter"); return IntrinsicResult::Null;
 		}
 
-		if (sampleCount <= 0) {
-			context.vm.RaiseRuntimeError("UpdateSound: sampleCount must be > 0"); return IntrinsicResult::Null;
+		if (frameCount <= 0) {
+			context.vm.RaiseRuntimeError("UpdateSound: frameCount must be > 0"); return IntrinsicResult::Null;
 		}
 
 		// Update the sound buffer with the raw data
-		UpdateSound(sound, data->bytes, sampleCount);
+		UpdateSound(sound, data->bytes, frameCount);
 
 		return IntrinsicResult::Null;
 	});
