@@ -343,6 +343,26 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 	}
 }
 
+// Source of every module fetched so far, by library name.  A repeat import
+// (most modules import importUtil, for one) then costs no requests, instead of
+// probing each import directory again.  Kept as std::string: a host String is
+// not reachable by the GC and would be swept.
+static std::map<std::string, std::string> importSourceCache;
+
+// Compile a fetched module and push it to run inline; the same hand-off the
+// desktop import makes.  Returns the intrinsic's pending result (the library
+// name, for State 3) or the compile error.
+static IntrinsicResult StartImportedModule(Context& context, const String& libname, const String& moduleSource) {
+	Value compileErr;
+	FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
+	if (IsNull(moduleMain)) {
+		if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
+		return IntrinsicResult::Null;
+	}
+	context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
+	return IntrinsicResult(libname, false);
+}
+
 static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
 	// State 3: the imported module finished running; store its locals map
 	// (the manual-call result) under the library name in the caller's scope,
@@ -366,6 +386,9 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		ImportFetchData& data = it->second;
 
 		if (!data.completed) {
+			// Yield while the fetch is in flight: the host loop otherwise spins in
+			// its time slice, and the browser can't deliver the response meanwhile.
+			context.vm.yielding = true;
 			return partialResult;
 		}
 
@@ -382,21 +405,14 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 			}
 			memcpy(moduleData, fetch->data, fetch->numBytes);
 			moduleData[fetch->numBytes] = '\0';
+			importSourceCache[libname.c_str()] = std::string(moduleData, fetch->numBytes);
 			String moduleSource(moduleData);
 			free(moduleData);
 
 			emscripten_fetch_close(fetch);
 			activeImportFetches.erase(it);
 
-			Value compileErr;
-			FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
-			if (IsNull(moduleMain)) {
-				if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
-				return IntrinsicResult::Null;
-			}
-			context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
-
-			return IntrinsicResult(libname, false);
+			return StartImportedModule(context, libname, moduleSource);
 		} else {
 			emscripten_fetch_close(fetch);
 			int nextPathIndex = data.searchPathIndex + 1;
@@ -420,6 +436,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 
 				newData.fetch = emscripten_fetch(&attr, path.c_str());
 
+				context.vm.yielding = true;
 				return IntrinsicResult(Value((double)newFetchId), false);
 			} else {
 				return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
@@ -438,6 +455,11 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
 	    || libname.IndexOfB(String("..")) >= 0) {
 		return IntrinsicResult(ErrorTypes::FileError("import: argument must be library name, not path"));
+	}
+
+	auto cached = importSourceCache.find(libname.c_str());
+	if (cached != importSourceCache.end()) {
+		return StartImportedModule(context, libname, String(cached->second.c_str()));
 	}
 
 	String dir = GetImportDir(0);
@@ -460,6 +482,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 
 	data.fetch = emscripten_fetch(&attr, path.c_str());
 
+	context.vm.yielding = true;
 	return IntrinsicResult(Value((double)fetchId), false);
 }
 
