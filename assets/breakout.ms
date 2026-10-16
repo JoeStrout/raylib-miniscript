@@ -19,9 +19,9 @@ blockColors = [
 	[77, 234, 233, 255],
 ]
 
-hitBlockSound = rl.LoadSound("assets/sfx/SoundCoin.wav")
-hitBounceSound = rl.LoadSound("assets/sfx/SoundBounce.wav")
-loseSound = rl.LoadSound("assets/sfx/SoundFallDull.wav")
+hitBlockSound = rl.LoadSound("assets/sounds/SoundCoin.wav")
+hitBounceSound = rl.LoadSound("assets/sounds/SoundBounce.wav")
+loseSound = rl.LoadSound("assets/sounds/SoundFallDull.wav")
 
 screenWidth = rl.GetScreenWidth
 screenHeight = rl.GetScreenHeight
@@ -333,6 +333,7 @@ run = function
 		end if
 
 		rl.EndDrawing
+		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 		yield
 	end while
 end function

@@ -116,6 +116,7 @@ run = function
 			y += 24
 		end for
 		raylib.EndDrawing
+		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) then break
 		yield
 	end while
 	unload

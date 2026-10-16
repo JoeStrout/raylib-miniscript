@@ -622,10 +622,10 @@ static unsigned char* MiniScriptLoadFileDataBridge(const char* fileName, int* da
 	return result;
 }
 
-static bool MiniScriptSaveFileDataBridge(const char* fileName, void* data, int dataSize) {
+static bool MiniScriptSaveFileDataBridge(const char* fileName, const void* data, int dataSize) {
 	ValueList args;
 	args.Add(Value(String(fileName == nullptr ? "" : fileName)));
-	args.Add(BytesToRawDataValue((unsigned char*)data, dataSize));
+	args.Add(BytesToRawDataValue((const unsigned char*)data, dataSize));
 	args.Add(Value(dataSize));
 
 	Value callbackResult;
@@ -2979,10 +2979,11 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
 	i.set_Code(INTRINSIC_LAMBDA {
-		if (fs::RefuseWhenSandboxed("ChangeDirectory")) return IntrinsicResult::Zero;
+		// Returns 0 on success (raylib 6.2 convention), nonzero on failure.
+		if (fs::RefuseWhenSandboxed("ChangeDirectory")) return IntrinsicResult(-1);
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("ChangeDirectory");
-		return IntrinsicResult::Zero;
+		return IntrinsicResult(-1);
 	#endif
 		String dirPath = context.GetArg(0).ToString();
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
@@ -3001,6 +3002,43 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsPathFile(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathFile", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("path");
+	i.set_Code(INTRINSIC_LAMBDA {
+	#ifdef PLATFORM_WEB
+		PrintWebNotSupported("IsPathDirectory");
+		return IntrinsicResult::Zero;
+	#endif
+		String path;
+		if (!fs::HostPath(context.GetArg(0), path)) return IntrinsicResult::Zero;
+		// raylib 6.2's IsPathDirectory returns true for any path that is not a
+		// regular file, including paths that don't exist; require existence too.
+		return IntrinsicResult(IsPathDirectory(path.c_str()) && DirectoryExists(path.c_str()));
+	});
+	raylibModule.SetValue("IsPathDirectory", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("path");
+	i.set_Code(INTRINSIC_LAMBDA {
+		// Pure string check on the path as given; no host-path translation.
+		String path = context.GetArg(0).ToString();
+		return IntrinsicResult(IsPathAbsolute(path.c_str()));
+	});
+	raylibModule.SetValue("IsPathAbsolute", i.GetFunc());
+
+	i = Intrinsic::Create("");
+	i.AddParam("filePath");
+	i.set_Code(INTRINSIC_LAMBDA {
+	#ifdef PLATFORM_WEB
+		PrintWebNotSupported("IsFileHidden");
+		return IntrinsicResult::Zero;
+	#endif
+		String filePath;
+		if (!fs::HostPath(context.GetArg(0), filePath)) return IntrinsicResult::Zero;
+		return IntrinsicResult(IsFileHidden(filePath.c_str()));
+	});
+	raylibModule.SetValue("IsFileHidden", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");

@@ -197,6 +197,7 @@ else()
             "-framework IOKit"
             "-framework Cocoa"
             "-framework OpenGL"
+            "-framework QuartzCore"   # GLFW (raylib 6.2+) references CAMetalLayer
         )
         # libcurl is a macOS system library — no download, zero binary bloat.
         find_package(CURL REQUIRED)
@@ -261,6 +262,7 @@ else()
             "-framework IOKit"
             "-framework Cocoa"
             "-framework OpenGL"
+            "-framework QuartzCore"   # GLFW (raylib 6.2+) references CAMetalLayer
         )
     elseif(UNIX)
         target_link_libraries(fs_tests GL m pthread dl rt X11)

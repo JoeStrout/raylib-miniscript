@@ -455,16 +455,16 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("radiusTop", Value(1.0));
 	i.AddParam("radiusBottom", Value(1.0));
 	i.AddParam("height", Value(2.0));
-	i.AddParam("slices", Value(16));
+	i.AddParam("sides", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector3 position = ValueToVector3(context.GetArg(0));
 		float radiusTop = context.GetArg(1).FloatValue();
 		float radiusBottom = context.GetArg(2).FloatValue();
 		float height = context.GetArg(3).FloatValue();
-		int slices = context.GetArg(4).IntValue();
+		int sides = context.GetArg(4).IntValue();
 		Color color = ValueToColor(context.GetArg(5));
-		DrawCylinder(position, radiusTop, radiusBottom, height, slices, color);
+		DrawCylinder(position, radiusTop, radiusBottom, height, sides, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawCylinder", i.GetFunc());
@@ -493,16 +493,16 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("radiusTop", Value(1.0));
 	i.AddParam("radiusBottom", Value(1.0));
 	i.AddParam("height", Value(2.0));
-	i.AddParam("slices", Value(16));
+	i.AddParam("sides", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector3 position = ValueToVector3(context.GetArg(0));
 		float radiusTop = context.GetArg(1).FloatValue();
 		float radiusBottom = context.GetArg(2).FloatValue();
 		float height = context.GetArg(3).FloatValue();
-		int slices = context.GetArg(4).IntValue();
+		int sides = context.GetArg(4).IntValue();
 		Color color = ValueToColor(context.GetArg(5));
-		DrawCylinderWires(position, radiusTop, radiusBottom, height, slices, color);
+		DrawCylinderWires(position, radiusTop, radiusBottom, height, sides, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawCylinderWires", i.GetFunc());
@@ -530,17 +530,17 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("startPos");
 	i.AddParam("endPos");
 	i.AddParam("radius", Value(1.0));
-	i.AddParam("slices", Value(16));
 	i.AddParam("rings", Value(8));
+	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector3 startPos = ValueToVector3(context.GetArg(0));
 		Vector3 endPos = ValueToVector3(context.GetArg(1));
 		float radius = context.GetArg(2).FloatValue();
-		int slices = context.GetArg(3).IntValue();
-		int rings = context.GetArg(4).IntValue();
+		int rings = context.GetArg(3).IntValue();
+		int slices = context.GetArg(4).IntValue();
 		Color color = ValueToColor(context.GetArg(5));
-		DrawCapsule(startPos, endPos, radius, slices, rings, color);
+		DrawCapsule(startPos, endPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawCapsule", i.GetFunc());
@@ -549,17 +549,17 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("startPos");
 	i.AddParam("endPos");
 	i.AddParam("radius", Value(1.0));
-	i.AddParam("slices", Value(16));
 	i.AddParam("rings", Value(8));
+	i.AddParam("slices", Value(16));
 	i.AddParam("color", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector3 startPos = ValueToVector3(context.GetArg(0));
 		Vector3 endPos = ValueToVector3(context.GetArg(1));
 		float radius = context.GetArg(2).FloatValue();
-		int slices = context.GetArg(3).IntValue();
-		int rings = context.GetArg(4).IntValue();
+		int rings = context.GetArg(3).IntValue();
+		int slices = context.GetArg(4).IntValue();
 		Color color = ValueToColor(context.GetArg(5));
-		DrawCapsuleWires(startPos, endPos, radius, slices, rings, color);
+		DrawCapsuleWires(startPos, endPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawCapsuleWires", i.GetFunc());
@@ -621,18 +621,18 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.AddParam("texture");
-	i.AddParam("source");
+	i.AddParam("rec");
 	i.AddParam("position");
 	i.AddParam("size", Vector2ToValue(Vector2{1, 1}));
 	i.AddParam("tint", ColorToValue(WHITE));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Camera camera = ValueToCamera3D(context.GetArg(0));
 		Texture texture = ValueToTexture(context.GetArg(1));
-		Rectangle source = ValueToRectangle(context.GetArg(2));
+		Rectangle rec = ValueToRectangle(context.GetArg(2));
 		Vector3 position = ValueToVector3(context.GetArg(3));
 		Vector2 size = ValueToVector2(context.GetArg(4));
 		Color tint = ValueToColor(context.GetArg(5));
-		DrawBillboardRec(camera, texture, source, position, size, tint);
+		DrawBillboardRec(camera, texture, rec, position, size, tint);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawBillboardRec", i.GetFunc());
@@ -640,7 +640,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
 	i.AddParam("texture");
-	i.AddParam("source");
+	i.AddParam("rec");
 	i.AddParam("position");
 	i.AddParam("up", Vector3ToValue(Vector3{0, 1, 0}));
 	i.AddParam("size", Vector2ToValue(Vector2{1, 1}));
@@ -650,14 +650,14 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Camera camera = ValueToCamera3D(context.GetArg(0));
 		Texture texture = ValueToTexture(context.GetArg(1));
-		Rectangle source = ValueToRectangle(context.GetArg(2));
+		Rectangle rec = ValueToRectangle(context.GetArg(2));
 		Vector3 position = ValueToVector3(context.GetArg(3));
 		Vector3 up = ValueToVector3(context.GetArg(4));
 		Vector2 size = ValueToVector2(context.GetArg(5));
 		Vector2 origin = ValueToVector2(context.GetArg(6));
 		float rotation = context.GetArg(7).FloatValue();
 		Color tint = ValueToColor(context.GetArg(8));
-		DrawBillboardPro(camera, texture, source, position, up, size, origin, rotation, tint);
+		DrawBillboardPro(camera, texture, rec, position, up, size, origin, rotation, tint);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawBillboardPro", i.GetFunc());

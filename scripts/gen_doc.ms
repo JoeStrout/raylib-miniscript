@@ -8,8 +8,10 @@
 //      (used verbatim; several in a row are joined with spaces).  Put the doc
 //      text here when the generated one isn't right -- never edit API_DOC.md
 //      by hand, the next run would undo it.
-//   2. the note on the function of the same name in the Raylib sources
-//   3. the (last line of the) "// ..." comment above the Intrinsic::Create
+//   2. an entry in the noteOverrides table below (for where Raylib's own
+//      comment is stale or doesn't describe our wrapper)
+//   3. the note on the function of the same name in the Raylib sources
+//   4. the (last line of the) "// ..." comment above the Intrinsic::Create
 
 import "stringUtil"
 
@@ -47,6 +49,15 @@ isValidType = function(type)
 end function
 
 functionNotes = {}  // key: API name; value: notes from Raylib source
+
+// Notes to use instead of what the Raylib source says, where its comment is
+// stale, missing, or doesn't describe our wrapper's behavior.
+noteOverrides = {
+	"ChangeDirectory": "Change working directory, returns 0 on success (nonzero on failure)",
+	"IsPathDirectory": "Check if provided path points to an existing directory",
+	"LoadRenderTextureEx": "Load texture for rendering (framebuffer), with specific pixel format",
+	"DrawCircleLinesEx": "Draw circle outline with line thickness",
+	"ImageDrawImagePro": "Draw a part of an image defined by a rectangle into destination rectangle, with scaling, within an image NOTE: origin and rotation are currently ignored by raylib" }
 
 // Process the given .c file (Raylib source), finding function notes and 
 // stuffing them into the global functionNotes map.
@@ -169,6 +180,8 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 
 			if createApiNote != "" then
 				note = createApiNote
+			else if noteOverrides.hasIndex(m.api) then
+				note = noteOverrides[m.api]
 			else if functionNotes.hasIndex(m.api) then
 				note = functionNotes[m.api]
 			else if createNote != "" then

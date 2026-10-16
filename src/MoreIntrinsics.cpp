@@ -342,12 +342,13 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 
 static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
 	// State 3: the imported module finished running; store its locals map
-	// (the manual-call result) under the library name in the caller's scope.
+	// (the manual-call result) under the library name in the caller's scope,
+	// and also return it (for the `foo = import("foo")` form), as MS2 does.
 	if (!partialResult.Done() && partialResult.result.Type() == ValueType::String) {
 		Value importedValues = context.vm.ManualCallResult;
 		String libname = partialResult.result.ToString();
 		context.vm.SetVar(libname, importedValues);
-		return IntrinsicResult::Null;
+		return IntrinsicResult(importedValues);
 	}
 
 	// State 2: File has been fetched, parse and create import
@@ -418,8 +419,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 
 				return IntrinsicResult(Value((double)newFetchId), false);
 			} else {
-				context.vm.RaiseRuntimeError("import: library not found: " + libname);
-				return IntrinsicResult::Null;
+				return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
 			}
 		}
 	}
@@ -427,22 +427,19 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 	// State 1: Start the import - fetch the file
 	String libname = context.GetVar("libname").ToString();
 	if (libname.empty()) {
-		context.vm.RaiseRuntimeError("import: libname required");
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: no library name given"));
 	}
 	// A library name is a bare name, never a path.  Backslash and ".." matter as
 	// much as "/": with the search directories frozen, this check is the only
 	// thing keeping an import inside them.
 	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
 	    || libname.IndexOfB(String("..")) >= 0) {
-		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: argument must be library name, not path"));
 	}
 
 	String dir = GetImportDir(0);
 	if (dir.empty()) {
-		context.vm.RaiseRuntimeError("import: no import paths configured");
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: no import paths configured"));
 	}
 	String path = dir + "/" + libname + ".ms";
 
@@ -467,27 +464,26 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 
 static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
 	// State 2: the imported module finished running; store its locals map
-	// (the manual-call result) under the library name in the caller's scope.
+	// (the manual-call result) under the library name in the caller's scope,
+	// and also return it (for the `foo = import("foo")` form), as MS2 does.
 	if (!partialResult.Done() && partialResult.result.Type() == ValueType::String) {
 		Value importedValues = context.vm.ManualCallResult;
 		String libname = partialResult.result.ToString();
 		context.vm.SetVar(libname, importedValues);
-		return IntrinsicResult::Null;
+		return IntrinsicResult(importedValues);
 	}
 
 	// State 1: Load and parse the file synchronously
 	String libname = context.GetVar("libname").ToString();
 	if (libname.empty()) {
-		context.vm.RaiseRuntimeError("import: libname required");
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: no library name given"));
 	}
 	// A library name is a bare name, never a path.  Backslash and ".." matter as
 	// much as "/": with the search directories frozen, this check is the only
 	// thing keeping an import inside them.
 	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
 	    || libname.IndexOfB(String("..")) >= 0) {
-		context.vm.RaiseRuntimeError("import: argument must be library name, not path");
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: argument must be library name, not path"));
 	}
 
 	// Search env.importPaths once sandboxed, MS_IMPORT_PATH before that.  The
@@ -525,8 +521,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 	}
 
 	if (!found) {
-		context.vm.RaiseRuntimeError("import: library not found: " + libname);
-		return IntrinsicResult::Null;
+		return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
 	}
 
 	// Compile the module and push it as a manual call; we'll be re-invoked
@@ -754,7 +749,7 @@ static long long HostBytesInUse() {
 }
 
 void AddMoreIntrinsics() {
-	// Import a MiniScript library by name, searching MS_IMPORT_PATH
+	// Import a MiniScript library by name, searching MS_IMPORT_PATH; stores the module under that name and returns it
 	Intrinsic importFunc = Intrinsic::Create("import");
 	importFunc.AddParam("libname", "");
 	importFunc.set_Code(&intrinsic_import);

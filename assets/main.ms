@@ -9,8 +9,6 @@ rl.SetTraceLogLevel(rl.LOG_WARNING)
 if not rl.IsWindowReady then rl.InitWindow 
 
 titleFont = raylib.LoadFontEx("assets/Merkin.ttf", 48)
-print titleFont
-
 
 mouseCaughtBy = null // Button or other UI element currently handling mouse press
 
@@ -139,64 +137,38 @@ end function
 
 // Create a button for each example
 buttons = []
-x = 480; y = 150
+column = 0
+y = 200
 dy = 60
-
-btn = Button.Make("Basic", x, y)
-btn.action = function
-	import "basic"
-	basic.run
+addButton = function(label, module=null)
+	if module == null then module = label.lower
+	btn = Button.Make(label, 480 - 200 + 400*column, y)
+	outer.column = 1 - column
+	if column == 0 then outer.y += dy
+	btn.action = function
+		mod = import(module)
+		if mod == null or mod isa error then
+			print "Unable to load module: " + module
+			if mod isa error then print mod
+		else
+			mod.run
+		end if
+	end function
+	buttons.push btn
 end function
-buttons.push btn
-y += dy
 
-btn = Button.Make("Asteroids", x, y)
-btn.action = function
-	import "asteroids"
-	asteroids.run
-end function
-buttons.push btn
-y += dy
-
-btn = Button.Make("Breakout", x, y)
-btn.action = function
-	import "breakout"
-	breakout.run
-end function
-buttons.push btn
-y += dy
-
-btn = Button.Make("Fireworks", x, y)
-btn.action = function
-	import "fireworks"
-	fireworks.run
-end function
-buttons.push btn
-y += dy
-
-btn = Button.Make("Sounds", x, y)
-btn.action = function
-	import "sounds"
-	sounds.run
-end function
-buttons.push btn
-y += dy
-
-btn = Button.Make("3D Models", x, y)
-btn.action = function
-	import "rmodels_smoke"
-	rmodels_smoke.run
-end function
-buttons.push btn
-y += dy
-
-btn = Button.Make("Shader Demo", x, y)
-btn.action = function
-	import "shaderDemo"
-	shaderDemo.run
-end function
-buttons.push btn
-y += dy
+addButton "Basic"
+addButton "Asteroids"
+addButton "Breakout"
+addButton "Connect-4", "connect4"
+addButton "Fireworks"
+addButton "Metaballs", "metaballDemo"
+addButton "Sand Demo", "sandDemo"
+addButton "Sounds"
+addButton "3D Models", "rmodels_smoke"
+addButton "Shader Demo", "shaderDemo"
+addButton "Physics Demo", "physicsDemo"
+addButton "Angry Balls", "angryBalls"
 
 printCentered = function(s, y, fontSize=20, color)
 	if color == null then color = rl.WHITE
@@ -256,7 +228,8 @@ render = function
 
 	// render stuff
 	printCentered "raylib-miniscript demo", 20, 48, [100,100,255,255]
-	printCentered "version " + version.host, 60, 24, [50,50,200,255]
+	printCentered "version " + version.host + " (raylib " + raylib.RAYLIB_VERSION + ")", 
+	   90, 24, [50,50,200,255]
 	for btn in buttons
 		btn.render
 	end for

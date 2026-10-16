@@ -237,6 +237,11 @@ sectionConfig["RawData"]           = ["RawData",    "RawData",    "src/RawData.c
 sectionConfig["Matrix"]            = ["Matrix",     "Matrix",     "src/MatrixClass.cpp",     "matrixClass",     0]
 sectionConfig["physicsCore"]       = ["physicsCore", "physicsCore", "src/PhysicsCore.cpp",   "physicsModule",   0]
 
+// Return types the scanner can't infer, e.g. when the intrinsic's code is a
+// separate function attached with set_Code(&fn) rather than an inline lambda.
+returnTypeOverrides = {
+	"import": "map" }
+
 // Scan all source files.
 print "Scanning C++ source files for return types..."
 typeCount = 0
@@ -475,6 +480,7 @@ for line in docLines
 	retType = "null"
 	sectionTypes = apiReturnType[currentHeading]
 	if sectionTypes.hasIndex(apiName) then retType = sectionTypes[apiName]
+	if returnTypeOverrides.hasIndex(apiName) then retType = returnTypeOverrides[apiName]
 
 	// Parse parameters
 	params = parseParams(paramStr)
