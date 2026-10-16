@@ -10,6 +10,7 @@
 #include "RaylibTypes.h"
 #include "raylib.h"
 #include "miniscript.h"
+#include "loadfile.h"
 #include <map>
 #include <cstring>
 
@@ -340,6 +341,20 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 	}
 }
 
+// Compile a module's source and push it to run inline; the same hand-off the
+// desktop import makes.  Returns the intrinsic's pending result (the library
+// name, for State 3) or the compile error.
+static IntrinsicResult StartImportedModule(Context& context, const String& libname, const String& moduleSource) {
+	Value compileErr;
+	FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
+	if (IsNull(moduleMain)) {
+		if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
+		return IntrinsicResult::Null;
+	}
+	context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
+	return IntrinsicResult(libname, false);
+}
+
 static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
 	// State 3: the imported module finished running; store its locals map
 	// (the manual-call result) under the library name in the caller's scope,
@@ -385,15 +400,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 			emscripten_fetch_close(fetch);
 			activeImportFetches.erase(it);
 
-			Value compileErr;
-			FuncDef moduleMain = Interpreter::CompileToFunc(moduleSource, libname + ".ms", &compileErr);
-			if (IsNull(moduleMain)) {
-				if (!compileErr.IsNull()) return IntrinsicResult(ImportCompileError(libname, compileErr));
-				return IntrinsicResult::Null;
-			}
-			context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
-
-			return IntrinsicResult(libname, false);
+			return StartImportedModule(context, libname, moduleSource);
 		} else {
 			emscripten_fetch_close(fetch);
 			int nextPathIndex = data.searchPathIndex + 1;
@@ -435,6 +442,23 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 	if (libname.IndexOfB('/') >= 0 || libname.IndexOfB('\\') >= 0
 	    || libname.IndexOfB(String("..")) >= 0) {
 		return IntrinsicResult(ErrorTypes::FileError("import: argument must be library name, not path"));
+	}
+
+	// With a file package loaded, search it (in import-path order) with no
+	// network at all; a module that is not in it does not exist.
+	if (WebPackageLoaded()) {
+		for (int i = 0; ; i++) {
+			String packageDir = GetImportDir(i);
+			if (packageDir.empty()) break;
+			String packagePath = packageDir + "/" + libname + ".ms";
+			int size = 0;
+			unsigned char* data = ReadPackagedFile(packagePath.c_str(), &size);
+			if (data == nullptr) continue;
+			String moduleSource((char*)data);
+			free(data);
+			return StartImportedModule(context, libname, moduleSource);
+		}
+		return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
 	}
 
 	String dir = GetImportDir(0);

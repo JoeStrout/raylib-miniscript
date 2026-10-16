@@ -178,6 +178,12 @@
             };
         };
     </script>
+    <!-- Optional file package.  To serve the project's files from memory instead of fetch()ing
+         them, make a package with Emscripten's file_packager and add its loader here, after
+         `var Module` above and before the engine script below:
+             python3 $EMSDK/upstream/emscripten/tools/file_packager.py game.data --preload assets@/assets --js-output=game.data.js
+             <script src="game.data.js"></script>
+         With a package loaded, a file that isn't in it is never requested over the network. -->
     {{{ SCRIPT }}}
 </body>
 </html>

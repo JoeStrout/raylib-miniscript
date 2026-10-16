@@ -20,6 +20,25 @@ ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 
 When run with no script argument, it looks for `assets/main.ms` in the current working directory first, and failing that, next to the executable itself.  The second case is what lets a packaged app (where the payload ships beside the binary) work when launched from the Finder or a desktop shortcut, since the working directory is then something unrelated.
 
+## Web build
+
+`scripts/build-web.sh` builds `build-web/raylib-miniscript.{html,js,wasm}` (needs Emscripten).  The page loads `assets/main.ms` and every other file the game reads (images, sounds, shaders, imported modules) with `fetch()`, one request each.
+
+For a game with many files you can instead preload them as an Emscripten **file package**, which is mounted in the in-memory file system before the engine starts and served from there with no network requests:
+
+```
+python3 $EMSDK/upstream/emscripten/tools/file_packager.py game.data --preload assets@/assets --js-output=game.data.js
+```
+
+Put `game.data` and `game.data.js` next to the page and load the generated script after the page's `Module` definition and before the engine script (see the comment in `web/shell.html`):
+
+```html
+<script src="game.data.js"></script>
+<script async src="raylib-miniscript.js"></script>
+```
+
+When the in-memory file system has an `assets` directory, a package is considered loaded, and then the main script, `import`, raylib's `LoadFileData`/`LoadFileText` (and so every raylib loader built on them) and `FileExists` look only in memory: a file that is not in the package is not found, and no request is made for it.  With no package, files are fetched as before.
+
 ## Documentation
 
 Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.

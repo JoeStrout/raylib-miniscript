@@ -123,6 +123,24 @@ void fetchScript(const char *url) {
 	emscripten_fetch(&attr, url);
 }
 
+// The main script: from the file package if one is loaded, else over HTTP.
+void loadMainScript(const char *path) {
+	int size = 0;
+	unsigned char* data = ReadPackagedFile(path, &size);
+	if (data != nullptr) {
+		scriptSource = String((char*)data);
+		free(data);
+		return;
+	}
+	if (WebPackageLoaded()) {
+		loadError = String("Not found in the file package: ") + path;
+		scriptState = ERRORED;
+		printf("%s\n", loadError.c_str());
+		return;
+	}
+	fetchScript(path);
+}
+
 #else // PLATFORM_DESKTOP
 
 void loadScriptFromFile(const char *path) {
@@ -435,7 +453,7 @@ int main(int argc, char *argv[]) {
 	// Load the main script
 #ifdef PLATFORM_WEB
 	SetShellArgs({ String("assets/main.ms") });
-	fetchScript("assets/main.ms");
+	loadMainScript("assets/main.ms");
 #else
 	loadScriptFromFile(scriptPath);
 #endif
