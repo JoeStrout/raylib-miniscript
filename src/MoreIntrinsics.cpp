@@ -61,7 +61,10 @@ static Value envMapValue;
 // On desktop, initialized from the OS environment on first call.
 // On web, starts empty (populated via setEnvVar).
 static ValueDict& envMapRef() {
-	static ValueDict envMap;
+	// New(), not a default-constructed dict: that has no storage until the first
+	// write, so on web (nothing to read from the OS) the wrapped map would not
+	// share storage with the later setEnvVar writes and `env` would stay empty.
+	static ValueDict envMap = ValueDict::New();
 	static bool initialized = false;
 	if (!initialized) {
 		initialized = true;
