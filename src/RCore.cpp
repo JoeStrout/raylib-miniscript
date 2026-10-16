@@ -2535,10 +2535,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-	#ifdef PLATFORM_WEB
-		PrintWebNotSupported("LoadFileData");
-		return IntrinsicResult::Null;
-	#endif
+		// (On web, raylib reaches this through the fetch hook installed by
+		// InstallLoadFileHooks, as LoadFileText does.)
 		String fileName;
 		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Null;
 		int dataSize = 0;
