@@ -1,8 +1,31 @@
 // Utilities related to paths, i.e., a series of locations in 2D space.
 // Paths are represented as a list of [x,y] sub-lists.  Here we have
-// methods for moving a point along a path (both forwards and backwards).
+// methods for drawing such a path, creating such a path with the mouse,
+// and moving a point along a path (both forwards and backwards).
 
 import "mathUtil"
+
+// drawPath
+//	Draw a path, defined as a list of [x,y] points.  (This is similar
+//	to PixelDisplay.drawPoly, but does not assume a closed figure.)
+// Parameters:
+//	gfx: PixelDisplay to draw to
+//	path: list of [x,y] path points
+//	color: optional color to draw in (defaults to gfx.color)
+//	penSize: optional line thickness (defaults to 1)
+drawPath = function(gfx, path, color, penSize)
+	hw = penSize / 2
+	fw = penSize - 1
+	for i in range(0, path.len-2)
+		gfx.line path[i][0], path[i][1], path[i+1][0], path[i+1][1], color, penSize
+		if penSize > 2 then		
+			gfx.fillEllipse path[i][0]-hw, path[i][1]-hw, fw, fw, color
+		end if
+	end for
+	if penSize > 2 then
+		gfx.fillEllipse path[-1][0]-hw, path[-1][1]-hw, fw, fw, color
+	end if
+end function
 
 // nearestPointOnPath
 //	Find the closest point on the path to the given point.
@@ -35,6 +58,36 @@ distanceToPath = function(point, path)
 		end if
 	end for
 	return bestDist
+end function
+
+// makePathWithMouse
+//	This is a little utility function to help you define a path, by clicking
+//	a series of points on the screen with the mouse.
+makePathWithMouse = function
+	import "textUtil"  // needed for printWrap
+	clear
+	text.row = 25
+	while key.pressed("return"); end while
+	print "Click points in the path.  Press Return when done."
+	path = []
+	btnDown = mouse.button
+	while not key.pressed("return") and not key.pressed("enter")
+		if mouse.button and not btnDown then
+			path.push [mouse.x, mouse.y]
+			if path.len == 1 then
+				gfx.fillEllipse path[0][0]-2, path[0][1]-2, 4, 4
+			else
+				gfx.line path[-2][0], path[-2][1], path[-1][0], path[-1][1]
+			end if
+			text.row = 24
+			textUtil.printWrap str(path)
+		end if
+		btnDown = mouse.button
+		yield
+	end while
+	key.clear
+	print
+	print "OK, now you can copy that path above and paste into your code!"
 end function
 	
 
