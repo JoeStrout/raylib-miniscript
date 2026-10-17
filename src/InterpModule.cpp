@@ -45,12 +45,25 @@ static const Value& kHandle() { static Value v("_handle"); return v; }
 // the delegates cannot know which handle they belong to.  They don't have to:
 // output only ever happens while we are running a child, and ActiveChild is set
 // for exactly that window.
+//
+// Lifetime.  An instance's `_handle` is an opaque MiniScript handle that owns
+// this object, so script can neither forge one nor point it anywhere else, and
+// an Interp dropped without `dispose` is freed when the handle is collected.
+// `dispose` cannot delete it -- the handle still owns it, and copies of the
+// instance map may still hold that handle -- so it tears the child down early
+// and marks it disposed instead.  While a child is running, its handle is a GC
+// root (see ActiveChild), since nothing else stops the child's own code from
+// dropping the last reference to it mid-run.
 struct InterpHandle {
 	Interpreter interp;
 	String outBuf;			// drained by takeOutput
+	Value handle;			// the handle that owns us; not itself a root
+	int running = 0;		// ActiveChild nesting depth
+	bool disposed = false;
 
 	InterpHandle();
 	~InterpHandle();
+	void Dispose();
 
 	static void MarkRoots(void* userData) {
 		InterpHandle* h = (InterpHandle*)userData;
@@ -65,7 +78,33 @@ InterpHandle::InterpHandle() {
 }
 
 InterpHandle::~InterpHandle() {
+	Dispose();
+}
+
+// Release the child interpreter and its VM.  Idempotent.
+void InterpHandle::Dispose() {
+	if (disposed) return;
+	disposed = true;
 	GCManager::UnregisterMarkCallback(MarkRoots, this);
+	interp = Interpreter();
+	outBuf = nullptr;
+}
+
+// The finalizer of every Interp handle.  It is also how a `_handle` is known to
+// be one of ours: any other handle (a file, a RawData, a raylib resource) has a
+// different finalizer, and must never be read as an InterpHandle.
+static void FinalizeInterp(void* p) {
+	delete (InterpHandle*)p;
+}
+
+// The InterpHandle behind an instance map's `_handle`, disposed or not; null if
+// it has no Interp handle.
+static InterpHandle* HandleOf(Value self) {
+	if (self.Type() != ValueType::Map) return nullptr;
+	Value handleVal = self.GetDict().Lookup(kHandle(), Value::Null);
+	if (!handleVal.IsHandle()) return nullptr;
+	if (GCManager::GetHandle(handleVal).Callback != FinalizeInterp) return nullptr;
+	return (InterpHandle*)handleVal.HandlePtr();
 }
 
 // The child we are currently running, or null.  This exists only for the output
@@ -77,9 +116,16 @@ InterpHandle::~InterpHandle() {
 static InterpHandle* g_activeChild = nullptr;
 
 struct ActiveChild {
+	InterpHandle* h;
 	InterpHandle* prev;
-	ActiveChild(InterpHandle* h) : prev(g_activeChild) { g_activeChild = h; }
-	~ActiveChild() { g_activeChild = prev; }
+	ActiveChild(InterpHandle* h) : h(h), prev(g_activeChild) {
+		g_activeChild = h;
+		if (h->running++ == 0) GCManager::AddRoot(h->handle);
+	}
+	~ActiveChild() {
+		g_activeChild = prev;
+		if (--h->running == 0) GCManager::RemoveRoot(h->handle);
+	}
 };
 
 //--------------------------------------------------------------------------------
@@ -122,12 +168,12 @@ static InterpHandle* GetHandle(Context context) {
 		context.vm.RaiseRuntimeError("Interp required for self parameter");
 		return nullptr;
 	}
-	Value handleVal = self.GetDict().Lookup(kHandle(), Value::Null);
-	if (handleVal.Type() != ValueType::Number) {
+	InterpHandle* h = HandleOf(self);
+	if (h == nullptr || h->disposed) {
 		context.vm.RaiseRuntimeError("Interp has been disposed");
 		return nullptr;
 	}
-	return (InterpHandle*)(intptr_t)handleVal.DoubleValue();
+	return h;
 }
 
 // Point a child's output at our capture buffers.
@@ -216,9 +262,11 @@ const Value& InterpClass() {
 		h->interp = Interpreter::New();
 		Bootstrap(h);
 
+		h->handle = Value::NewHandle(h, FinalizeInterp);
+
 		ValueDict inst;
 		inst.SetValue(Value::magicIsA, InterpClass());
-		inst.SetValue(kHandle(), Value((double)(intptr_t)h));
+		inst.SetValue(kHandle(), h->handle);
 		return IntrinsicResult(DynamicMap(inst));
 	});
 	// create a new child interpreter, with empty globals
@@ -228,15 +276,15 @@ const Value& InterpClass() {
 	f.AddParam("self");
 	f.set_Code(INTRINSIC_LAMBDA {
 		Value self = context.GetArg(0);
-		if (self.Type() != ValueType::Map) return IntrinsicResult::Null;
-		Value handleVal = self.GetDict().Lookup(kHandle(), Value::Null);
-		if (handleVal.Type() != ValueType::Number) return IntrinsicResult::Null;
-		InterpHandle* h = (InterpHandle*)(intptr_t)handleVal.DoubleValue();
-		if (h == g_activeChild) {
+		InterpHandle* h = HandleOf(self);
+		if (h == nullptr) return IntrinsicResult::Null;
+		// Any running child, not just the innermost: a grandchild's code can
+		// reach its grandparent's instance as easily as its own.
+		if (h->running > 0) {
 			context.vm.RaiseRuntimeError("cannot dispose an Interp while it is running");
 			return IntrinsicResult::Null;
 		}
-		delete h;
+		h->Dispose();
 		self.MapSet(kHandle(), Value::Null);
 		return IntrinsicResult::Null;
 	});

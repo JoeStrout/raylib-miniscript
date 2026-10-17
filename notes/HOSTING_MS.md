@@ -88,12 +88,13 @@ one-liner here.
 
 ### An `Interp` class, in the house style
 
-A MiniScript map with a `_handle` pointing at a heap-allocated
-`InterpHandle { Interpreter interp; String outBuf; }`, exactly as `Texture` and
-`Sound` work today (`RaylibTypes.h`).  `Interp.create` returns a new instance;
-the handle is freed by `dispose`.  There is no teardown sweep, so a child that
-is never disposed lives until the process exits — harmless, but it does mean
-`dispose` is the only thing that reclaims a child's VM.
+A MiniScript map whose `_handle` is an opaque handle (`Value::NewHandle`)
+owning an `InterpHandle { Interpreter interp; String outBuf; ... }`, the same
+way `Texture` and `Sound` hold their structs (`RaylibTypes.h`).  Script cannot
+forge the handle or point it elsewhere.  `Interp.create` returns a new
+instance; `dispose` releases the child's VM at once, and an instance that is
+never disposed is reclaimed when its handle is collected.  A running child's
+handle is a GC root for the duration, and no running child can be disposed.
 
 Added by `AddInterpIntrinsics()`, called from `InitMiniScript`.  A host that
 never calls it sees no new globals — Soda won't — but raylib-miniscript does,

@@ -844,6 +844,105 @@ static void testInterpDispose() {
 	ok(errContains("disposed"), "...saying so");
 }
 
+// `_handle` is an opaque handle, not a number, so there is nothing for script
+// to forge: a made-up map, or a real instance whose `_handle` was overwritten,
+// reads as disposed rather than as a pointer to wherever the number points.
+static void testInterpForgedHandle() {
+	printf("\n-- Interp: forged handles --\n");
+
+	clearCapture();
+	runParent(
+		"fake = {\"_handle\": 12345}\n"
+		"fake.__isa = Interp\n"
+		"fake.replLine \"x = 1\"\n");
+	ok(errContains("disposed"), "a map with a numeric _handle is refused");
+
+	clearCapture();
+	runParent(
+		"p = Interp.create\n"
+		"p._handle = 4242\n"
+		"p.replLine \"x = 1\"\n");
+	ok(errContains("disposed"), "an instance whose _handle was overwritten is refused");
+
+	clearCapture();
+	runParent(
+		"fake = {\"_handle\": @print}\n"
+		"fake.__isa = Interp\n"
+		"fake.dispose\n"
+		"done = 1\n");
+	ok(g_err.empty(), "disposing a fake Interp is a harmless no-op");
+
+	// A copy of the instance map shares its handle, and so sees the dispose.
+	clearCapture();
+	runParent(
+		"p = Interp.create\n"
+		"c = {} + p\n"
+		"p.dispose\n"
+		"c.dispose\n"
+		"c.replLine \"x = 1\"\n");
+	ok(errContains("disposed"), "a copy of a disposed instance is disposed too");
+}
+
+// The handle owns the child, so one dropped without `dispose` is freed by the
+// collector rather than leaked.
+static void testInterpCollected() {
+	printf("\n-- Interp: collected without dispose --\n");
+	clearCapture();
+
+	GCManager::FullCollectGarbage();
+	Int32 before = GCManager::Handles.LiveCount();
+	Interpreter a = runParent(
+		"churn = function\n"
+		"	for i in range(1, 20)\n"
+		"		p = Interp.create\n"
+		"		p.replLine \"x = [1, 2, 3]\"\n"
+		"	end for\n"
+		"end function\n"
+		"churn\n");
+	ok(g_err.empty(), "the parent script runs clean");
+	GCManager::FullCollectGarbage();
+	GCManager::FullCollectGarbage();
+	Int32 after = GCManager::Handles.LiveCount();
+	ok(after <= before, "20 undisposed children are all collected");
+}
+
+// While a child runs, nothing else need hold its handle: here its own code
+// drops the parent's only reference and forces a collection mid-run.  And no
+// running child can be disposed, not just the innermost -- a grandchild can
+// reach its grandparent's instance as easily as its own.
+static void testInterpRunningIsPinned() {
+	printf("\n-- Interp: a running child is pinned --\n");
+	clearCapture();
+
+	Interpreter a = runParent(
+		"holder = {}\n"
+		"holder.p = Interp.create\n"
+		"holder.p.setGlobal \"holder\", holder\n"
+		"holder.p.replLine \"me = holder.p; holder.p = null; me._handle = null; me = null; "
+			"holder.before = liveHandles; collect; holder.after = liveHandles\"\n"
+		"kept = holder.after == holder.before\n");
+	ok(g_err.empty(), "the parent script runs clean");
+	eqNum(readGlobal(a, "kept"), 1, "a child that unhooks itself and collects is not collected mid-run");
+
+	clearCapture();
+	a = runParent(
+		"p = Interp.create\n"
+		"p.setGlobal \"p\", p\n"
+		"p.replLine \"q = Interp.create\"\n"
+		"p.replLine \"q.setGlobal \"\"gp\"\", p\"\n"
+		"p.replLine \"q.replLine \"\"gp.dispose\"\"\"\n"
+		"p.replLine \"qerr = q.error\"\n"
+		"qerr = p.getGlobal(\"qerr\")\n"
+		"p.replLine \"y = 6\"\n"
+		"y = p.getGlobal(\"y\")\n"
+		"p.dispose\n");
+	ok(g_err.empty(), "the parent script runs clean");
+	Value qerr = readGlobal(a, "qerr");
+	ok(!qerr.IsNull() && strstr(qerr.ToString().c_str(), "running") != nullptr,
+		"a grandchild cannot dispose its running grandparent");
+	eqNum(readGlobal(a, "y"), 6, "...which is still usable afterwards");
+}
+
 //--------------------------------------------------------------------------------
 
 int main() {
@@ -863,6 +962,18 @@ int main() {
 		Value resultCode = ctx.GetArg(0);
 		ctx.vm.RequestExit(resultCode.IsNull() ? 0 : (Int32)resultCode.IntValue());
 		return IntrinsicResult::Null;
+	});
+
+	// A full collection on demand, so a child's own code can force one mid-run
+	// (testInterpRunningIsPinned).  Inside an intrinsic is a safe point.
+	f = Intrinsic::Create("collect");
+	f.set_Code([](Context ctx, IntrinsicResult partialResult) -> IntrinsicResult {
+		GCManager::FullCollectGarbage();
+		return IntrinsicResult::Null;
+	});
+	f = Intrinsic::Create("liveHandles");
+	f.set_Code([](Context ctx, IntrinsicResult partialResult) -> IntrinsicResult {
+		return IntrinsicResult(Value(GCManager::Handles.LiveCount()));
 	});
 
 	testBootstrap();
@@ -889,6 +1000,9 @@ int main() {
 	testInterpGCRoots();
 	testInterpExit();
 	testInterpDispose();
+	testInterpForgedHandle();
+	testInterpCollected();
+	testInterpRunningIsPinned();
 
 	printf("\n%d checks, %d failures\n", checks, failures);
 	return failures == 0 ? 0 : 1;
