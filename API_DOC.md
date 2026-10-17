@@ -933,7 +933,7 @@
 |LoadSoundAlias |**source** |Load sound alias, clone sound from existing sound data, clone does not own wave data NOTE: Wave data must be unallocated manually and will be shared across all clones |
 |IsSoundValid |**sound** |Check if sound is valid (data loaded and buffers initialized) |
 |UnloadSound |**sound** |Unload sound |
-|UnloadSoundAlias |**alias** |Also delete the heap-allocated Sound |
+|UnloadSoundAlias |**alias** | |
 |PlaySound |**sound** |Play a sound |
 |StopSound |**sound** |Stop reproducing a sound |
 |PauseSound |**sound** |Pause a sound |
@@ -967,6 +967,7 @@
 |env | |Get a map of all environment variables |
 |shellArgs | |Get the script path and the command-line arguments following it |
 |run |**path**="" |Load and run a MiniScript file in the current interpreter context |
+|autoUnload |**resource** |Flag a raylib resource to be unloaded automatically when no longer referenced; returns the resource |
 |resourceCounts | |Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.) |
 |hostMemory | |see HostBytesInUse above. |
 

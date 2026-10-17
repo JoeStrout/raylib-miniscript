@@ -355,7 +355,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Font font = GetFontDefault();
-		return IntrinsicResult(FontToValue(font));
+		Value result = FontToValue(font);
+		MarkBorrowed(result, Value::Null);		// raylib's own; CloseWindow unloads it
+		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("GetFontDefault", i.GetFunc());
 
@@ -392,7 +394,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		result.SetValue(String("offsetX"), Value(info.offsetX));
 		result.SetValue(String("offsetY"), Value(info.offsetY));
 		result.SetValue(String("advanceX"), Value(info.advanceX));
-		result.SetValue(String("image"), ImageToValue(info.image));
+		Value image = ImageToValue(info.image);
+		MarkBorrowed(image, context.GetArg(0));		// the font's glyph image
+		result.SetValue(String("image"), image);
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetGlyphInfo", i.GetFunc());

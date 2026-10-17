@@ -14,6 +14,7 @@
 #include "FileSystem.h"
 #include "UserDisks.h"
 #include "loadfile.h"
+#include "RaylibTypes.h"
 #include <stdio.h>
 
 #ifdef PLATFORM_WEB
@@ -277,6 +278,9 @@ void MainLoop() {
 			// already through the lower "encouraged" thresholds, and this call
 			// is the guarantee for one that never yields.
 			MiniScript::GCManager::MaybeCollect();
+			// Resources the script flagged with autoUnload and has dropped.
+			// (A no-op if the slice ended mid-frame; EndDrawing gets them.)
+			ProcessPendingUnloads();
 		} else {
 			scriptState = COMPLETE;
 			printf("Script finished\n");

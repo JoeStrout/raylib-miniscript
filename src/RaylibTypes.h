@@ -214,9 +214,16 @@ Value RayCollisionToValue(RayCollision collision);
 // Image's into a Texture) is refused rather than reinterpreting the struct.
 //
 // The box is freed when its handle is collected.  The raylib resource itself
-// (GPU texture, audio buffer, ...) is not: that still takes an explicit Unload*,
-// as in the C API.  Unloading empties the box (TakeResource), so any other map
-// sharing the same handle reads as an empty resource, never a stale one.
+// (GPU texture, audio buffer, ...) is not: by default that still takes an
+// explicit Unload*, as in the C API.  Unloading empties the box (TakeResource),
+// so any other map sharing the same handle reads as an empty resource, never a
+// stale one.
+//
+// Auto-unloading is opt-in, per resource, through the `autoUnload` intrinsic;
+// it is meant for wrapper libraries (Soda, Mini Micro) whose own classes free
+// what they load.  A flagged resource that is collected while still loaded is
+// queued, and unloaded by ProcessPendingUnloads at a point where raylib can
+// take it: never mid-frame, where the draw batch may still refer to it.
 //--------------------------------------------------------------------------------
 
 struct rlRenderBatch;	// rlgl.h
@@ -258,6 +265,10 @@ RESOURCE_KIND(rlRenderBatch, RenderBatch)
 struct ResourceHeader {
 	ResourceKind kind;
 	bool live;			// false once unloaded
+	bool autoUnload;	// unload when collected (see autoUnload)
+	bool borrowed;		// a view of a resource something else owns and unloads
+	bool soundAlias;	// a Sound from LoadSoundAlias (unloaded differently)
+	int generation;		// graphics or audio generation it was loaded under
 };
 
 template<typename T> struct ResourceBox : ResourceHeader {
@@ -271,8 +282,37 @@ Value WrapResourceBox(ResourceHeader* box);
 // kind (live or not); otherwise null.
 ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind);
 
+// The box behind a map's `_handle`, of whatever kind; null if none.
+ResourceHeader* AnyResourceBoxOf(Value map);
+
 // The raw `_handle` Value of a map (null if it is not a map, or has none).
 Value ResourceHandleOf(Value map);
+
+// The raylib type name of a kind, e.g. "Texture".
+const char* ResourceKindName(ResourceKind kind);
+
+// Whether a kind may be flagged for auto-unloading.  For now, only the kinds
+// whose ownership is simple: not Model, Mesh, Material and the like, which hand
+// their parts to one another.
+bool ResourceKindSupportsAutoUnload(ResourceKind kind);
+
+// Mark a map's resource as a view of one that `owner` owns: it can never be
+// flagged for auto-unloading, and the map keeps its owner alive (in `_owner`),
+// so the owner cannot be auto-unloaded while the view is still in use.  `owner`
+// may be null, for a resource raylib itself owns (the default font).
+void MarkBorrowed(Value map, Value owner);
+
+// Ownership of a map's resource has passed to something else (a texture given
+// to a material, which unloads it): stop it ever being auto-unloaded.
+void TransferOwnership(Value map);
+
+// Unload the resources queued by the collector.  Does nothing while the script
+// is between BeginDrawing and EndDrawing.  Resources from a graphics context or
+// audio device that has since been closed are dropped without unloading.
+void ProcessPendingUnloads();
+void SetDrawingActive(bool active);
+void BumpGraphicsGeneration();		// at InitWindow
+void BumpAudioGeneration();			// at InitAudioDevice
 
 // Make a handle owning a copy of the given raylib struct.
 template<typename T> Value NewResourceHandle(const T& res) {

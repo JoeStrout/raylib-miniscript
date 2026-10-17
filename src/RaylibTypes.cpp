@@ -1,5 +1,6 @@
 #include "RaylibTypes.h"
 #include "rlgl.h"
+#include <vector>
 
 // Resource allocation counters
 int rcImage = 0;
@@ -22,13 +23,7 @@ int rcModelAnimation = 0;
 
 static const Value& HandleKey() { static Value k("_handle"); return k; }
 
-// The one finalizer for every resource box.  Besides freeing the box, it is how
-// ResourceBoxOf recognizes a handle as ours: other handle types (files, RawData,
-// matrices) have other finalizers, and their pointers must never be read as a
-// ResourceHeader.  (The switch also keeps this code distinct from any other
-// finalizer, so a linker's identical-code folding cannot merge it with one.)
-static void FinalizeResource(void* p) {
-	ResourceHeader* box = (ResourceHeader*)p;
+static void DeleteResourceBox(ResourceHeader* box) {
 	switch (box->kind) {
 		#define CASE(T, K) case ResourceKind::K: delete static_cast<ResourceBox<T>*>(box); break;
 		CASE(Image, Image)
@@ -51,8 +46,124 @@ static void FinalizeResource(void* p) {
 	}
 }
 
+// Boxes collected while still loaded and flagged autoUnload, waiting for
+// ProcessPendingUnloads.  The collector cannot unload them itself: it may run
+// mid-frame (a script's `yield`), while the draw batch still refers to them.
+static std::vector<ResourceHeader*> pendingUnloads;
+
+// The one finalizer for every resource box.  Besides freeing the box, it is how
+// ResourceBoxOf recognizes a handle as ours: other handle types (files, RawData,
+// matrices) have other finalizers, and their pointers must never be read as a
+// ResourceHeader.  (The deferral also keeps this code distinct from any other
+// finalizer, so a linker's identical-code folding cannot merge it with one.)
+static void FinalizeResource(void* p) {
+	ResourceHeader* box = (ResourceHeader*)p;
+	if (box->live && box->autoUnload) pendingUnloads.push_back(box);
+	else DeleteResourceBox(box);
+}
+
+// Bumped whenever a window or audio device is (re)opened.  A resource remembers
+// the generation it was loaded under, so that one outliving its context is
+// never unloaded into a newer one, where its GL id may name something else.
+static int graphicsGeneration = 0;
+static int audioGeneration = 0;
+static bool drawingActive = false;
+
+void BumpGraphicsGeneration() { graphicsGeneration++; }
+void BumpAudioGeneration() { audioGeneration++; }
+void SetDrawingActive(bool active) { drawingActive = active; }
+
+static bool IsAudioKind(ResourceKind kind) {
+	return kind == ResourceKind::Sound || kind == ResourceKind::Music
+		|| kind == ResourceKind::AudioStream;
+}
+
+static bool IsCpuOnlyKind(ResourceKind kind) {
+	return kind == ResourceKind::Image || kind == ResourceKind::Wave;
+}
+
 Value WrapResourceBox(ResourceHeader* box) {
+	box->generation = IsAudioKind(box->kind) ? audioGeneration : graphicsGeneration;
 	return Value::NewHandle(box, FinalizeResource);
+}
+
+const char* ResourceKindName(ResourceKind kind) {
+	switch (kind) {
+		case ResourceKind::Image: return "Image";
+		case ResourceKind::Texture: return "Texture";
+		case ResourceKind::Font: return "Font";
+		case ResourceKind::Wave: return "Wave";
+		case ResourceKind::Music: return "Music";
+		case ResourceKind::Sound: return "Sound";
+		case ResourceKind::AudioStream: return "AudioStream";
+		case ResourceKind::RenderTexture: return "RenderTexture";
+		case ResourceKind::Shader: return "Shader";
+		case ResourceKind::Mesh: return "Mesh";
+		case ResourceKind::Material: return "Material";
+		case ResourceKind::Model: return "Model";
+		case ResourceKind::ModelAnimation: return "ModelAnimation";
+		case ResourceKind::ModelAnimationArray: return "ModelAnimation";
+		case ResourceKind::AutomationEventList: return "AutomationEventList";
+		case ResourceKind::RenderBatch: return "rlRenderBatch";
+	}
+	return "resource";
+}
+
+bool ResourceKindSupportsAutoUnload(ResourceKind kind) {
+	switch (kind) {
+		case ResourceKind::Image:
+		case ResourceKind::Texture:
+		case ResourceKind::Font:
+		case ResourceKind::Wave:
+		case ResourceKind::Music:
+		case ResourceKind::Sound:
+		case ResourceKind::AudioStream:
+		case ResourceKind::RenderTexture:
+		case ResourceKind::Shader:
+			return true;
+		default:
+			return false;
+	}
+}
+
+// Unload one queued resource, if the context it came from is still the current
+// one, and free its box.
+static void UnloadPending(ResourceHeader* box) {
+	bool contextOk;
+	if (IsCpuOnlyKind(box->kind)) contextOk = true;
+	else if (IsAudioKind(box->kind)) contextOk = IsAudioDeviceReady() && box->generation == audioGeneration;
+	else contextOk = IsWindowReady() && box->generation == graphicsGeneration;
+
+	if (contextOk) {
+		#define RES(T) (static_cast<ResourceBox<T>*>(box)->res)
+		switch (box->kind) {
+			case ResourceKind::Image: UnloadImage(RES(Image)); rcImage--; break;
+			case ResourceKind::Texture: UnloadTexture(RES(Texture)); rcTexture--; break;
+			case ResourceKind::Font: UnloadFont(RES(Font)); rcFont--; break;
+			case ResourceKind::Wave: UnloadWave(RES(Wave)); rcWave--; break;
+			case ResourceKind::Music: UnloadMusicStream(RES(Music)); rcMusic--; break;
+			case ResourceKind::Sound:
+				if (box->soundAlias) UnloadSoundAlias(RES(Sound));
+				else UnloadSound(RES(Sound));
+				rcSound--;
+				break;
+			case ResourceKind::AudioStream: UnloadAudioStream(RES(AudioStream)); rcAudioStream--; break;
+			case ResourceKind::RenderTexture: UnloadRenderTexture(RES(RenderTexture)); rcRenderTexture--; break;
+			case ResourceKind::Shader: UnloadShader(RES(Shader)); rcShader--; break;
+			default: break;		// never flagged (ResourceKindSupportsAutoUnload)
+		}
+		#undef RES
+	}
+	DeleteResourceBox(box);
+}
+
+void ProcessPendingUnloads() {
+	if (drawingActive || pendingUnloads.empty()) return;
+	// Swap the queue out first: nothing here allocates GC objects, but a queue
+	// that cannot change underneath the loop needs no argument to be safe.
+	std::vector<ResourceHeader*> batch;
+	batch.swap(pendingUnloads);
+	for (ResourceHeader* box : batch) UnloadPending(box);
 }
 
 Value ResourceHandleOf(Value map) {
@@ -60,13 +171,32 @@ Value ResourceHandleOf(Value map) {
 	return map.GetDict().Lookup(HandleKey(), Value::Null);
 }
 
-ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind) {
+ResourceHeader* AnyResourceBoxOf(Value map) {
 	Value handle = ResourceHandleOf(map);
 	if (!handle.IsHandle()) return nullptr;
 	if (GCManager::GetHandle(handle).Callback != FinalizeResource) return nullptr;
-	ResourceHeader* box = (ResourceHeader*)handle.HandlePtr();
+	return (ResourceHeader*)handle.HandlePtr();
+}
+
+ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind) {
+	ResourceHeader* box = AnyResourceBoxOf(map);
 	if (box == nullptr || box->kind != kind) return nullptr;
 	return box;
+}
+
+void MarkBorrowed(Value map, Value owner) {
+	ResourceHeader* box = AnyResourceBoxOf(map);
+	if (box == nullptr) return;
+	box->borrowed = true;
+	box->autoUnload = false;
+	if (!owner.IsNull()) map.GetDict().SetValue(String("_owner"), owner);
+}
+
+void TransferOwnership(Value map) {
+	ResourceHeader* box = AnyResourceBoxOf(map);
+	if (box == nullptr) return;
+	box->borrowed = true;
+	box->autoUnload = false;
 }
 
 void PinnedResource::Set(Value map) {
@@ -394,11 +524,14 @@ Value FontToValue(Font font) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, FontClass());
 	map.SetValue(String("_handle"), NewResourceHandle(font));
-	map.SetValue(String("texture"), TextureToValue(font.texture));
+	Value texture = TextureToValue(font.texture);
+	map.SetValue(String("texture"), texture);
 	map.SetValue(String("baseSize"), Value(font.baseSize));
 	map.SetValue(String("glyphCount"), Value(font.glyphCount));
 	map.SetValue(String("glyphPadding"), Value(font.glyphPadding));
-	return DynamicMap(map);
+	Value result = DynamicMap(map);
+	MarkBorrowed(texture, result);		// UnloadFont unloads it
+	return result;
 }
 
 // Extract a Raylib Font from a MiniScript map
@@ -520,8 +653,11 @@ Value RenderTextureToValue(RenderTexture2D renderTexture) {
 	map.SetValue(Value::magicIsA, RenderTextureClass());
 	map.SetValue(String("_handle"), NewResourceHandle(renderTexture));
 	map.SetValue(String("id"), Value((int)renderTexture.id));
-	map.SetValue(String("texture"), TextureToValue(renderTexture.texture));
-	return DynamicMap(map);
+	Value texture = TextureToValue(renderTexture.texture);
+	map.SetValue(String("texture"), texture);
+	Value result = DynamicMap(map);
+	MarkBorrowed(texture, result);		// UnloadRenderTexture unloads it
+	return result;
 }
 
 // Extract a Raylib RenderTexture2D from a MiniScript map

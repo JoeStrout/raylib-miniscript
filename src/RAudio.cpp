@@ -22,7 +22,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		bool wasOpen = IsAudioDeviceReady();
 		InitAudioDevice();
+		if (!wasOpen && IsAudioDeviceReady()) BumpAudioGeneration();
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("InitAudioDevice", i.GetFunc());
@@ -474,7 +476,12 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Sound source = ValueToSound(context.GetArg(0));
 		Sound alias = LoadSoundAlias(source);
 		rcSound++;
-		return IntrinsicResult(SoundToValue(alias));
+		Value result = SoundToValue(alias);
+		AnyResourceBoxOf(result)->soundAlias = true;
+		// The alias plays the source's samples, so it keeps the source alive:
+		// an auto-unloaded source must not be unloaded out from under it.
+		result.GetDict().SetValue(String("_source"), context.GetArg(0));
+		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("LoadSoundAlias", i.GetFunc());
 

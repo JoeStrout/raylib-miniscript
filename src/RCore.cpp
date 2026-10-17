@@ -720,6 +720,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		BeginDrawing();
+		SetDrawingActive(true);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginDrawing", i.GetFunc());
@@ -727,6 +728,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		EndDrawing();
+		// The batch is flushed, so nothing refers to a collected resource now:
+		// the best moment to unload any the collector has queued.
+		SetDrawingActive(false);
+		ProcessPendingUnloads();
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EndDrawing", i.GetFunc());
@@ -1610,7 +1615,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		int width = context.GetArg(0).IntValue();
 		int height = context.GetArg(1).IntValue();
 		String title = context.GetArg(2).ToString();
+		bool wasOpen = IsWindowReady();
 		InitWindow(width, height, title.c_str());
+		if (!wasOpen && IsWindowReady()) BumpGraphicsGeneration();
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("InitWindow", i.GetFunc());

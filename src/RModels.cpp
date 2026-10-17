@@ -49,7 +49,9 @@ static void SyncMaterialShaderMetadata(Value materialValue, Shader shader) {
 	if (materialValue.Type() != ValueType::Map) return;
 	ValueDict map = materialValue.GetDict();
 	map.SetValue(String("shaderId"), Value((int)shader.id));
-	map.SetValue(String("shader"), ShaderToValue(shader));
+	Value shaderValue = ShaderToValue(shader);
+	MarkBorrowed(shaderValue, materialValue);		// UnloadMaterial unloads it
+	map.SetValue(String("shader"), shaderValue);
 }
 
 static int ShaderUniformComponentCount(int uniformType) {
@@ -1153,6 +1155,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		int mapType = context.GetArg(1).IntValue();
 		Texture texture = ValueToTexture(context.GetArg(2));
 		SetMaterialTexture(materialPtr, mapType, texture);
+		TransferOwnership(context.GetArg(2));		// UnloadMaterial unloads it now
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetMaterialTexture", i.GetFunc());
@@ -1165,6 +1168,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		if (materialPtr == nullptr) return IntrinsicResult::Null;
 
 		Value shaderValue = ShaderToValue(materialPtr->shader);
+		MarkBorrowed(shaderValue, materialValue);		// UnloadMaterial unloads it
 		SyncMaterialShaderMetadata(materialValue, materialPtr->shader);
 		return IntrinsicResult(shaderValue);
 	});
@@ -1180,6 +1184,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		Shader shader = ValueToShader(context.GetArg(1));
 		materialPtr->shader = shader;
+		TransferOwnership(context.GetArg(1));		// UnloadMaterial unloads it now
 		SyncMaterialShaderMetadata(materialValue, shader);
 		return IntrinsicResult::Null;
 	});

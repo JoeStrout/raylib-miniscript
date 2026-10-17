@@ -778,6 +778,37 @@ void AddMoreIntrinsics() {
 	setEnvVar("MS_SCRIPT_DIR", "assets");
 #endif
 
+	// Opt a raylib resource in to being unloaded automatically, once nothing
+	// refers to it any more, instead of by an explicit Unload* call.  Meant for
+	// wrapper classes (Soda, Mini Micro) that own what they load; plain raylib
+	// code unloads by hand, as in C.  Returns the resource, so it can wrap the
+	// load call; or an error if it is not a loaded resource that can be flagged
+	// (supported: Image, Texture, Font, Wave, Music, Sound, AudioStream,
+	// RenderTexture, Shader; not one owned by another, like a Font's texture).
+	// Flag a raylib resource to be unloaded automatically when no longer referenced; returns the resource
+	Intrinsic autoUnloadFunc = Intrinsic::Create("autoUnload");
+	autoUnloadFunc.AddParam("resource");
+	autoUnloadFunc.set_Code([](Context context, IntrinsicResult partialResult) -> IntrinsicResult {
+		Value resource = context.GetArg(0);
+		ResourceHeader* box = AnyResourceBoxOf(resource);
+		if (box == nullptr) {
+			return IntrinsicResult(ErrorTypes::RuntimeError("autoUnload: argument is not a raylib resource"));
+		}
+		String kind = ResourceKindName(box->kind);
+		if (!ResourceKindSupportsAutoUnload(box->kind)) {
+			return IntrinsicResult(ErrorTypes::RuntimeError("autoUnload: not supported for " + kind));
+		}
+		if (!box->live) {
+			return IntrinsicResult(ErrorTypes::RuntimeError("autoUnload: " + kind + " has already been unloaded"));
+		}
+		if (box->borrowed) {
+			return IntrinsicResult(ErrorTypes::RuntimeError("autoUnload: this " + kind
+				+ " is owned by another resource, which unloads it"));
+		}
+		box->autoUnload = true;
+		return IntrinsicResult(resource);
+	});
+
 	// Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)
 	Intrinsic rcFunc = Intrinsic::Create("resourceCounts");
 	rcFunc.set_Code([](Context context, IntrinsicResult partialResult) -> IntrinsicResult {
