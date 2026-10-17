@@ -596,7 +596,12 @@ Music ValueToMusic(Value value) {
 	if (musicPtr == nullptr) {
 		return Music{};
 	}
-	return *musicPtr;
+	// raylib reads looping from the Music passed in (e.g. to UpdateMusicStream),
+	// so apply the script-visible flag to the copy we return.
+	Music music = *musicPtr;
+	Value loopVal = value.GetDict().Lookup(String("looping"), Value(music.looping ? 1 : 0));
+	music.looping = (loopVal.FloatValue() != 0);
+	return music;
 }
 
 // Convert a Raylib Sound to a MiniScript map
