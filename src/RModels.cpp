@@ -11,54 +11,36 @@
 using namespace MiniScript;
 
 static Mesh* GetMeshPtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (Mesh*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return ResourcePtr<Mesh>(value);
 }
 
 static Material* GetMaterialPtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (Material*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return ResourcePtr<Material>(value);
 }
 
 static Model* GetModelPtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (Model*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return ResourcePtr<Model>(value);
 }
 
-static ModelAnimation* GetModelAnimationArray(Value value, int* outCount) {
-	*outCount = 0;
-
-	Value first = value;
+// The map UnloadModelAnimations is given: the list LoadModelAnimations
+// returned, or any one entry of it (all share the array's handle).
+static Value ModelAnimationArrayMap(Value value) {
 	if (value.Type() == ValueType::List) {
 		ValueList list = value.GetList();
-		if (list.Count() == 0) return nullptr;
-		first = list[0];
+		if (list.Count() == 0) return Value::Null;
+		return list[0];
 	}
-
-	if (first.Type() != ValueType::Map) return nullptr;
-
-	ValueDict map = first.GetDict();
-	ModelAnimation* arrayPtr = (ModelAnimation*)ValueToPointer(map.Lookup(String("_arrayHandle"), Value::zero));
-	int arrayCount = map.Lookup(String("_arrayCount"), Value::zero).IntValue();
-	if (arrayPtr == nullptr || arrayCount <= 0) return nullptr;
-
-	*outCount = arrayCount;
-	return arrayPtr;
+	return value;
 }
 
-static Value ModelAnimationArrayItemToValue(ModelAnimation* animations, int count, int index) {
+static Value ModelAnimationArrayItemToValue(Value arrayHandle, const ModelAnimation& anim, int index) {
 	rcModelAnimation++;
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelAnimationClass());
-	map.SetValue(String("_handle"), PointerToValue(&animations[index]));
-	map.SetValue(String("name"), Value(String(animations[index].name)));
-	map.SetValue(String("boneCount"), Value(animations[index].boneCount));
-	map.SetValue(String("keyframeCount"), Value(animations[index].keyframeCount));
-	map.SetValue(String("_arrayHandle"), PointerToValue(animations));
-	map.SetValue(String("_arrayCount"), Value(count));
+	map.SetValue(String("_handle"), arrayHandle);
+	map.SetValue(String("name"), Value(String(anim.name)));
+	map.SetValue(String("boneCount"), Value(anim.boneCount));
+	map.SetValue(String("keyframeCount"), Value(anim.keyframeCount));
 	map.SetValue(String("_arrayIndex"), Value(index));
 	return DynamicMap(map);
 }
@@ -714,12 +696,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value modelValue = context.GetArg(0);
-		Model model = ValueToModel(modelValue);
+		Model model;
+		if (!TakeResource(context.GetArg(0), &model)) return IntrinsicResult::Null;
 		UnloadModel(model);
-
-		Model* modelPtr = GetModelPtr(modelValue);
-		if (modelPtr != nullptr) { delete modelPtr; rcModel--; }
+		rcModel--;
 
 		return IntrinsicResult::Null;
 	});
@@ -868,12 +848,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value meshValue = context.GetArg(0);
-		Mesh mesh = ValueToMesh(meshValue);
+		Mesh mesh;
+		if (!TakeResource(context.GetArg(0), &mesh)) return IntrinsicResult::Null;
 		UnloadMesh(mesh);
-
-		Mesh* meshPtr = GetMeshPtr(meshValue);
-		if (meshPtr != nullptr) { delete meshPtr; rcMesh--; }
+		rcMesh--;
 
 		return IntrinsicResult::Null;
 	});
@@ -1155,12 +1133,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value materialValue = context.GetArg(0);
-		Material material = ValueToMaterial(materialValue);
+		Material material;
+		if (!TakeResource(context.GetArg(0), &material)) return IntrinsicResult::Null;
 		UnloadMaterial(material);
-
-		Material* materialPtr = GetMaterialPtr(materialValue);
-		if (materialPtr != nullptr) { delete materialPtr; rcMaterial--; }
+		rcMaterial--;
 
 		return IntrinsicResult::Null;
 	});
@@ -1387,9 +1363,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		ModelAnimation* animations = LoadModelAnimations(path.c_str(), &animCount);
 		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;
 
+		Value arrayHandle = NewResourceHandle(ModelAnimationArray{animations, animCount});
 		ValueList result;
 		for (int n = 0; n < animCount; n++) {
-			result.Add(ModelAnimationArrayItemToValue(animations, animCount, n));
+			result.Add(ModelAnimationArrayItemToValue(arrayHandle, animations[n], n));
 		}
 
 		return IntrinsicResult(DynamicList(result));
@@ -1433,13 +1410,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("animations");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Value animationsValue = context.GetArg(0);
-		int animCount = 0;
-		ModelAnimation* animations = GetModelAnimationArray(animationsValue, &animCount);
-		if (animations == nullptr || animCount <= 0) return IntrinsicResult::Null;
+		ModelAnimationArray array;
+		if (!TakeResource(ModelAnimationArrayMap(context.GetArg(0)), &array)) return IntrinsicResult::Null;
 
-		UnloadModelAnimations(animations, animCount);
-		rcModelAnimation -= animCount;
+		UnloadModelAnimations(array.animations, array.count);
+		rcModelAnimation -= array.count;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadModelAnimations", i.GetFunc());

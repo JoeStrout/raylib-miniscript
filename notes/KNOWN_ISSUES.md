@@ -2,27 +2,19 @@
 
 Bugs found but not yet fixed.  Remove an entry once its fix lands.
 
-## Resource maps carry raw pointers as numbers
+## Interp instances carry a raw pointer as a number
 
-Every raylib resource map (Image, Texture, Font, Wave, Music, Sound,
-AudioStream, RenderTexture, Shader, Mesh, Material, Model, ModelAnimation,
-AutomationEventList, and rlRenderBatch) stores its C++ heap pointer in `_handle`
-as a plain number.  `ValueToPointer` (`RaylibTypes.h`) casts that number
-straight back to a pointer and every binding dereferences it unchecked.  About
-36 call sites, across `RaylibTypes.cpp`, `RAudio.cpp`, `RModels.cpp`,
-`RTextures.cpp`, `RCore.cpp`, `RText.cpp`, and `RLgl.cpp`.
+`InterpModule.cpp` keeps each `Interp` instance's `InterpHandle*` in `_handle`
+as a plain number, and `GetHandle` casts any numeric `_handle` straight back to
+a pointer.  So `{"_handle": 12345, "__isa": Interp}` (or writing over a real
+instance's `_handle`) makes the host call into arbitrary memory, the same hole
+the raylib resource maps had before they moved to `Value::NewHandle`.  An
+`Interp` that is dropped without `dispose` also leaks its whole child VM.
 
-So any map with a numeric `_handle` passes for a real resource: a script can
-write `img._handle = 12345`, or just build `{"_handle": 12345}`, and the host
-will read or write whatever memory that names.  That is a crash at best, and a
-hole in the sandbox at worst.  Freezing the maps would not help, since a script
-can always build a fresh one.
-
-This is legacy code.  MiniScript 2 has an opaque handle type for exactly this:
-`Value::NewHandle(ptr, finalizer)` and `Value::HandlePtr()`, which script cannot
-forge.  `FileModule.cpp`, `MatrixCore.cpp`, and `RawData.cpp` already use it.
-The raylib resource maps should be converted to the same thing, which would
-also let the finalizer free the resource when the map is collected.
+The fix is the same: an opaque handle whose finalizer deletes the
+`InterpHandle`.  `dispose` then has to tear the child down early without
+deleting the object the handle still owns (or mark the handle disposed, as
+`TakeResource` does in `RaylibTypes.h`).
 
 ## Music ignores `looping`
 

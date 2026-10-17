@@ -179,16 +179,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetArg(0));
+		Wave wave;
+		if (!TakeResource(context.GetArg(0), &wave)) return IntrinsicResult::Null;
 		UnloadWave(wave);
-		// Also delete the heap-allocated Wave
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Wave* wavePtr = (Wave*)ValueToPointer(handleVal);
-		if (wavePtr != nullptr) {
-			delete wavePtr;
-			rcWave--;
-		}
+		rcWave--;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadWave", i.GetFunc());
@@ -327,16 +321,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Music music = ValueToMusic(context.GetArg(0));
+		Music music;
+		if (!TakeResource(context.GetArg(0), &music)) return IntrinsicResult::Null;
 		UnloadMusicStream(music);
-		// Also delete the heap-allocated Music
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Music* musicPtr = (Music*)ValueToPointer(handleVal);
-		if (musicPtr != nullptr) {
-			delete musicPtr;
-			rcMusic--;
-		}
+		rcMusic--;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadMusicStream", i.GetFunc());
@@ -501,16 +489,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound sound = ValueToSound(context.GetArg(0));
+		Sound sound;
+		if (!TakeResource(context.GetArg(0), &sound)) return IntrinsicResult::Null;
 		UnloadSound(sound);
-		// Also delete the heap-allocated Sound
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
-		if (soundPtr != nullptr) {
-			delete soundPtr;
-			rcSound--;
-		}
+		rcSound--;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadSound", i.GetFunc());
@@ -518,16 +500,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("alias");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Sound alias = ValueToSound(context.GetArg(0));
+		Sound alias;
+		if (!TakeResource(context.GetArg(0), &alias)) return IntrinsicResult::Null;
 		UnloadSoundAlias(alias);
-		// Also delete the heap-allocated Sound
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
-		if (soundPtr != nullptr) {
-			delete soundPtr;
-			rcSound--;
-		}
+		rcSound--;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadSoundAlias", i.GetFunc());
@@ -657,16 +633,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
 	i.set_Code(INTRINSIC_LAMBDA {
-		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		AudioStream stream;
+		if (!TakeResource(context.GetArg(0), &stream)) return IntrinsicResult::Null;
 		UnloadAudioStream(stream);
-		// Also delete the heap-allocated AudioStream
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		AudioStream* streamPtr = (AudioStream*)ValueToPointer(handleVal);
-		if (streamPtr != nullptr) {
-			delete streamPtr;
-			rcAudioStream--;
-		}
+		rcAudioStream--;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadAudioStream", i.GetFunc());

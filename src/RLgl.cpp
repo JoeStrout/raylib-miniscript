@@ -79,16 +79,16 @@ static int CubemapDataSize(int size, int format, int mipmapCount) {
 	return total;
 }
 
-// Custom render batches are heap-allocated and held in a map as a raw pointer
-// (freed by rlUnloadRenderBatch, like the other raylib types).  We track the
-// active one, since rlgl offers no way to ask, so that unloading it can first
-// switch back to the default batch.
+// Custom render batches are held in a map's resource handle (unloaded by
+// rlUnloadRenderBatch, like the other raylib types).  We track the active one,
+// since rlgl offers no way to ask, so that unloading it can first switch back
+// to the default batch.  rlgl keeps a pointer into its resource box, so the
+// active batch's handle is pinned against collection until it is replaced.
 static rlRenderBatch* activeRenderBatch = nullptr;
+static PinnedResource activeRenderBatchHandle;
 
 static rlRenderBatch* ValueToRenderBatch(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (rlRenderBatch*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return ResourcePtr<rlRenderBatch>(value);
 }
 
 // rlSetShader keeps the locs pointer it is given, so the locations must live
@@ -1010,7 +1010,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		rlRenderBatch batch = rlLoadRenderBatch(numBuffers, bufferElements);
 		if (batch.vertexBuffer == nullptr) return IntrinsicResult::Null;
 		ValueDict map;
-		map.SetValue(String("_handle"), PointerToValue(new rlRenderBatch(batch)));
+		map.SetValue(String("_handle"), NewResourceHandle(batch));
 		map.SetValue(String("bufferCount"), Value(batch.bufferCount));
 		return IntrinsicResult(DynamicMap(map));
 	});
@@ -1025,10 +1025,11 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		if (batch == activeRenderBatch) {
 			rlSetRenderBatchActive(nullptr);
 			activeRenderBatch = nullptr;
+			activeRenderBatchHandle.Clear();
 		}
-		rlUnloadRenderBatch(*batch);
-		delete batch;
-		batchValue.GetDict().SetValue(String("_handle"), Value::zero);
+		rlRenderBatch unloaded;
+		TakeResource(batchValue, &unloaded);
+		rlUnloadRenderBatch(unloaded);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadRenderBatch", i.GetFunc());
@@ -1050,6 +1051,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		rlRenderBatch* batch = ValueToRenderBatch(context.GetArg(0));
 		rlSetRenderBatchActive(batch);
 		activeRenderBatch = batch;
+		if (batch) activeRenderBatchHandle.Set(context.GetArg(0));
+		else activeRenderBatchHandle.Clear();
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetRenderBatchActive", i.GetFunc());

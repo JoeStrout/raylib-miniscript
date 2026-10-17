@@ -144,13 +144,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("font");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Font font = ValueToFont(context.GetArg(0));
+		Font font;
+		if (!TakeResource(context.GetArg(0), &font)) return IntrinsicResult::Null;
 		UnloadFont(font);
-		// Free the heap-allocated Font struct
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Font* fontPtr = (Font*)ValueToPointer(handleVal);
-		delete fontPtr;
 		rcFont--;
 		return IntrinsicResult::Null;
 	});

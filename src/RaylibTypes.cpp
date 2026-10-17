@@ -1,4 +1,5 @@
 #include "RaylibTypes.h"
+#include "rlgl.h"
 
 // Resource allocation counters
 int rcImage = 0;
@@ -15,11 +16,78 @@ int rcMaterial = 0;
 int rcModel = 0;
 int rcModelAnimation = 0;
 
+//--------------------------------------------------------------------------------
+// Resource handles (see RaylibTypes.h)
+//--------------------------------------------------------------------------------
+
+static const Value& HandleKey() { static Value k("_handle"); return k; }
+
+// The one finalizer for every resource box.  Besides freeing the box, it is how
+// ResourceBoxOf recognizes a handle as ours: other handle types (files, RawData,
+// matrices) have other finalizers, and their pointers must never be read as a
+// ResourceHeader.  (The switch also keeps this code distinct from any other
+// finalizer, so a linker's identical-code folding cannot merge it with one.)
+static void FinalizeResource(void* p) {
+	ResourceHeader* box = (ResourceHeader*)p;
+	switch (box->kind) {
+		#define CASE(T, K) case ResourceKind::K: delete static_cast<ResourceBox<T>*>(box); break;
+		CASE(Image, Image)
+		CASE(Texture, Texture)
+		CASE(Font, Font)
+		CASE(Wave, Wave)
+		CASE(Music, Music)
+		CASE(Sound, Sound)
+		CASE(AudioStream, AudioStream)
+		CASE(RenderTexture, RenderTexture)
+		CASE(Shader, Shader)
+		CASE(Mesh, Mesh)
+		CASE(Material, Material)
+		CASE(Model, Model)
+		CASE(ModelAnimation, ModelAnimation)
+		CASE(ModelAnimationArray, ModelAnimationArray)
+		CASE(AutomationEventList, AutomationEventList)
+		CASE(rlRenderBatch, RenderBatch)
+		#undef CASE
+	}
+}
+
+Value WrapResourceBox(ResourceHeader* box) {
+	return Value::NewHandle(box, FinalizeResource);
+}
+
+Value ResourceHandleOf(Value map) {
+	if (map.Type() != ValueType::Map) return Value::Null;
+	return map.GetDict().Lookup(HandleKey(), Value::Null);
+}
+
+ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind) {
+	Value handle = ResourceHandleOf(map);
+	if (!handle.IsHandle()) return nullptr;
+	if (GCManager::GetHandle(handle).Callback != FinalizeResource) return nullptr;
+	ResourceHeader* box = (ResourceHeader*)handle.HandlePtr();
+	if (box == nullptr || box->kind != kind) return nullptr;
+	return box;
+}
+
+void PinnedResource::Set(Value map) {
+	Clear();
+	Value h = ResourceHandleOf(map);
+	if (!h.IsHandle()) return;
+	handle = h;
+	GCManager::AddRoot(handle);
+}
+
+void PinnedResource::Clear() {
+	if (handle.IsNull()) return;
+	GCManager::RemoveRoot(handle);
+	handle = Value::Null;
+}
+
 const Value& ImageClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("width"), Value::zero);
 		map.SetValue(String("height"), Value::zero);
 		map.SetValue(String("mipmaps"), Value::zero);
@@ -35,7 +103,7 @@ const Value& TextureClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("id"), Value::zero);
 		map.SetValue(String("width"), Value::zero);
 		map.SetValue(String("height"), Value::zero);
@@ -52,7 +120,7 @@ const Value& FontClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("texture"), Value::Null);
 		map.SetValue(String("baseSize"), Value::zero);
 		map.SetValue(String("glyphCount"), Value::zero);
@@ -68,7 +136,7 @@ const Value& WaveClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
@@ -84,7 +152,7 @@ const Value& MusicClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("looping"), Value::zero);
 		map.SetValue(String("sampleRate"), Value::zero);
@@ -101,7 +169,7 @@ const Value& SoundClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("frameCount"), Value::zero);
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
@@ -117,7 +185,7 @@ const Value& AudioStreamClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("sampleRate"), Value::zero);
 		map.SetValue(String("sampleSize"), Value::zero);
 		map.SetValue(String("channels"), Value::zero);
@@ -132,7 +200,7 @@ const Value& RenderTextureClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("id"), Value::zero);
 		map.SetValue(String("texture"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
@@ -146,7 +214,7 @@ const Value& ShaderClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("id"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
@@ -159,7 +227,7 @@ const Value& MeshClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("vertexCount"), Value::zero);
 		map.SetValue(String("triangleCount"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
@@ -173,11 +241,8 @@ const Value& MaterialClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("shaderId"), Value::zero);
-		map.SetValue(String("_arrayHandle"), Value::zero);
-		map.SetValue(String("_arrayCount"), Value::zero);
-		map.SetValue(String("_arrayIndex"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
 		Intrinsic::AddShortName(classValue, String("raylib.Material"));
@@ -189,7 +254,7 @@ const Value& ModelClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("meshCount"), Value::zero);
 		map.SetValue(String("materialCount"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
@@ -203,12 +268,10 @@ const Value& ModelAnimationClass() {
 	static Value classValue;
 	if (classValue.IsNull()) {
 		ValueDict map;
-		map.SetValue(String("_handle"), Value::zero);
+		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("name"), Value::Null);
 		map.SetValue(String("boneCount"), Value::zero);
 		map.SetValue(String("keyframeCount"), Value::zero);
-		map.SetValue(String("_arrayHandle"), Value::zero);
-		map.SetValue(String("_arrayCount"), Value::zero);
 		map.SetValue(String("_arrayIndex"), Value::zero);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
@@ -260,12 +323,11 @@ void AddTypeClasses(ValueDict& raylibModule) {
 }
 
 // Convert a Raylib Texture to a MiniScript map
-// Allocates the Texture on the heap and stores pointer in _handle
+// Keeps the Texture in a resource handle in _handle
 Value TextureToValue(Texture texture) {
-	Texture* texPtr = new Texture(texture);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, TextureClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)texPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(texture));
 	map.SetValue(String("id"), Value((int)texture.id));
 	map.SetValue(String("width"), Value(texture.width));
 	map.SetValue(String("height"), Value(texture.height));
@@ -275,15 +337,13 @@ Value TextureToValue(Texture texture) {
 }
 
 // Extract a Raylib Texture from a MiniScript map
-// Returns the Texture by dereferencing the _handle pointer
+// Returns a copy of the Texture in its resource handle
 Texture ValueToTexture(Value value) {
 	if (value.Type() != ValueType::Map) {
 		// Return empty texture if not a map
 		return Texture{0, 0, 0, 0, 0};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Texture* texPtr = (Texture*)ValueToPointer(handleVal);
+	Texture* texPtr = ResourcePtr<Texture>(value);
 	if (texPtr == nullptr) {
 		return Texture{0, 0, 0, 0, 0};
 	}
@@ -291,12 +351,11 @@ Texture ValueToTexture(Value value) {
 }
 
 // Convert a Raylib Image to a MiniScript map
-// Allocates the Image on the heap and stores pointer in _handle
+// Keeps the Image in a resource handle in _handle
 Value ImageToValue(Image image) {
-	Image* imgPtr = new Image(image);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ImageClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)imgPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(image));
 	map.SetValue(String("width"), Value(image.width));
 	map.SetValue(String("height"), Value(image.height));
 	map.SetValue(String("mipmaps"), Value(image.mipmaps));
@@ -308,19 +367,14 @@ Value ImageToValue(Image image) {
 const Image& ValueToImage(Value value) {
 	static const Image empty = {nullptr, 0, 0, 0, 0};
 	if (value.Type() != ValueType::Map) return empty;
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Image* imgPtr = (Image*)ValueToPointer(handleVal);
+	Image* imgPtr = ResourcePtr<Image>(value);
 	if (imgPtr == nullptr) return empty;
 	return *imgPtr;
 }
 
 // Extract a mutable pointer to a Raylib Image from a MiniScript map
 Image* ValueToImagePtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	return (Image*)ValueToPointer(handleVal);
+	return ResourcePtr<Image>(value);
 }
 
 // After mutating an Image, sync its properties back to the MiniScript map
@@ -337,10 +391,9 @@ void UpdateImageValue(Value value) {
 
 // Convert a Raylib Font to a MiniScript map
 Value FontToValue(Font font) {
-	Font* fontPtr = new Font(font);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, FontClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)fontPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(font));
 	map.SetValue(String("texture"), TextureToValue(font.texture));
 	map.SetValue(String("baseSize"), Value(font.baseSize));
 	map.SetValue(String("glyphCount"), Value(font.glyphCount));
@@ -355,29 +408,20 @@ Font ValueToFont(Value value) {
 		printf("ValueToFont: value is not a map, returning default font\n");
 		return GetFontDefault();
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	intptr_t handle = (intptr_t)ValueToPointer(handleVal);
-	if (handle == 0) {
-		// If no handle, return default font
-		printf("ValueToFont: handle is 0, returning default font\n");
-		return GetFontDefault();
-	}
-	Font* fontPtr = (Font*)handle;
+	Font* fontPtr = ResourcePtr<Font>(value);
 	if (fontPtr == nullptr) {
-		printf("ValueToFont: fontPtr is null, returning default font\n");
+		// No font handle (or an unloaded one): use the default font
+		printf("ValueToFont: no font handle, returning default font\n");
 		return GetFontDefault();
 	}
-	Font font = *fontPtr;
-	return font;
+	return *fontPtr;
 }
 
 // Convert a Raylib Wave to a MiniScript map
 Value WaveToValue(Wave wave) {
-	Wave* wavePtr = new Wave(wave);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, WaveClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)wavePtr));
+	map.SetValue(String("_handle"), NewResourceHandle(wave));
 	map.SetValue(String("frameCount"), Value((int)wave.frameCount));
 	map.SetValue(String("sampleRate"), Value((int)wave.sampleRate));
 	map.SetValue(String("sampleSize"), Value((int)wave.sampleSize));
@@ -390,9 +434,7 @@ Wave ValueToWave(Value value) {
 	if (value.Type() != ValueType::Map) {
 		return Wave{0, 0, 0, 0, NULL};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Wave* wavePtr = (Wave*)ValueToPointer(handleVal);
+	Wave* wavePtr = ResourcePtr<Wave>(value);
 	if (wavePtr == nullptr) {
 		return Wave{0, 0, 0, 0, NULL};
 	}
@@ -401,10 +443,9 @@ Wave ValueToWave(Value value) {
 
 // Convert a Raylib Music to a MiniScript map
 Value MusicToValue(Music music) {
-	Music* musicPtr = new Music(music);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MusicClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)musicPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(music));
 	map.SetValue(String("frameCount"), Value((int)music.frameCount));
 	map.SetValue(String("looping"), Value(music.looping ? 1 : 0));
 	map.SetValue(String("sampleRate"), Value((int)music.stream.sampleRate));
@@ -418,9 +459,7 @@ Music ValueToMusic(Value value) {
 	if (value.Type() != ValueType::Map) {
 		return Music{};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Music* musicPtr = (Music*)ValueToPointer(handleVal);
+	Music* musicPtr = ResourcePtr<Music>(value);
 	if (musicPtr == nullptr) {
 		return Music{};
 	}
@@ -429,10 +468,9 @@ Music ValueToMusic(Value value) {
 
 // Convert a Raylib Sound to a MiniScript map
 Value SoundToValue(Sound sound) {
-	Sound* soundPtr = new Sound(sound);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, SoundClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)soundPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(sound));
 	map.SetValue(String("frameCount"), Value((int)sound.frameCount));
 	map.SetValue(String("sampleRate"), Value((int)sound.stream.sampleRate));
 	map.SetValue(String("sampleSize"), Value((int)sound.stream.sampleSize));
@@ -445,9 +483,7 @@ Sound ValueToSound(Value value) {
 	if (value.Type() != ValueType::Map) {
 		return Sound{};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Sound* soundPtr = (Sound*)ValueToPointer(handleVal);
+	Sound* soundPtr = ResourcePtr<Sound>(value);
 	if (soundPtr == nullptr) {
 		return Sound{};
 	}
@@ -456,10 +492,9 @@ Sound ValueToSound(Value value) {
 
 // Convert a Raylib AudioStream to a MiniScript map
 Value AudioStreamToValue(AudioStream stream) {
-	AudioStream* streamPtr = new AudioStream(stream);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, AudioStreamClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)streamPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(stream));
 	map.SetValue(String("sampleRate"), Value((int)stream.sampleRate));
 	map.SetValue(String("sampleSize"), Value((int)stream.sampleSize));
 	map.SetValue(String("channels"), Value((int)stream.channels));
@@ -471,9 +506,7 @@ AudioStream ValueToAudioStream(Value value) {
 	if (value.Type() != ValueType::Map) {
 		return AudioStream{};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	AudioStream* streamPtr = (AudioStream*)ValueToPointer(handleVal);
+	AudioStream* streamPtr = ResourcePtr<AudioStream>(value);
 	if (streamPtr == nullptr) {
 		return AudioStream{};
 	}
@@ -481,26 +514,23 @@ AudioStream ValueToAudioStream(Value value) {
 }
 
 // Convert a Raylib RenderTexture2D to a MiniScript map
-// Allocates the RenderTexture2D on the heap and stores pointer in _handle
+// Keeps the RenderTexture2D in a resource handle in _handle
 Value RenderTextureToValue(RenderTexture2D renderTexture) {
-	RenderTexture2D* rtPtr = new RenderTexture2D(renderTexture);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, RenderTextureClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)rtPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(renderTexture));
 	map.SetValue(String("id"), Value((int)renderTexture.id));
 	map.SetValue(String("texture"), TextureToValue(renderTexture.texture));
 	return DynamicMap(map);
 }
 
 // Extract a Raylib RenderTexture2D from a MiniScript map
-// Returns the RenderTexture2D by dereferencing the _handle pointer
+// Returns a copy of the RenderTexture2D in its resource handle
 RenderTexture2D ValueToRenderTexture(Value value) {
 	if (value.Type() != ValueType::Map) {
 		return RenderTexture2D{};
 	}
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	RenderTexture2D* rtPtr = (RenderTexture2D*)ValueToPointer(handleVal);
+	RenderTexture2D* rtPtr = ResourcePtr<RenderTexture2D>(value);
 	if (rtPtr == nullptr) {
 		return RenderTexture2D{};
 	}
@@ -509,10 +539,9 @@ RenderTexture2D ValueToRenderTexture(Value value) {
 
 // Convert a Raylib Shader to a MiniScript map
 Value ShaderToValue(Shader shader) {
-	Shader* shaderPtr = new Shader(shader);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ShaderClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)shaderPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(shader));
 	map.SetValue(String("id"), Value((int)shader.id));
 	return DynamicMap(map);
 }
@@ -520,9 +549,7 @@ Value ShaderToValue(Shader shader) {
 // Extract a Raylib Shader from a MiniScript map
 Shader ValueToShader(Value value) {
 	if (value.Type() != ValueType::Map) return Shader{0, NULL};
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Shader* shaderPtr = (Shader*)ValueToPointer(handleVal);
+	Shader* shaderPtr = ResourcePtr<Shader>(value);
 	if (shaderPtr == nullptr) return Shader{0, NULL};
 	return *shaderPtr;
 }
@@ -680,10 +707,9 @@ Value Vector2ToValue(Vector2 vec) {
 }
 
 Value MeshToValue(Mesh mesh) {
-	Mesh* meshPtr = new Mesh(mesh);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MeshClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)meshPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(mesh));
 	map.SetValue(String("vertexCount"), Value(mesh.vertexCount));
 	map.SetValue(String("triangleCount"), Value(mesh.triangleCount));
 	return DynamicMap(map);
@@ -691,39 +717,30 @@ Value MeshToValue(Mesh mesh) {
 
 Mesh ValueToMesh(Value value) {
 	if (value.Type() != ValueType::Map) return Mesh{};
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Mesh* meshPtr = (Mesh*)ValueToPointer(handleVal);
+	Mesh* meshPtr = ResourcePtr<Mesh>(value);
 	if (meshPtr == nullptr) return Mesh{};
 	return *meshPtr;
 }
 
 Value MaterialToValue(Material material) {
-	Material* materialPtr = new Material(material);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MaterialClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)materialPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(material));
 	map.SetValue(String("shaderId"), Value((int)material.shader.id));
-	map.SetValue(String("_arrayHandle"), Value::zero);
-	map.SetValue(String("_arrayCount"), Value::zero);
-	map.SetValue(String("_arrayIndex"), Value::zero);
 	return DynamicMap(map);
 }
 
 Material ValueToMaterial(Value value) {
 	if (value.Type() != ValueType::Map) return Material{};
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Material* materialPtr = (Material*)ValueToPointer(handleVal);
+	Material* materialPtr = ResourcePtr<Material>(value);
 	if (materialPtr == nullptr) return Material{};
 	return *materialPtr;
 }
 
 Value ModelToValue(Model model) {
-	Model* modelPtr = new Model(model);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)modelPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(model));
 	map.SetValue(String("meshCount"), Value(model.meshCount));
 	map.SetValue(String("materialCount"), Value(model.materialCount));
 	return DynamicMap(map);
@@ -731,34 +748,32 @@ Value ModelToValue(Model model) {
 
 Model ValueToModel(Value value) {
 	if (value.Type() != ValueType::Map) return Model{};
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	Model* modelPtr = (Model*)ValueToPointer(handleVal);
+	Model* modelPtr = ResourcePtr<Model>(value);
 	if (modelPtr == nullptr) return Model{};
 	return *modelPtr;
 }
 
 Value ModelAnimationToValue(ModelAnimation anim) {
-	ModelAnimation* animPtr = new ModelAnimation(anim);
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelAnimationClass());
-	map.SetValue(String("_handle"), Value((double)(intptr_t)animPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(anim));
 	map.SetValue(String("name"), Value(String(anim.name)));
 	map.SetValue(String("boneCount"), Value(anim.boneCount));
 	map.SetValue(String("keyframeCount"), Value(anim.keyframeCount));
-	map.SetValue(String("_arrayHandle"), Value::zero);
-	map.SetValue(String("_arrayCount"), Value::zero);
-	map.SetValue(String("_arrayIndex"), Value::zero);
 	return DynamicMap(map);
 }
 
 ModelAnimation ValueToModelAnimation(Value value) {
 	if (value.Type() != ValueType::Map) return ModelAnimation{};
-	ValueDict map = value.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	ModelAnimation* animPtr = (ModelAnimation*)ValueToPointer(handleVal);
-	if (animPtr == nullptr) return ModelAnimation{};
-	return *animPtr;
+	ModelAnimation* animPtr = ResourcePtr<ModelAnimation>(value);
+	if (animPtr != nullptr) return *animPtr;
+
+	// One entry of the array LoadModelAnimations returned
+	ModelAnimationArray* array = ResourcePtr<ModelAnimationArray>(value);
+	if (array == nullptr) return ModelAnimation{};
+	int index = value.GetDict().Lookup(String("_arrayIndex"), Value::zero).IntValue();
+	if (index < 0 || index >= array->count) return ModelAnimation{};
+	return array->animations[index];
 }
 
 Vector3 ValueToVector3(Value value) {

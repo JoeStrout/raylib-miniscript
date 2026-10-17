@@ -31,11 +31,6 @@ rl = raylib
 WIDTH = 640
 HEIGHT = 748
 
-if not rl.IsWindowReady then rl.InitWindow WIDTH, HEIGHT, "Connect 4 vs AlphaZero"
-rl.SetWindowTitle "Connect 4 vs AlphaZero"
-rl.SetTargetFPS 60
-
-
 //----------------------------------------------------------------------
 // Layout and palette.
 //----------------------------------------------------------------------
@@ -121,22 +116,23 @@ findWinLine = function(board, r, c, p)
 end function
 
 startThinking = function
-	globals.state = "thinking"
+	outer.state = "thinking"
 	MCTS.begin board, AI
-	globals.thinkStart = time
+	outer.thinkStart = time
 end function
 
 newGame = function
-	globals.board = C4.newBoard
-	globals.winner = 0
-	globals.winLine = null
-	globals.thinkTime = 0
+	outer.board = C4.newBoard
+	if board == null then exit
+	outer.winner = 0
+	outer.winLine = null
+	outer.thinkTime = 0
 	MCTS.root = null
 	if humanFirst then
-		globals.toMove = HUMAN
-		globals.state = "human"
+		outer.toMove = HUMAN
+		outer.state = "human"
 	else
-		globals.toMove = AI
+		outer.toMove = AI
 		startThinking
 	end if
 end function
@@ -147,18 +143,18 @@ playMove = function(col, player)
 	if r < 0 then return false
 	board[r * C4.COLS + col] = player
 	if C4.isWin(board, r, col, player) then
-		globals.winner = player
-		globals.winLine = findWinLine(board, r, col, player)
-		globals.state = "over"
+		outer.winner = player
+		outer.winLine = findWinLine(board, r, col, player)
+		outer.state = "over"
 	else if C4.legalCols(board).len == 0 then
-		globals.winner = 0
-		globals.state = "over"
+		outer.winner = 0
+		outer.state = "over"
 	else
-		globals.toMove = 3 - player
+		outer.toMove = 3 - player
 		if toMove == AI then
 			startThinking
 		else
-			globals.state = "human"
+			outer.state = "human"
 		end if
 	end if
 	return true
@@ -271,6 +267,14 @@ end function
 //----------------------------------------------------------------------
 
 run = function
+	if not rl.IsWindowReady then
+		rl.InitWindow WIDTH, HEIGHT, "Connect 4 vs AlphaZero"
+	else
+		rl.SetWindowSize WIDTH, HEIGHT
+		rl.SetWindowTitle "Connect 4 vs AlphaZero"
+	end if
+	rl.SetTargetFPS 60
+
 	print "Loading network..."
 	t0 = time
 	net = AZNet.load
@@ -291,7 +295,7 @@ run = function
 		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 		if rl.IsKeyPressed(rl.KEY_R) then newGame
 		if rl.IsKeyPressed(rl.KEY_S) then
-			globals.humanFirst = not humanFirst
+			outer.humanFirst = not humanFirst
 			newGame
 		end if
 		if rl.IsKeyPressed(rl.KEY_LEFT_BRACKET) and MCTS.sims > 1 then
@@ -312,7 +316,7 @@ run = function
 		// One frame's worth of simulations, then back to drawing.
 		if state == "thinking" then
 			if MCTS.step then
-				globals.thinkTime = time - thinkStart
+				outer.thinkTime = time - thinkStart
 				playMove MCTS.bestMove, AI
 			end if
 		end if
@@ -327,4 +331,4 @@ run = function
 	end while
 end function
 
-if locals == globals then run
+if locals == outer then run

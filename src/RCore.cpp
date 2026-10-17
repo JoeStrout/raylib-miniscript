@@ -75,13 +75,6 @@ static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
 	map.SetValue(String("upZ"), Value(camera.up.z));
 }
 
-static Shader* GetShaderPtr(Value shaderValue) {
-	if (shaderValue.Type() != ValueType::Map) return nullptr;
-	ValueDict map = shaderValue.GetDict();
-	Value handleVal = map.Lookup(String("_handle"), Value::zero);
-	return (Shader*)ValueToPointer(handleVal);
-}
-
 #ifdef PLATFORM_WEB
 static void PrintWebNotSupported(const char* functionName) {
 	TraceLog(LOG_ERROR, "%s: Web not supported.", functionName);
@@ -294,16 +287,17 @@ static Value AutomationEventToValue(const AutomationEvent& event) {
 }
 
 static AutomationEventList* GetAutomationEventListPtr(Value value) {
-	if (value.Type() != ValueType::Map) return nullptr;
-	ValueDict map = value.GetDict();
-	return (AutomationEventList*)ValueToPointer(map.Lookup(String("_handle"), Value::zero));
+	return ResourcePtr<AutomationEventList>(value);
 }
 
-static Value AutomationEventListToValue(const AutomationEventList& list) {
-	AutomationEventList* listPtr = new AutomationEventList(list);
+// raylib records into the list SetAutomationEventList was given, through a
+// pointer into its resource box; this keeps that box alive meanwhile.
+static PinnedResource activeAutomationEventList;
+static AutomationEventList* activeAutomationEventListPtr = nullptr;
 
+static Value AutomationEventListToValue(const AutomationEventList& list) {
 	ValueDict map;
-	map.SetValue(String("_handle"), PointerToValue(listPtr));
+	map.SetValue(String("_handle"), NewResourceHandle(list));
 	map.SetValue(String("capacity"), Value((double)list.capacity));
 	map.SetValue(String("count"), Value((double)list.count));
 
@@ -1214,15 +1208,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value shaderValue = context.GetArg(0);
-		Shader shader = ValueToShader(shaderValue);
-		UnloadShader(shader);
-
-		Shader* shaderPtr = GetShaderPtr(shaderValue);
-		if (shaderPtr != nullptr) {
-			delete shaderPtr;
+		Shader shader;
+		if (TakeResource(shaderValue, &shader)) {
+			UnloadShader(shader);
 			rcShader--;
-			ValueDict map = shaderValue.GetDict();
-			map.SetValue(String("_handle"), Value::zero);
 		}
 
 		SyncShaderValue(shaderValue, Shader{0, NULL});
@@ -1877,9 +1866,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 	#ifdef PLATFORM_WEB
 		PrintWebNotSupported("GetWindowHandle");
-		return IntrinsicResult(PointerToValue(nullptr));
+		return IntrinsicResult::Zero;
 	#endif
-		return IntrinsicResult(PointerToValue(GetWindowHandle()));
+		// Only for display: nothing takes this number back as a pointer
+		return IntrinsicResult(Value((double)(intptr_t)GetWindowHandle()));
 	});
 	raylibModule.SetValue("GetWindowHandle", i.GetFunc());
 
@@ -3360,13 +3350,18 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Value listValue = context.GetArg(0);
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
+		if (listPtr == activeAutomationEventListPtr) {
+			SetAutomationEventList(nullptr);
+			activeAutomationEventListPtr = nullptr;
+			activeAutomationEventList.Clear();
+		}
+		AutomationEventList list;
+		TakeResource(listValue, &list);
 
-		UnloadAutomationEventList(*listPtr);
-		delete listPtr;
+		UnloadAutomationEventList(list);
 
 		if (listValue.Type() == ValueType::Map) {
 			ValueDict map = listValue.GetDict();
-			map.SetValue(String("_handle"), Value::zero);
 			map.SetValue(String("capacity"), Value::zero);
 			map.SetValue(String("count"), Value::zero);
 			map.SetValue(String("events"), Value::make_list(0));
@@ -3420,6 +3415,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Value listValue = context.GetArg(0);
 		if (listValue.IsNull()) {
 			SetAutomationEventList(nullptr);
+			activeAutomationEventListPtr = nullptr;
+			activeAutomationEventList.Clear();
 			return IntrinsicResult::Null;
 		}
 
@@ -3427,6 +3424,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		if (listPtr == nullptr) return IntrinsicResult::Null;
 
 		SetAutomationEventList(listPtr);
+		activeAutomationEventListPtr = listPtr;
+		activeAutomationEventList.Set(listValue);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetAutomationEventList", i.GetFunc());

@@ -1,3 +1,5 @@
+#pragma once
+
 // Include MiniScript before raylib: raylib.h #defines PI as a macro, which
 // otherwise clobbers MiniScript's Math::PI constant when its headers are parsed.
 #include "miniscript.h"
@@ -38,15 +40,15 @@ const Value& Camera3DClass();
 void AddTypeClasses(ValueDict& raylibModule);
 
 // Convert a Raylib Texture to a MiniScript map
-// Allocates the Texture on the heap and stores pointer in _handle
+// Keeps the Texture in a resource handle in _handle
 Value TextureToValue(Texture texture);
 
 // Extract a Raylib Texture from a MiniScript map
-// Returns the Texture by dereferencing the _handle pointer
+// Returns a copy of the Texture in its resource handle
 Texture ValueToTexture(Value value);
 
 // Convert a Raylib Image to a MiniScript map
-// Allocates the Image on the heap and stores pointer in _handle
+// Keeps the Image in a resource handle in _handle
 Value ImageToValue(Image image);
 
 // Extract a Raylib Image from a MiniScript map (read-only reference)
@@ -89,11 +91,11 @@ Value AudioStreamToValue(AudioStream stream);
 AudioStream ValueToAudioStream(Value value);
 
 // Convert a Raylib RenderTexture2D to a MiniScript map
-// Allocates the RenderTexture2D on the heap and stores pointer in _handle
+// Keeps the RenderTexture2D in a resource handle in _handle
 Value RenderTextureToValue(RenderTexture2D renderTexture);
 
 // Extract a Raylib RenderTexture2D from a MiniScript map
-// Returns the RenderTexture2D by dereferencing the _handle pointer
+// Returns a copy of the RenderTexture2D in its resource handle
 RenderTexture2D ValueToRenderTexture(Value value);
 
 // Convert a Raylib Shader to a MiniScript map
@@ -202,15 +204,117 @@ Value RayToValue(Ray ray);
 // Convert a Raylib RayCollision to a MiniScript map
 Value RayCollisionToValue(RayCollision collision);
 
-// Convert a raw pointer to a MiniScript value
-inline Value PointerToValue(void* ptr) {
-	return Value((double)(intptr_t)ptr);
+//--------------------------------------------------------------------------------
+// Resource handles
+//
+// Every raylib resource map (Image, Texture, Sound, ...) keeps its C struct in
+// `_handle`, as an opaque MiniScript handle that script can neither forge nor
+// look inside.  The handle owns a ResourceBox: the struct plus a tag naming its
+// type, so that moving one map's `_handle` into a map of another type (an
+// Image's into a Texture) is refused rather than reinterpreting the struct.
+//
+// The box is freed when its handle is collected.  The raylib resource itself
+// (GPU texture, audio buffer, ...) is not: that still takes an explicit Unload*,
+// as in the C API.  Unloading empties the box (TakeResource), so any other map
+// sharing the same handle reads as an empty resource, never a stale one.
+//--------------------------------------------------------------------------------
+
+struct rlRenderBatch;	// rlgl.h
+
+enum class ResourceKind : int {
+	Image = 1, Texture, Font, Wave, Music, Sound, AudioStream, RenderTexture,
+	Shader, Mesh, Material, Model, ModelAnimation, ModelAnimationArray,
+	AutomationEventList, RenderBatch
+};
+
+// The array LoadModelAnimations returns.  Each ModelAnimation map it produces
+// holds the whole array's handle, plus its own `_arrayIndex` into it.
+struct ModelAnimationArray {
+	ModelAnimation* animations;
+	int count;
+};
+
+template<typename T> struct ResourceKindOf;
+#define RESOURCE_KIND(T, K) \
+	template<> struct ResourceKindOf<T> { static const ResourceKind kind = ResourceKind::K; };
+RESOURCE_KIND(Image, Image)
+RESOURCE_KIND(Texture, Texture)
+RESOURCE_KIND(Font, Font)
+RESOURCE_KIND(Wave, Wave)
+RESOURCE_KIND(Music, Music)
+RESOURCE_KIND(Sound, Sound)
+RESOURCE_KIND(AudioStream, AudioStream)
+RESOURCE_KIND(RenderTexture, RenderTexture)
+RESOURCE_KIND(Shader, Shader)
+RESOURCE_KIND(Mesh, Mesh)
+RESOURCE_KIND(Material, Material)
+RESOURCE_KIND(Model, Model)
+RESOURCE_KIND(ModelAnimation, ModelAnimation)
+RESOURCE_KIND(ModelAnimationArray, ModelAnimationArray)
+RESOURCE_KIND(AutomationEventList, AutomationEventList)
+RESOURCE_KIND(rlRenderBatch, RenderBatch)
+#undef RESOURCE_KIND
+
+struct ResourceHeader {
+	ResourceKind kind;
+	bool live;			// false once unloaded
+};
+
+template<typename T> struct ResourceBox : ResourceHeader {
+	T res;
+};
+
+// Wrap a freshly allocated box in a handle Value.
+Value WrapResourceBox(ResourceHeader* box);
+
+// The box behind a map's `_handle`, if that is a resource handle of the given
+// kind (live or not); otherwise null.
+ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind);
+
+// The raw `_handle` Value of a map (null if it is not a map, or has none).
+Value ResourceHandleOf(Value map);
+
+// Make a handle owning a copy of the given raylib struct.
+template<typename T> Value NewResourceHandle(const T& res) {
+	ResourceBox<T>* box = new ResourceBox<T>();
+	box->kind = ResourceKindOf<T>::kind;
+	box->live = true;
+	box->res = res;
+	return WrapResourceBox(box);
 }
 
-// Convert a MiniScript value (containing a pointer) to a raw pointer
-inline void* ValueToPointer(Value v) {
-	return (void*)(intptr_t)v.DoubleValue();
+// The resource behind a map's `_handle`, or null if the map has none, holds
+// some other kind of handle, or has been unloaded.  Writes through the pointer
+// are seen by every map sharing the handle.
+template<typename T> T* ResourcePtr(Value map) {
+	ResourceHeader* box = ResourceBoxOf(map, ResourceKindOf<T>::kind);
+	if (box == nullptr || !box->live) return nullptr;
+	return &static_cast<ResourceBox<T>*>(box)->res;
 }
+
+// For Unload*: copy the resource out and empty its box, so that the caller can
+// unload it exactly once.  Returns false, leaving *out alone, if there is no
+// live resource to unload.
+template<typename T> bool TakeResource(Value map, T* out) {
+	ResourceHeader* box = ResourceBoxOf(map, ResourceKindOf<T>::kind);
+	if (box == nullptr || !box->live) return false;
+	T& res = static_cast<ResourceBox<T>*>(box)->res;
+	*out = res;
+	res = T{};
+	box->live = false;
+	return true;
+}
+
+// Keeps one resource handle alive while raylib holds a pointer into its box
+// (the active render batch, the active automation event list): the handle is
+// a GC root until cleared or replaced.
+class PinnedResource {
+public:
+	void Set(Value map);	// pin map's `_handle`; a non-resource pins nothing
+	void Clear();
+private:
+	Value handle;
+};
 
 // Resource allocation counters (for leak detection by MiniScript users)
 extern int rcImage;

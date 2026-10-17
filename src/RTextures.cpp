@@ -58,13 +58,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("image");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Image img = ValueToImage(context.GetArg(0));
+		Image img;
+		if (!TakeResource(context.GetArg(0), &img)) return IntrinsicResult::Null;
 		UnloadImage(img);
-		// Free the heap-allocated Image struct
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Image* imgPtr = (Image*)ValueToPointer(handleVal);
-		delete imgPtr;
 		rcImage--;
 		return IntrinsicResult::Null;
 	});
@@ -97,13 +93,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Texture tex = ValueToTexture(context.GetArg(0));
+		Texture tex;
+		if (!TakeResource(context.GetArg(0), &tex)) return IntrinsicResult::Null;
 		UnloadTexture(tex);
-		// Free the heap-allocated Texture struct
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		Texture* texPtr = (Texture*)ValueToPointer(handleVal);
-		delete texPtr;
 		rcTexture--;
 		return IntrinsicResult::Null;
 	});
@@ -834,13 +826,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("target");
 	i.set_Code(INTRINSIC_LAMBDA {
-		RenderTexture2D target = ValueToRenderTexture(context.GetArg(0));
+		RenderTexture2D target;
+		if (!TakeResource(context.GetArg(0), &target)) return IntrinsicResult::Null;
 		UnloadRenderTexture(target);
-		// Free the heap-allocated RenderTexture2D struct
-		ValueDict map = context.GetArg(0).GetDict();
-		Value handleVal = map.Lookup(String("_handle"), Value::zero);
-		RenderTexture2D* rtPtr = (RenderTexture2D*)ValueToPointer(handleVal);
-		delete rtPtr;
 		rcRenderTexture--;
 		return IntrinsicResult::Null;
 	});

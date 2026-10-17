@@ -8,6 +8,12 @@ rl = raylib  // (just to shorten the subsequent code)
 rl.SetTraceLogLevel(rl.LOG_WARNING)
 if not rl.IsWindowReady then rl.InitWindow 
 
+configWindow = function
+	rl.SetWindowSize 960, 640
+	rl.SetWindowTitle "raylib-miniscript demos"
+end function
+configWindow
+
 titleFont = raylib.LoadFontEx("assets/Merkin.ttf", 48)
 
 mouseCaughtBy = null // Button or other UI element currently handling mouse press
@@ -152,6 +158,7 @@ addButton = function(label, module=null)
 			if mod isa error then print mod
 		else
 			mod.run
+			configWindow
 		end if
 	end function
 	buttons.push btn
