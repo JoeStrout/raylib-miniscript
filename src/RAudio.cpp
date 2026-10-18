@@ -419,7 +419,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
-	i.AddParam("pan", Value(0.5));
+	i.AddParam("pan", Value(0.0));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Music music = ValueToMusic(context.GetArg(0));
 		float pan = context.GetArg(1).FloatValue();
@@ -607,7 +607,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
-	i.AddParam("pan", Value(0.5));
+	i.AddParam("pan", Value(0.0));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Sound sound = ValueToSound(context.GetArg(0));
 		float pan = context.GetArg(1).FloatValue();
@@ -752,7 +752,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
-	i.AddParam("pan", Value(0.5));
+	i.AddParam("pan", Value(0.0));
 	i.set_Code(INTRINSIC_LAMBDA {
 		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		float pan = context.GetArg(1).FloatValue();

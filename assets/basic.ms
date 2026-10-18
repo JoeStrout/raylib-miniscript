@@ -41,7 +41,7 @@ run = function
 		raylib.ClearBackground
 		
 		drawBackground
-		raylib.DrawTexture wumpusTex, x, y, raylib.WHITE
+		raylib.DrawTexture wumpusTex, x - wumpusTex.width/2, y - wumpusTex.height/2, raylib.WHITE
 	
 		if raylib.IsKeyDown(raylib.KEY_LEFT) then x -= dx
 		if raylib.IsKeyDown(raylib.KEY_RIGHT) then x += dx
@@ -54,7 +54,7 @@ run = function
 			x = pos.x
 			y = pos.y
 			raylib.SetSoundPitch woobleSnd, 1 - (pos.y - 320) / 640
-			raylib.SetSoundPan woobleSnd, 1 - pos.x / 960  // NOTE: 0=right, 1=left
+			raylib.SetSoundPan woobleSnd, (pos.x / 960) * 2 - 1  // -1=left, 1=right
 			raylib.PlaySound woobleSnd
 		end if
 		
