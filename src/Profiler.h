@@ -17,11 +17,17 @@
 //
 //  Time is wall time.  An intrinsic's time normally lands on the line where the
 //  batch containing it ends, which is usually the call site or a few lines on.
-//  Intrinsics that can block for a long time (EndDrawing, which waits out the
-//  frame for SetTargetFPS; WaitTime; SwapScreenBuffer) time themselves with a
-//  BlockedScope, and that time is charged exactly to the calling line, as a
-//  "[raylib.EndDrawing]" entry beneath it.  Batches that end at a `yield` are
-//  recorded like any other.  Garbage collection and the host's own work between
+//  Calls that can take a long time time themselves with a TimedScope, and are
+//  charged exactly to the calling line, as a "[raylib.EndDrawing]" entry
+//  beneath it: EndDrawing (which also waits out the frame for SetTargetFPS),
+//  WaitTime, SwapScreenBuffer, and the Begin/End mode calls that flush raylib's
+//  draw batch (texture, 2D, 3D, shader, blend and scissor modes).  Batches that
+//  end at a `yield` are recorded like any other.
+//
+//  Garbage collection is timed too.  MiniScript collects inside `yield` and
+//  `wait`; a mark callback notes when each collection starts, and the time
+//  from there to the end of the batch is charged to the calling line as
+//  "(garbage collection)".  Garbage collection and the host's own work between
 //  slices appear as separate entries, so the totals add up to the time profiled.
 //
 //  This needs nothing from MiniScript beyond its public VM API; when profiling
@@ -53,24 +59,24 @@ void RunUntilDone(MiniScript::Interpreter& interp, double timeLimit, bool return
 void InstallInterruptHandler();
 bool Interrupted();
 
-/// Charge `seconds` spent blocked inside a host intrinsic to the script's
-/// current call stack, under a "[label]" entry, and keep it out of the batch
-/// in progress.  Ignored unless a profiled slice is running.
-void AddBlockedTime(const char* label, double seconds);
+/// Charge `seconds` spent inside a host call to the script's current call
+/// stack, under a "[label]" entry, and keep it out of the batch in progress.
+/// Ignored unless a profiled slice is running.
+void AddCallTime(const char* label, double seconds);
 
 /// Seconds on a monotonic clock.
 double Clock();
 
-/// Times the enclosing block and reports it with AddBlockedTime.  Costs one
-/// check when profiling is off.  Use inside intrinsics that may block:
-///     profiler::BlockedScope scope("raylib.EndDrawing");
-struct BlockedScope {
+/// Times the enclosing block and reports it with AddCallTime.  Costs one
+/// check when profiling is off.  Use inside intrinsics that may be slow:
+///     profiler::TimedScope timed("raylib.EndDrawing");
+struct TimedScope {
 	const char* label;
 	double start;
-	explicit BlockedScope(const char* label) : label(label), start(Enabled() ? Clock() : -1) {}
-	~BlockedScope() { if (start >= 0) AddBlockedTime(label, Clock() - start); }
-	BlockedScope(const BlockedScope&) = delete;
-	BlockedScope& operator=(const BlockedScope&) = delete;
+	explicit TimedScope(const char* label) : label(label), start(Enabled() ? Clock() : -1) {}
+	~TimedScope() { if (start >= 0) AddCallTime(label, Clock() - start); }
+	TimedScope(const TimedScope&) = delete;
+	TimedScope& operator=(const TimedScope&) = delete;
 };
 
 /// Write the report files and print a short summary to stdout.  Safe to call

@@ -33,7 +33,13 @@ Play as usual, then close the window, let the script end, or press Ctrl-C. Two f
 - `myprofile.txt` is a readable report: each function's *self* time (its own code, including the intrinsics it calls) and *total* time (also counting the MiniScript functions it calls), followed by the hottest source lines.
 - `myprofile.folded` is a flame graph. Drag it onto [speedscope.app](https://www.speedscope.app), or feed it to `flamegraph.pl`, to see which call paths the time goes to.
 
-The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. `--profile-interval <n>` changes the average batch size (default 250); smaller is more precise and slower. Time is wall time. Most intrinsics are charged to the line that called them or one shortly after it. `EndDrawing`, which waits out the frame for `SetTargetFPS`, and `WaitTime` and `SwapScreenBuffer` are charged exactly to their call site and listed in brackets, such as `[raylib.EndDrawing]`, since that is idle time rather than work. Garbage collection and the host's own work between frames are listed separately. Profiling is desktop only.
+The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. Time is wall time.
+
+- Most intrinsics are charged to the line where their batch ends, which is the line that called them or one shortly after it.
+- Calls that can take long are timed exactly and charged to the line that made them, listed in brackets such as `[raylib.EndTextureMode]`: `EndDrawing`, `WaitTime`, `SwapScreenBuffer`, and the Begin/End mode calls that flush raylib's draw batch. `[raylib.EndDrawing]` includes the wait for `SetTargetFPS`, so most of it is usually idle time.
+- Garbage collection, which MiniScript runs inside `yield` and `wait`, is timed and charged to that line as `(garbage collection)`.
+
+`--profile-interval <n>` changes the average batch size (default 250). Smaller batches charge time to the right line more often, at a cost: on a CPU-bound benchmark, profiling adds about 20% to the run time at 250, 50% at 100, and 90% at 50. Profiling is desktop only.
 
 ## Documentation
 

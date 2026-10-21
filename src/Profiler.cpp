@@ -90,9 +90,13 @@ struct State {
 	std::vector<Frame> scratch;
 
 	std::map<std::string, int> blockedFuncs;   // label -> pseudo-function
+	std::map<std::string, unsigned long long> blockedCalls;   // label -> count
 	bool inSlice = false;      // a profiled RunUntilDone is running
 	VM sliceVM;                // ...on this VM
 	double pendingBlocked = 0; // blocked time already charged, within this batch
+	double gcStart = -1;       // when a collection began within this batch, or -1
+	double blockedSinceGC = 0; // blocked time charged after gcStart
+	unsigned long long collections = 0;
 
 	int gcFunc = -1;      // pseudo-function for garbage collection
 	int hostFunc = -1;    // pseudo-function for host work between slices
@@ -234,9 +238,35 @@ UInt32 NextBatch() {
 	return n < 1 ? 1 : n;   // (0 would mean "no limit" to VM::Run)
 }
 
+// Called by MiniScript at the start of every collection's mark phase.  Inside
+// a profiled batch, that collection almost always comes from `yield` (or
+// `wait`), which then ends the batch -- so the time from here to the end of
+// the batch is the collection's cost, and it belongs to the yield's call site.
+void OnCollect(void*) {
+	State& s = S();
+	s.collections++;
+	if (s.inSlice && s.gcStart < 0) {
+		s.gcStart = Now();
+		s.blockedSinceGC = 0;
+	}
+}
+
+double gInterruptTime = 0;   // only touched by OnInterrupt
+
+// The first Ctrl-C asks the run loop to stop and write the report.  A second
+// one quits at once, in case the loop is stuck -- but only if it comes well
+// after the first, since some tools deliver one Ctrl-C twice (timeout(1)
+// signals both the process and its group).
 void OnInterrupt(int) {
+	double now = Now();
+	if (gInterrupted && now - gInterruptTime > 0.5) {
+		std::signal(SIGINT, SIG_DFL);
+		std::raise(SIGINT);
+		return;
+	}
+	if (!gInterrupted) gInterruptTime = now;
 	gInterrupted = 1;
-	std::signal(SIGINT, SIG_DFL);   // a second Ctrl-C quits immediately
+	std::signal(SIGINT, OnInterrupt);   // re-arm (Windows resets handlers)
 }
 
 struct Row {
@@ -273,6 +303,7 @@ void Start(const std::string& outBase, unsigned int interval) {
 	s.outBase = outBase;
 	s.interval = interval ? interval : kDefaultInterval;
 	s.gcFunc = AddPseudoFunc("(garbage collection)");
+	GCManager::RegisterMarkCallback(&OnCollect, nullptr);
 	s.hostFunc = AddPseudoFunc("(host, between script slices)");
 	printf("Profiling enabled: sampling about every %u instructions; results go to %s.folded and %s.txt\n",
 		s.interval, outBase.c_str(), outBase.c_str());
@@ -301,10 +332,25 @@ void RunUntilDone(Interpreter& interp, double timeLimit, bool returnEarly) {
 		double t0 = Now();
 		if (t0 - start > timeLimit) break;   // time's up for now
 		s.pendingBlocked = 0;
+		s.gcStart = -1;
 		vm.Run(NextBatch());
+		double t1 = Now();
+		// A collection during the batch runs from gcStart to the batch's end
+		// (less any blocked time after it, which is charged on its own).
+		double gc = 0;
+		if (s.gcStart >= 0) {
+			gc = t1 - s.gcStart - s.blockedSinceGC;
+			if (gc < 0) gc = 0;
+		}
 		// Blocked time inside the batch was charged to its call site already.
-		double batch = Now() - t0 - s.pendingBlocked;
+		double batch = t1 - t0 - s.pendingBlocked - gc;
 		RecordStack(vm, batch > 0 ? batch : 0);
+		if (gc > 0) {
+			BuildStack(vm);
+			s.scratch.push_back(Frame{ s.gcFunc, 0 });
+			AddSample(s.scratch, gc);
+		}
+		s.gcStart = -1;
 		if (!vm.Error().IsNull()) {
 			s.inSlice = false;
 			s.sliceVM = VM();
@@ -333,7 +379,7 @@ double Clock() {
 	return Now();
 }
 
-void AddBlockedTime(const char* label, double seconds) {
+void AddCallTime(const char* label, double seconds) {
 	State& s = S();
 	if (!s.enabled || s.finished || !s.inSlice || IsNull(s.sliceVM) || seconds <= 0) return;
 	auto it = s.blockedFuncs.find(label);
@@ -344,6 +390,8 @@ void AddBlockedTime(const char* label, double seconds) {
 	s.scratch.push_back(Frame{ func, 0 });
 	AddSample(s.scratch, seconds);
 	s.pendingBlocked += seconds;
+	if (s.gcStart >= 0) s.blockedSinceGC += seconds;
+	s.blockedCalls[label]++;
 }
 
 void InstallInterruptHandler() {
@@ -431,20 +479,41 @@ bool Finish() {
 	f = fopen(reportPath.c_str(), "w");
 	if (f) {
 		fprintf(f, "MiniScript profile (raylib-miniscript)\n\n");
-		fprintf(f, "Time recorded:   %10.3f s\n", grand);
-		fprintf(f, "  script:        %10.3f s  (%5.1f%%)\n", grand - gc - host - blocked, (grand - gc - host - blocked) * pct);
-		for (const auto& kv : s.blockedFuncs) {
-			std::string name = "  [" + kv.first + "]:";
-			fprintf(f, "%-17s%10.3f s  (%5.1f%%)\n", name.c_str(), self[kv.second], self[kv.second] * pct);
+		double script = grand - gc - host - blocked;
+		fprintf(f, "Time recorded:          %10.3f s\n", grand);
+		fprintf(f, "  MiniScript code:      %10.3f s  (%5.1f%%)\n", script, script * pct);
+		fprintf(f, "  timed raylib calls:   %10.3f s  (%5.1f%%)\n", blocked, blocked * pct);
+		fprintf(f, "  garbage collection:   %10.3f s  (%5.1f%%)  %llu collections, %.2f ms each\n",
+			gc, gc * pct, s.collections, s.collections ? gc * 1000 / s.collections : 0.0);
+		fprintf(f, "  host, between slices: %10.3f s  (%5.1f%%)\n", host, host * pct);
+		fprintf(f, "Samples:   %llu  (about every %u instructions)\n", s.samples, s.interval);
+		fprintf(f, "Yields:    %llu\n", s.yields);
+		auto frames = s.blockedCalls.find("raylib.EndDrawing");
+		if (frames != s.blockedCalls.end() && frames->second > 0) {
+			fprintf(f, "Frames:    %llu (EndDrawing calls), %.2f ms each\n",
+				frames->second, grand * 1000 / frames->second);
 		}
-		fprintf(f, "  garbage coll.: %10.3f s  (%5.1f%%)\n", gc, gc * pct);
-		fprintf(f, "  host:          %10.3f s  (%5.1f%%)\n", host, host * pct);
-		fprintf(f, "Samples:         %10llu  (about every %u instructions)\n", s.samples, s.interval);
-		fprintf(f, "Yields:          %10llu\n", s.yields);
+		if (!s.blockedFuncs.empty()) {
+			std::vector<std::pair<double, std::string>> calls;
+			for (const auto& kv : s.blockedFuncs) calls.push_back(std::make_pair(self[kv.second], kv.first));
+			std::sort(calls.begin(), calls.end(), [](const std::pair<double, std::string>& a,
+				const std::pair<double, std::string>& b) { return a.first > b.first; });
+			fprintf(f, "\nTimed raylib calls (exact; charged to the line that made them)\n\n");
+			fprintf(f, "    total ms     %%      calls   ms each  call\n");
+			for (const auto& c : calls) {
+				unsigned long long n = s.blockedCalls[c.second];
+				fprintf(f, "%12.2f %5.1f%% %10llu %9.3f  [%s]\n", c.first * 1000, c.first * pct, n,
+					n ? c.first * 1000 / n : 0.0, c.second.c_str());
+			}
+			if (frames != s.blockedCalls.end()) {
+				fprintf(f, "\n[raylib.EndDrawing] includes the wait for SetTargetFPS, so most of it is\n");
+				fprintf(f, "usually idle time.  The others are mostly raylib submitting batched drawing.\n");
+			}
+		}
 		fprintf(f, "\nSelf time is spent in a function's own code (including intrinsics it calls);\n");
-		fprintf(f, "total time also includes the MiniScript functions it calls.  Entries in\n");
-		fprintf(f, "[brackets] are time blocked in an intrinsic, such as EndDrawing waiting out\n");
-		fprintf(f, "the frame for SetTargetFPS; they are idle time, not work.\n");
+		fprintf(f, "total time also includes the MiniScript functions it calls.  [Bracketed]\n");
+		fprintf(f, "entries are timed raylib calls, and (garbage collection) is collection that\n");
+		fprintf(f, "MiniScript ran inside the line above it, usually a yield.\n");
 
 		fprintf(f, "\nFunctions by self time\n\n");
 		fprintf(f, "   self ms   self%%   total ms  total%%  function\n");
