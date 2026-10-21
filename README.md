@@ -43,6 +43,16 @@ The profiler samples: it runs the script a few hundred instructions at a time an
 
 `--profile-interval <n>` changes the average batch size (default 250). Smaller batches charge time to the right line more often, at a cost: on a CPU-bound benchmark, profiling adds about 20% to the run time at 250, 50% at 100, and 90% at 50. Profiling is desktop only.
 
+### Viewing a profile
+
+raylib-miniscript comes with a profile viewer written in MiniScript:
+
+```
+build/raylib-miniscript tools/profview.ms myprofile.speedscope.json
+```
+
+It shows a flame graph above a table of functions. Each bar in the flame graph is a function, as wide as its share of the time, with the functions it called beneath it; MiniScript functions are warm colors, timed raylib calls blue and garbage collection green. Hover over a bar for its file, line and times. Click a bar to zoom in, and right-click, Escape or Backspace to zoom back out (Home goes all the way out). Click a table row to light that function up wherever it appears, and click a column heading to sort by self or total time. Tab switches between the *By function* and *By line* views, and the mouse wheel scrolls whichever panel it is over.
+
 ## Documentation
 
 Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.
