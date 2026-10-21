@@ -9,11 +9,13 @@
 //  call stack (by function, and the line within each) together with the wall
 //  time the batch took.  When the run ends it writes:
 //
-//    <name>.folded   flame-graph input ("folded stacks", time in microseconds),
-//                    which opens directly in https://www.speedscope.app or
-//                    Brendan Gregg's flamegraph.pl
-//    <name>.txt      a readable report: functions by self and total time, and
-//                    the hottest source lines
+//    <name>.txt              a readable report: functions by self and total
+//                            time, the hottest source lines, timed calls and GC
+//    <name>.speedscope.json  for https://www.speedscope.app: two profiles of
+//                            the same samples, "By function" and "By line",
+//                            with each frame's file and line
+//    <name>.folded           folded stacks (time in microseconds), for
+//                            Brendan Gregg's flamegraph.pl and similar tools
 //
 //  Time is wall time.  An intrinsic's time normally lands on the line where the
 //  batch containing it ends, which is usually the call site or a few lines on.

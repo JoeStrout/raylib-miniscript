@@ -11,6 +11,7 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -269,6 +270,137 @@ void OnInterrupt(int) {
 	std::signal(SIGINT, OnInterrupt);   // re-arm (Windows resets handlers)
 }
 
+// JSON string literal, quoted and escaped.
+std::string JsonString(const std::string& str) {
+	std::string out = "\"";
+	for (unsigned char c : str) {
+		switch (c) {
+		case '"':  out += "\\\""; break;
+		case '\\': out += "\\\\"; break;
+		case '\n': out += "\\n"; break;
+		case '\r': out += "\\r"; break;
+		case '\t': out += "\\t"; break;
+		default:
+			if (c < 0x20) {
+				char buf[8];
+				snprintf(buf, sizeof(buf), "\\u%04x", c);
+				out += buf;
+			} else {
+				out += (char)c;
+			}
+		}
+	}
+	return out + "\"";
+}
+
+// The line a function was defined on, from its SourceLoc ("{file} line {n}").
+int DefinitionLine(const FuncInfo& fi) {
+	size_t pos = fi.loc.rfind(" line ");
+	if (pos == std::string::npos) return 0;
+	return atoi(fi.loc.c_str() + pos + 6);
+}
+
+// One speedscope frame, as JSON.
+std::string JsonFrame(const std::string& name, const std::string& file, int line) {
+	std::string out = "{\"name\":" + JsonString(name);
+	if (!file.empty()) out += ",\"file\":" + JsonString(file);
+	if (line > 0) out += ",\"line\":" + std::to_string(line);
+	return out + "}";
+}
+
+// Write a speedscope file (https://www.speedscope.app) holding two profiles
+// of the same samples: one frame per function, and one per function and line.
+bool WriteSpeedscope(const std::string& path, const std::string& title) {
+	State& s = S();
+	size_t nf = s.funcs.size();
+
+	// Short names, made unique: "update" twice becomes "update (key.ms)" and
+	// "update (game.ms)".  The frame's file and line carry the rest.
+	std::map<std::string, int> nameCount;
+	for (const FuncInfo& fi : s.funcs) if (!fi.pseudo) nameCount[fi.name]++;
+	std::vector<std::string> shortName(nf);
+	for (size_t i = 0; i < nf; i++) {
+		const FuncInfo& fi = s.funcs[i];
+		if (fi.pseudo) shortName[i] = fi.label;
+		else if (nameCount[fi.name] > 1) shortName[i] = fi.label;
+		else shortName[i] = fi.name.empty() ? std::string("(anonymous)") : fi.name;
+	}
+
+	std::vector<std::string> frames;
+	std::vector<int> funcFrame(nf);
+	for (size_t i = 0; i < nf; i++) {
+		const FuncInfo& fi = s.funcs[i];
+		funcFrame[i] = (int)frames.size();
+		frames.push_back(JsonFrame(shortName[i], fi.file, fi.pseudo ? 0 : DefinitionLine(fi)));
+	}
+	std::map<std::pair<int, int>, int> lineFrame;
+	auto frameForLine = [&](const Frame& fr) -> int {
+		if (s.funcs[fr.func].pseudo) return funcFrame[fr.func];
+		auto key = std::make_pair(fr.func, fr.line);
+		auto it = lineFrame.find(key);
+		if (it != lineFrame.end()) return it->second;
+		const FuncInfo& fi = s.funcs[fr.func];
+		std::string name = shortName[fr.func] + (fr.line > 0 ? " line " + std::to_string(fr.line) : " (entry)");
+		int index = (int)frames.size();
+		frames.push_back(JsonFrame(name, fi.file, fr.line > 0 ? fr.line : DefinitionLine(fi)));
+		lineFrame[key] = index;
+		return index;
+	};
+
+	// By line: one sample per recorded stack.  By function: stacks that
+	// differ only in line numbers are merged.
+	std::vector<std::pair<std::vector<int>, double>> byLine;
+	std::map<std::vector<int>, double> byFunc;
+	double total = 0;
+	for (const auto& kv : s.stacks) {
+		double us = kv.second * 1e6;
+		if (us <= 0 || kv.first.empty()) continue;
+		total += us;
+		std::vector<int> lineStack, funcStack;
+		for (const Frame& fr : kv.first) {
+			lineStack.push_back(frameForLine(fr));
+			funcStack.push_back(funcFrame[fr.func]);
+		}
+		byLine.push_back(std::make_pair(lineStack, us));
+		byFunc[funcStack] += us;
+	}
+
+	FILE* f = fopen(path.c_str(), "w");
+	if (!f) return false;
+	fprintf(f, "{\"$schema\":\"https://www.speedscope.app/file-format-schema.json\",\n");
+	fprintf(f, "\"name\":%s,\n", JsonString(title).c_str());
+	fprintf(f, "\"exporter\":\"raylib-miniscript --profile\",\n");
+	fprintf(f, "\"activeProfileIndex\":0,\n");
+	fprintf(f, "\"shared\":{\"frames\":[\n");
+	for (size_t i = 0; i < frames.size(); i++) {
+		fprintf(f, "%s%s\n", frames[i].c_str(), i + 1 < frames.size() ? "," : "");
+	}
+	fprintf(f, "]},\n\"profiles\":[\n");
+	auto writeProfile = [&](const char* name, const std::vector<std::pair<std::vector<int>, double>>& samples, bool last) {
+		fprintf(f, "{\"type\":\"sampled\",\"name\":%s,\"unit\":\"microseconds\",", JsonString(name).c_str());
+		fprintf(f, "\"startValue\":0,\"endValue\":%.3f,\n\"samples\":[\n", total);
+		for (size_t i = 0; i < samples.size(); i++) {
+			fputc('[', f);
+			const std::vector<int>& stack = samples[i].first;
+			for (size_t j = 0; j < stack.size(); j++) fprintf(f, j ? ",%d" : "%d", stack[j]);
+			fprintf(f, "]%s\n", i + 1 < samples.size() ? "," : "");
+		}
+		fprintf(f, "],\n\"weights\":[\n");
+		for (size_t i = 0; i < samples.size(); i++) {
+			fprintf(f, "%.3f%s", samples[i].second, i + 1 < samples.size() ? "," : "");
+			if (i % 16 == 15) fputc('\n', f);
+		}
+		fprintf(f, "]}%s\n", last ? "" : ",");
+	};
+	std::vector<std::pair<std::vector<int>, double>> byFuncList(byFunc.begin(), byFunc.end());
+	writeProfile("By function", byFuncList, false);
+	writeProfile("By line", byLine, true);
+	fprintf(f, "]}\n");
+	bool ok = !ferror(f);
+	fclose(f);
+	return ok;
+}
+
 struct Row {
 	int func;
 	int line;
@@ -305,8 +437,8 @@ void Start(const std::string& outBase, unsigned int interval) {
 	s.gcFunc = AddPseudoFunc("(garbage collection)");
 	GCManager::RegisterMarkCallback(&OnCollect, nullptr);
 	s.hostFunc = AddPseudoFunc("(host, between script slices)");
-	printf("Profiling enabled: sampling about every %u instructions; results go to %s.folded and %s.txt\n",
-		s.interval, outBase.c_str(), outBase.c_str());
+	printf("Profiling enabled: sampling about every %u instructions; results go to %s.txt, %s.speedscope.json and %s.folded\n",
+		s.interval, outBase.c_str(), outBase.c_str(), outBase.c_str());
 }
 
 bool Enabled() {
@@ -454,6 +586,16 @@ bool Finish() {
 		ok = false;
 	}
 
+	// The same samples for speedscope, with file and line information.
+	std::string speedscopePath = s.outBase + ".speedscope.json";
+	std::string title = s.outBase;
+	size_t slash = title.find_last_of("/\\");
+	if (slash != std::string::npos) title = title.substr(slash + 1);
+	if (!WriteSpeedscope(speedscopePath, title)) {
+		printf("Profiler: could not write %s\n", speedscopePath.c_str());
+		ok = false;
+	}
+
 	// The readable report.
 	std::vector<Row> funcRows;
 	for (size_t i = 0; i < nf; i++) {
@@ -559,7 +701,11 @@ bool Finish() {
 		if (n++ >= 8) break;
 		printf("  %6.1f%%  %s\n", r.self * pct, s.funcs[r.func].label.c_str());
 	}
-	if (ok) printf("Full report: %s   Flame graph: %s\n", reportPath.c_str(), foldedPath.c_str());
+	if (ok) {
+		printf("Full report: %s\n", reportPath.c_str());
+		printf("Flame graph: %s (open at https://www.speedscope.app), or %s\n",
+			speedscopePath.c_str(), foldedPath.c_str());
+	}
 	fflush(stdout);
 	return ok;
 }
