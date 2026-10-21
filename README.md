@@ -28,7 +28,7 @@ To find out where a script spends its time, run it with `--profile` and a name f
 build/raylib-miniscript --profile myprofile path/to/game.ms
 ```
 
-Play as usual, then close the window, let the script end, or press Ctrl-C. Three files are written:
+Play as usual, then close the window, let the script end, or press Ctrl-C. Three files are written, relative to the folder you launched from (even if the script changes its working directory):
 
 - `myprofile.txt` is a readable report: each function's *self* time (its own code, including the intrinsics it calls) and *total* time (also counting the MiniScript functions it calls), followed by the hottest source lines.
 - `myprofile.speedscope.json` is for [speedscope.app](https://www.speedscope.app): drag it onto the page (nothing is uploaded). The menu at the top switches between two profiles of the same run. *By function* gives one bar per function; *By line* splits each function by line, so the Sandwich view lists the hottest lines and the flame graph shows which call site each call came through. Selecting a frame shows its file and line.

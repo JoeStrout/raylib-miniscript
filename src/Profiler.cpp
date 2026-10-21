@@ -15,6 +15,12 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+#ifdef _WIN32
+#include <direct.h>
+#define getcwd _getcwd
+#else
+#include <unistd.h>
+#endif
 
 using namespace MiniScript;
 
@@ -105,6 +111,20 @@ struct State {
 	unsigned long long samples = 0;
 	unsigned long long yields = 0;
 };
+
+// A relative path made absolute against the current working directory.  The
+// output name is resolved when profiling starts, because the script may
+// change the working directory before the files are written (MiniRogue's
+// main.ms moves into its assets folder, for example).
+std::string AbsolutePath(const std::string& path) {
+	if (path.empty() || path[0] == '/' || path[0] == '\\') return path;
+	if (path.size() > 1 && path[1] == ':') return path;   // Windows drive letter
+	char buf[4096];
+	if (!getcwd(buf, sizeof(buf))) return path;
+	std::string dir = buf;
+	if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+	return dir + path;
+}
 
 State& S() {
 	static State state;
@@ -432,13 +452,13 @@ struct LineKey {
 void Start(const std::string& outBase, unsigned int interval) {
 	State& s = S();
 	s.enabled = true;
-	s.outBase = outBase;
+	s.outBase = AbsolutePath(outBase);
 	s.interval = interval ? interval : kDefaultInterval;
 	s.gcFunc = AddPseudoFunc("(garbage collection)");
 	GCManager::RegisterMarkCallback(&OnCollect, nullptr);
 	s.hostFunc = AddPseudoFunc("(host, between script slices)");
 	printf("Profiling enabled: sampling about every %u instructions; results go to %s.txt, %s.speedscope.json and %s.folded\n",
-		s.interval, outBase.c_str(), outBase.c_str(), outBase.c_str());
+		s.interval, s.outBase.c_str(), s.outBase.c_str(), s.outBase.c_str());
 }
 
 bool Enabled() {
