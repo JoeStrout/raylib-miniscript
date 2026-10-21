@@ -35,6 +35,7 @@ struct FuncInfo {
 	std::string loc;    // SourceLoc: "{file} line {n}" of the definition
 	std::string file;
 	std::string label;  // what the reports show
+	bool pseudo = false;  // not a MiniScript function: GC, host, or blocked time
 };
 
 // One stack frame: a function, and the line within it.
@@ -88,6 +89,11 @@ struct State {
 	std::unordered_map<std::vector<Frame>, double, StackHash> stacks;  // stack -> seconds
 	std::vector<Frame> scratch;
 
+	std::map<std::string, int> blockedFuncs;   // label -> pseudo-function
+	bool inSlice = false;      // a profiled RunUntilDone is running
+	VM sliceVM;                // ...on this VM
+	double pendingBlocked = 0; // blocked time already charged, within this batch
+
 	int gcFunc = -1;      // pseudo-function for garbage collection
 	int hostFunc = -1;    // pseudo-function for host work between slices
 	double lastSliceEnd = -1;
@@ -131,8 +137,13 @@ int AddFunc(const std::string& name, const std::string& loc, const std::string& 
 int AddPseudoFunc(const std::string& label) {
 	FuncInfo fi;
 	fi.label = label;
+	fi.pseudo = true;
 	S().funcs.push_back(fi);
 	return (int)S().funcs.size() - 1;
+}
+
+bool IsPseudo(int func) {
+	return S().funcs[func].pseudo;
 }
 
 int FuncIndex(FuncDef f) {
@@ -154,7 +165,7 @@ int FuncIndex(FuncDef f) {
 	int index = -1;
 	for (int i = 0; i < (int)s.funcs.size(); i++) {
 		const FuncInfo& fi = s.funcs[i];
-		if (i == s.gcFunc || i == s.hostFunc) continue;
+		if (IsPseudo(i)) continue;
 		if (fi.name == np && fi.loc == lp && fi.file == fp) { index = i; break; }
 	}
 	if (index < 0) index = AddFunc(np, lp, fp);
@@ -176,10 +187,12 @@ void AddPseudoSample(int func, double seconds) {
 	AddSample(s.scratch, seconds);
 }
 
-// Record the VM's current call stack, outermost first, charged with `seconds`.
-// This mirrors VM::BuildStackTrace: callStack[i].ReturnFunc is the function
-// that made the i-th call, and ReturnPC - 1 is the call instruction within it.
-void RecordStack(VM& vm, double seconds) {
+// Fill s.scratch with the VM's current call stack, outermost first.  This
+// mirrors VM::BuildStackTrace: callStack[i].ReturnFunc is the function that
+// made the i-th call, and ReturnPC - 1 is the call instruction within it.  The
+// VM keeps PC and CurrentFunction current at every instruction, so this is
+// also accurate from inside an intrinsic.
+void BuildStack(VM& vm) {
 	State& s = S();
 	s.scratch.clear();
 	Int32 depth = vm.CallStackDepth();
@@ -197,6 +210,12 @@ void RecordStack(VM& vm, double seconds) {
 		if (pc < 0) pc = 0;
 		s.scratch.push_back(Frame{ FuncIndex(cur), cur.GetLineNumber(pc) });
 	}
+}
+
+// Record the VM's current call stack, charged with `seconds`.
+void RecordStack(VM& vm, double seconds) {
+	State& s = S();
+	BuildStack(vm);
 	if (s.scratch.empty()) return;
 	AddSample(s.scratch, seconds);
 	s.samples++;
@@ -225,6 +244,21 @@ struct Row {
 	int line;
 	double self;
 	double total;
+	int tag;    // for line rows: the blocked-time entry this is, or -1
+};
+
+// Key for the hottest-lines table: the innermost MiniScript frame, plus the
+// blocked-time entry beneath it, if any (so EndDrawing's wait is listed at the
+// line that called it, separately from that line's own work).
+struct LineKey {
+	int func;
+	int line;
+	int tag;
+	bool operator<(const LineKey& o) const {
+		if (func != o.func) return func < o.func;
+		if (line != o.line) return line < o.line;
+		return tag < o.tag;
+	}
 };
 
 } // anonymous namespace
@@ -261,12 +295,19 @@ void RunUntilDone(Interpreter& interp, double timeLimit, bool returnEarly) {
 	double start = Now();
 	if (s.lastSliceEnd >= 0) AddPseudoSample(s.hostFunc, start - s.lastSliceEnd);
 	vm.set_yielding(false);
+	s.inSlice = true;
+	s.sliceVM = vm;
 	while (vm.IsRunning() && !vm.yielding()) {
 		double t0 = Now();
 		if (t0 - start > timeLimit) break;   // time's up for now
+		s.pendingBlocked = 0;
 		vm.Run(NextBatch());
-		RecordStack(vm, Now() - t0);
+		// Blocked time inside the batch was charged to its call site already.
+		double batch = Now() - t0 - s.pendingBlocked;
+		RecordStack(vm, batch > 0 ? batch : 0);
 		if (!vm.Error().IsNull()) {
+			s.inSlice = false;
+			s.sliceVM = VM();
 			// Report and stop, as RunUntilDone does (via errorOutput).
 			Value err = vm.Error();
 			interp.set_Error(err);
@@ -279,11 +320,30 @@ void RunUntilDone(Interpreter& interp, double timeLimit, bool returnEarly) {
 		if (vm.yielding()) s.yields++;
 		if (returnEarly && vm.yielding()) break;   // waiting for something
 	}
+	s.inSlice = false;
+	s.sliceVM = VM();
 	double g0 = Now();
 	GCManager::MaybeCollect(false);
 	double g1 = Now();
 	AddPseudoSample(s.gcFunc, g1 - g0);
 	s.lastSliceEnd = vm.IsRunning() ? g1 : -1;
+}
+
+double Clock() {
+	return Now();
+}
+
+void AddBlockedTime(const char* label, double seconds) {
+	State& s = S();
+	if (!s.enabled || s.finished || !s.inSlice || IsNull(s.sliceVM) || seconds <= 0) return;
+	auto it = s.blockedFuncs.find(label);
+	int func;
+	if (it != s.blockedFuncs.end()) func = it->second;
+	else func = s.blockedFuncs[label] = AddPseudoFunc(std::string("[") + label + "]");
+	BuildStack(s.sliceVM);
+	s.scratch.push_back(Frame{ func, 0 });
+	AddSample(s.scratch, seconds);
+	s.pendingBlocked += seconds;
 }
 
 void InstallInterruptHandler() {
@@ -302,7 +362,7 @@ bool Finish() {
 	size_t nf = s.funcs.size();
 	std::vector<double> self(nf, 0.0), total(nf, 0.0);
 	std::vector<char> seen(nf, 0);
-	std::map<std::pair<int, int>, double> lineSelf;
+	std::map<LineKey, double> lineSelf;
 	std::map<std::string, double> folded;
 	double grand = 0;
 
@@ -312,7 +372,13 @@ bool Finish() {
 		if (stack.empty()) continue;
 		grand += t;
 		self[stack.back().func] += t;
-		lineSelf[std::make_pair(stack.back().func, stack.back().line)] += t;
+		const Frame& leaf = stack.back();
+		if (stack.size() > 1 && s.funcs[leaf.func].pseudo) {
+			const Frame& site = stack[stack.size() - 2];
+			lineSelf[LineKey{ site.func, site.line, leaf.func }] += t;
+		} else {
+			lineSelf[LineKey{ leaf.func, leaf.line, -1 }] += t;
+		}
 		std::string key;
 		for (const Frame& f : stack) {
 			// Total time counts a function once per stack, even when recursive.
@@ -343,20 +409,22 @@ bool Finish() {
 	// The readable report.
 	std::vector<Row> funcRows;
 	for (size_t i = 0; i < nf; i++) {
-		if (total[i] > 0) funcRows.push_back(Row{ (int)i, 0, self[i], total[i] });
+		if (total[i] > 0) funcRows.push_back(Row{ (int)i, 0, self[i], total[i], -1 });
 	}
 	std::sort(funcRows.begin(), funcRows.end(), [](const Row& a, const Row& b) {
 		return a.self != b.self ? a.self > b.self : a.total > b.total;
 	});
 	std::vector<Row> lineRows;
 	for (const auto& kv : lineSelf) {
-		lineRows.push_back(Row{ kv.first.first, kv.first.second, kv.second, 0 });
+		lineRows.push_back(Row{ kv.first.func, kv.first.line, kv.second, 0, kv.first.tag });
 	}
 	std::sort(lineRows.begin(), lineRows.end(), [](const Row& a, const Row& b) {
 		return a.self > b.self;
 	});
 
 	double gc = self[s.gcFunc], host = self[s.hostFunc];
+	double blocked = 0;
+	for (const auto& kv : s.blockedFuncs) blocked += self[kv.second];
 	double pct = grand > 0 ? 100.0 / grand : 0;
 
 	std::string reportPath = s.outBase + ".txt";
@@ -364,13 +432,19 @@ bool Finish() {
 	if (f) {
 		fprintf(f, "MiniScript profile (raylib-miniscript)\n\n");
 		fprintf(f, "Time recorded:   %10.3f s\n", grand);
-		fprintf(f, "  script:        %10.3f s  (%5.1f%%)\n", grand - gc - host, (grand - gc - host) * pct);
+		fprintf(f, "  script:        %10.3f s  (%5.1f%%)\n", grand - gc - host - blocked, (grand - gc - host - blocked) * pct);
+		for (const auto& kv : s.blockedFuncs) {
+			std::string name = "  [" + kv.first + "]:";
+			fprintf(f, "%-17s%10.3f s  (%5.1f%%)\n", name.c_str(), self[kv.second], self[kv.second] * pct);
+		}
 		fprintf(f, "  garbage coll.: %10.3f s  (%5.1f%%)\n", gc, gc * pct);
 		fprintf(f, "  host:          %10.3f s  (%5.1f%%)\n", host, host * pct);
 		fprintf(f, "Samples:         %10llu  (about every %u instructions)\n", s.samples, s.interval);
 		fprintf(f, "Yields:          %10llu\n", s.yields);
 		fprintf(f, "\nSelf time is spent in a function's own code (including intrinsics it calls);\n");
-		fprintf(f, "total time also includes the MiniScript functions it calls.\n");
+		fprintf(f, "total time also includes the MiniScript functions it calls.  Entries in\n");
+		fprintf(f, "[brackets] are time blocked in an intrinsic, such as EndDrawing waiting out\n");
+		fprintf(f, "the frame for SetTargetFPS; they are idle time, not work.\n");
 
 		fprintf(f, "\nFunctions by self time\n\n");
 		fprintf(f, "   self ms   self%%   total ms  total%%  function\n");
@@ -388,7 +462,7 @@ bool Finish() {
 		for (const Row& r : lineRows) {
 			if (n++ >= 40 || r.self < 0.000005) break;
 			const FuncInfo& fi = s.funcs[r.func];
-			if (r.func == s.gcFunc || r.func == s.hostFunc) {
+			if (IsPseudo(r.func)) {
 				fprintf(f, "%10.2f %6.1f%%  %s\n", r.self * 1000, r.self * pct, fi.label.c_str());
 			} else {
 				// Line 0 means the function's entry, before its first line.
@@ -396,8 +470,9 @@ bool Finish() {
 				char lineStr[32];
 				if (r.line > 0) snprintf(lineStr, sizeof(lineStr), "line %d", r.line);
 				else snprintf(lineStr, sizeof(lineStr), "(entry)");
-				fprintf(f, "%10.2f %6.1f%%  %s%s  in %s\n", r.self * 1000, r.self * pct,
-					where.c_str(), lineStr, fi.label.c_str());
+				std::string tag = r.tag >= 0 ? "  " + s.funcs[r.tag].label : std::string();
+				fprintf(f, "%10.2f %6.1f%%  %s%s  in %s%s\n", r.self * 1000, r.self * pct,
+					where.c_str(), lineStr, fi.label.c_str(), tag.c_str());
 			}
 		}
 		fclose(f);

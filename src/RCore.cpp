@@ -13,6 +13,7 @@
 #include "rcamera.h"
 #include "miniscript.h"
 #include "macros.h"
+#include "Profiler.h"
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -727,7 +728,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
-		EndDrawing();
+		{
+			// EndDrawing also waits out the frame for SetTargetFPS; in profile
+			// mode, charge that to this call rather than to the code after it.
+			profiler::BlockedScope blocked("raylib.EndDrawing");
+			EndDrawing();
+		}
 		// The batch is flushed, so nothing refers to a collected resource now:
 		// the best moment to unload any the collector has queued.
 		SetDrawingActive(false);
@@ -2484,6 +2490,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("seconds", 1.0);
 	i.set_Code(INTRINSIC_LAMBDA {
 		double seconds = context.GetArg(0).DoubleValue();
+		profiler::BlockedScope blocked("raylib.WaitTime");
 		WaitTime(seconds);
 		return IntrinsicResult::Null;
 	});
@@ -2495,6 +2502,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SwapScreenBuffer");
 		return IntrinsicResult::Null;
 	#endif
+		profiler::BlockedScope blocked("raylib.SwapScreenBuffer");
 		SwapScreenBuffer();
 		return IntrinsicResult::Null;
 	});

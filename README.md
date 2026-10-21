@@ -33,7 +33,7 @@ Play as usual, then close the window, let the script end, or press Ctrl-C. Two f
 - `myprofile.txt` is a readable report: each function's *self* time (its own code, including the intrinsics it calls) and *total* time (also counting the MiniScript functions it calls), followed by the hottest source lines.
 - `myprofile.folded` is a flame graph. Drag it onto [speedscope.app](https://www.speedscope.app), or feed it to `flamegraph.pl`, to see which call paths the time goes to.
 
-The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. `--profile-interval <n>` changes the average batch size (default 250); smaller is more precise and slower. Time is wall time, so slow intrinsics such as drawing, or a frame-rate wait in `EndDrawing`, are charged to the line that called them or one shortly after it. Garbage collection and the host's own work between frames are listed separately. Profiling is desktop only.
+The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. `--profile-interval <n>` changes the average batch size (default 250); smaller is more precise and slower. Time is wall time. Most intrinsics are charged to the line that called them or one shortly after it. `EndDrawing`, which waits out the frame for `SetTargetFPS`, and `WaitTime` and `SwapScreenBuffer` are charged exactly to their call site and listed in brackets, such as `[raylib.EndDrawing]`, since that is idle time rather than work. Garbage collection and the host's own work between frames are listed separately. Profiling is desktop only.
 
 ## Documentation
 
