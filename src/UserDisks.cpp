@@ -13,6 +13,7 @@
 #include "raylib.h"
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -189,6 +190,10 @@ Args ParseArgs(int argc, char* argv[]) {
 			result.usr2Path = String(argv[++i]);
 		} else if (strcmp(a, "--ignore-prefs") == 0) {
 			result.ignorePrefs = true;
+		} else if (strcmp(a, "--profile") == 0 && i + 1 < argc) {
+			result.profileBase = String(argv[++i]);
+		} else if (strcmp(a, "--profile-interval") == 0 && i + 1 < argc) {
+			result.profileInterval = atoi(argv[++i]);
 		} else if (result.scriptPath.empty()) {
 			result.scriptPath = String(a);
 		} else {

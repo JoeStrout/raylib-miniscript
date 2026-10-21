@@ -66,6 +66,7 @@ set(APP_SOURCES
     src/FileSystem.cpp
     src/HostPaths.cpp
     src/UserDisks.cpp
+    src/Profiler.cpp
 )
 
 # Create executable

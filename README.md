@@ -20,6 +20,21 @@ ln -s ../miniscript/MiniScript-cpp/src/MiniScript MiniScript
 
 When run with no script argument, it looks for `assets/main.ms` in the current working directory first, and failing that, next to the executable itself.  The second case is what lets a packaged app (where the payload ships beside the binary) work when launched from the Finder or a desktop shortcut, since the working directory is then something unrelated.
 
+## Profiling
+
+To find out where a script spends its time, run it with `--profile` and a name for the results:
+
+```
+build/raylib-miniscript --profile myprofile path/to/game.ms
+```
+
+Play as usual, then close the window, let the script end, or press Ctrl-C. Two files are written:
+
+- `myprofile.txt` is a readable report: each function's *self* time (its own code, including the intrinsics it calls) and *total* time (also counting the MiniScript functions it calls), followed by the hottest source lines.
+- `myprofile.folded` is a flame graph. Drag it onto [speedscope.app](https://www.speedscope.app), or feed it to `flamegraph.pl`, to see which call paths the time goes to.
+
+The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. `--profile-interval <n>` changes the average batch size (default 250); smaller is more precise and slower. Time is wall time, so slow intrinsics such as drawing, or a frame-rate wait in `EndDrawing`, are charged to the line that called them or one shortly after it. Garbage collection and the host's own work between frames are listed separately. Profiling is desktop only.
+
 ## Documentation
 
 Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.
