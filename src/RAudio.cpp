@@ -12,6 +12,7 @@
 #include "raylib.h"
 #include "miniscript.h"
 #include "macros.h"
+#include "Profiler.h"
 
 using namespace MiniScript;
 
@@ -352,6 +353,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("music");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Music music = ValueToMusic(context.GetArg(0));
+		// Decodes the next chunk of audio whenever the stream's buffer runs low.
+		profiler::TimedScope timed("raylib.UpdateMusicStream");
 		UpdateMusicStream(music);
 		return IntrinsicResult::Null;
 	});

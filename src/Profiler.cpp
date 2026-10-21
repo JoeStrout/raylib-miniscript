@@ -513,7 +513,9 @@ bool Finish() {
 		fprintf(f, "\nSelf time is spent in a function's own code (including intrinsics it calls);\n");
 		fprintf(f, "total time also includes the MiniScript functions it calls.  [Bracketed]\n");
 		fprintf(f, "entries are timed raylib calls, and (garbage collection) is collection that\n");
-		fprintf(f, "MiniScript ran inside the line above it, usually a yield.\n");
+		fprintf(f, "MiniScript ran inside the line above it, usually a yield.  A yield always\n");
+		fprintf(f, "ends a sample, so a yield's line also gets the work done since the previous\n");
+		fprintf(f, "sample (up to about 1.5x the interval, in instructions).\n");
 
 		fprintf(f, "\nFunctions by self time\n\n");
 		fprintf(f, "   self ms   self%%   total ms  total%%  function\n");

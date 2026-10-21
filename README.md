@@ -36,8 +36,9 @@ Play as usual, then close the window, let the script end, or press Ctrl-C. Two f
 The profiler samples: it runs the script a few hundred instructions at a time and records the full call stack and the time taken after each batch. Time is wall time.
 
 - Most intrinsics are charged to the line where their batch ends, which is the line that called them or one shortly after it.
-- Calls that can take long are timed exactly and charged to the line that made them, listed in brackets such as `[raylib.EndTextureMode]`: `EndDrawing`, `WaitTime`, `SwapScreenBuffer`, and the Begin/End mode calls that flush raylib's draw batch. `[raylib.EndDrawing]` includes the wait for `SetTargetFPS`, so most of it is usually idle time.
+- Calls that can take long are timed exactly and charged to the line that made them, listed in brackets such as `[raylib.EndTextureMode]`: `EndDrawing`, `WaitTime`, `SwapScreenBuffer`, `UpdateMusicStream`, and the Begin/End mode calls that flush raylib's draw batch. `[raylib.EndDrawing]` includes the wait for `SetTargetFPS`, so most of it is usually idle time.
 - Garbage collection, which MiniScript runs inside `yield` and `wait`, is timed and charged to that line as `(garbage collection)`.
+- A `yield` always ends a sample, so the yield's line also gets the work done since the previous sample: the last few hundred instructions before it, and any untimed calls among them.
 
 `--profile-interval <n>` changes the average batch size (default 250). Smaller batches charge time to the right line more often, at a cost: on a CPU-bound benchmark, profiling adds about 20% to the run time at 250, 50% at 100, and 90% at 50. Profiling is desktop only.
 

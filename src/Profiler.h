@@ -20,9 +20,10 @@
 //  Calls that can take a long time time themselves with a TimedScope, and are
 //  charged exactly to the calling line, as a "[raylib.EndDrawing]" entry
 //  beneath it: EndDrawing (which also waits out the frame for SetTargetFPS),
-//  WaitTime, SwapScreenBuffer, and the Begin/End mode calls that flush raylib's
-//  draw batch (texture, 2D, 3D, shader, blend and scissor modes).  Batches that
-//  end at a `yield` are recorded like any other.
+//  WaitTime, SwapScreenBuffer, UpdateMusicStream, and the Begin/End mode calls
+//  that flush raylib's draw batch (texture, 2D, 3D, shader, blend and scissor
+//  modes).  A `yield` always ends a batch, so the yield's line also gets the
+//  MiniScript code and untimed calls run since the last sample.
 //
 //  Garbage collection is timed too.  MiniScript collects inside `yield` and
 //  `wait`; a mark callback notes when each collection starts, and the time
