@@ -1132,6 +1132,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("IsMaterialValid", i.GetFunc());
 
+	// API: Unload material from memory. Also unloads the shader and every texture map set on it, so don't unload those separately
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1144,6 +1145,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("UnloadMaterial", i.GetFunc());
 
+	// API: Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded. The material owns the new texture: UnloadMaterial unloads it
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.AddParam("mapType");

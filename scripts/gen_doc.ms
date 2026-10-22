@@ -1,6 +1,16 @@
 #!/usr/bin/env miniscript
 
-// This script generates API_DOC.md by crawling the source files.
+// This script generates API_DOC.md by crawling the source files.  Run it from
+// the repo root:  ./build/raylib-miniscript scripts/gen_doc.ms
+//
+// Where each entry's "Purpose" text comes from, in order of preference:
+//   1. "// API: text" line(s) directly above the Intrinsic::Create of a binding
+//      (used verbatim; several in a row are joined with spaces).  Put the doc
+//      text here when the generated one isn't right -- never edit API_DOC.md
+//      by hand, the next run would undo it.
+//   2. an entry in noteOverrides, below
+//   3. the note on the function of the same name in the Raylib sources
+//   4. the (last line of the) "// ..." comment above the Intrinsic::Create
 
 import "stringUtil"
 
@@ -92,8 +102,20 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 	params = []
 	pendingNote = ""  // inline comment accumulated just before a Create line
 	createNote = ""   // pendingNote as it stood at the Create line
+	apiNote = ""      // text of "// API: " lines just before a Create line
+	createApiNote = ""// apiNote as it stood at the Create line
 	for line in file.readLines(path)
 		line = line.trim
+
+		// "// API: text" lines are the documentation for the intrinsic that
+		// follows, verbatim: they replace the Raylib note and any other comment.
+		// Use them where the generated text isn't enough (ownership rules,
+		// restrictions on arguments).  Several in a row are joined with spaces.
+		if line.startsWith("// API: ") then
+			if apiNote != "" then apiNote = apiNote + " "
+			apiNote = apiNote + line[8:]
+			continue
+		end if
 
 		// Accumulate inline doc comments
 		if line.startsWith("// ") then
@@ -105,6 +127,7 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 		// leave it intact so it survives across Create/AddParam/code=/lambda lines.
 		if line == "" then
 			pendingNote = ""
+			apiNote = ""
 			continue
 		end if
 
@@ -113,6 +136,8 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 		if line.contains("= Intrinsic::Create(") then
 			params = []
 			createNote = pendingNote
+			createApiNote = apiNote
+			apiNote = ""
 			continue
 		end if
 
@@ -152,7 +177,9 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			end if
 			apiCount += 1
 
-			if noteOverrides.hasIndex(m.api) then
+			if createApiNote != "" then
+				note = createApiNote
+			else if noteOverrides.hasIndex(m.api) then
 				note = noteOverrides[m.api]
 			else if functionNotes.hasIndex(m.api) then
 				note = functionNotes[m.api]
@@ -168,6 +195,7 @@ processBindingFile = function(path, moduleVar="raylibModule", heading="")
 			params = []
 			pendingNote = ""
 			createNote = ""
+			createApiNote = ""
 		end if
 	end for
 	print "   " + apiCount + " APIs"
@@ -258,6 +286,87 @@ processGlobalIntrinsicsFile = function(path, heading="Global Intrinsics")
 	return apiCount
 end function
 
+// Markers fencing the generated part of a plugin's API.md.  Anything the plugin
+// author writes outside them (setup notes, caveats, examples) survives a rerun.
+pluginBeginMarker = "<!-- BEGIN GENERATED API (scripts/gen_doc.ms; edits between the markers are lost) -->"
+pluginEndMarker = "<!-- END GENERATED API -->"
+
+// Write lines (the generated table) into the plugin's API.md between the
+// markers.  A new file also gets a title.  An existing file keeps everything
+// outside the markers; one with no markers is left alone, since we can't tell
+// which part is ours.
+writePluginDoc = function(path, name, lines)
+	block = [pluginBeginMarker] + lines + [pluginEndMarker]
+	if not file.info(path) then
+		file.writeLines path, ["# " + name + " plugin", ""] + block
+		print "   wrote " + path
+		return
+	end if
+	old = file.readLines(path)
+	first = null
+	last = null
+	for i in old.indexes
+		if first == null and old[i].startsWith("<!-- BEGIN GENERATED API") then first = i
+		if old[i].startsWith("<!-- END GENERATED API") then last = i
+	end for
+	if first == null or last == null or last < first then
+		print "   " + path + " has no BEGIN/END GENERATED API markers; left unchanged"
+		return
+	end if
+	file.writeLines path, old[:first] + block + old[last+1:]
+	print "   updated " + path
+end function
+
+// Process the plugins under plugins/ (compile-time plugins; see plugins/README.md).
+// Each plugin folder's .cpp files are scanned for the function that fills the
+// plugin's module map -- found by its "ValueDict& <var>)" parameter -- and the
+// module's name by its PluginAddModule<&Fill>("name") call.  A plugin's API goes
+// into its own <folder>/API.md, not into API_DOC.md, which just gets a list of
+// links (added to pluginLinks) -- but only if inTree: a plugin from an external
+// directory (MS_EXTRA_PLUGIN_DIRS) may be private, so its path stays out of
+// the public doc.
+processPlugins = function(pluginsDir, inTree=true)
+	info = file.info(pluginsDir)
+	if not info or not info.isDirectory then return 0
+	total = 0
+	for folder in file.children(pluginsDir).sort
+		dir = file.child(pluginsDir, folder)
+		dirInfo = file.info(dir)
+		if not dirInfo or not dirInfo.isDirectory then continue
+		if dir == "plugins/examples" then continue   // done separately, below
+		moduleName = folder
+		fillFiles = {}   // path -> name of the map variable its fill function takes
+		for child in file.children(dir).sort
+			if child[-4:] != ".cpp" then continue
+			path = file.child(dir, child)
+			for line in file.readLines(path)
+				line = line.trim
+				m = line.match("PluginAddModule<&{fn}>(""{name}"");")
+				if m then moduleName = m.name
+				m = line.match("{pre}ValueDict& {var})")
+				if m and not m.pre.contains("=") then fillFiles[path] = m.var
+			end for
+		end for
+		if not fillFiles then
+			print "Plugin " + folder + ": no function filling a ValueDict& found, skipping"
+			continue
+		end if
+		// processBindingFile appends to outLines; collect this plugin's output separately.
+		mainLines = outLines
+		outer.outLines = []
+		count = 0
+		for kv in fillFiles
+			count += processBindingFile(kv.key, kv.value, moduleName)
+		end for
+		pluginLines = outLines
+		outer.outLines = mainLines
+		total += count
+		if count == 0 then continue
+		writePluginDoc file.child(dir, "API.md"), moduleName, pluginLines
+		if inTree then pluginLinks.push "- [" + moduleName + "](" + dir + "/API.md)"
+	end for
+	return total
+end function
 
 // Begin by verifying that we can access the files we need.
 raylibSrc = file.child("raylib", "src")
@@ -305,6 +414,31 @@ totalAPIs += processBindingFile(file.child(bindingSrc, "HttpModule.cpp"), "httpM
 totalAPIs += processBindingFile(file.child(bindingSrc, "RawData.cpp"), "rawDataClass", "RawData")
 totalAPIs += processBindingFile(file.child(bindingSrc, "MatrixClass.cpp"), "matrixClass", "Matrix")
 totalAPIs += processBindingFile(file.child(bindingSrc, "PhysicsCore.cpp"), "physicsModule", "physicsCore")
+
+// And the plugins (compiled in from plugins/*; each adds its own module),
+// with the examples (built only on request)
+pluginLinks = []   // links to each in-tree plugin's API.md, added by processPlugins
+totalAPIs += processPlugins("plugins")
+totalAPIs += processPlugins("plugins/examples")
+if pluginLinks then
+	outLines.push ""
+	outLines.push "## Plugins"
+	outLines.push ""
+	outLines.push "Each plugin documents its own API, in an API.md next to its source.  The examples"
+	outLines.push "(plugins/examples) are built only when asked for; see plugins/README.md."
+	outLines.push ""
+	for link in pluginLinks
+		outLines.push link
+	end for
+end if
+
+// Plugins from outside the repo: MS_EXTRA_PLUGIN_DIRS, ";"-separated, as for CMake.
+// They get their own API.md but no link in this file.
+if env.hasIndex("MS_EXTRA_PLUGIN_DIRS") then
+	for extraDir in env.MS_EXTRA_PLUGIN_DIRS.split(";")
+		if extraDir and extraDir != "plugins/examples" then totalAPIs += processPlugins(extraDir, false)
+	end for
+end if
 
 print totalAPIs + " APIs processed in total"
 

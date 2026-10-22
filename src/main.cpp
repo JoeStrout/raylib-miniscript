@@ -11,6 +11,7 @@
 #include "HttpModule.h"
 #include "PhysicsCore.h"
 #include "InterpModule.h"
+#include "Plugin.h"
 #include "FileSystem.h"
 #include "UserDisks.h"
 #include "loadfile.h"
@@ -227,6 +228,9 @@ void InitMiniScript() {
 	AddInterpIntrinsics();
 #endif
 
+	// Add intrinsics from plugins/ (compiled in; see plugins/README.md)
+	PluginsInit();
+
 	printf("MiniScript interpreter initialized with Raylib intrinsics\n");
 }
 
@@ -241,6 +245,7 @@ void RunScript() {
 	}
 
 	printf("Compiling script...\n");
+	PluginsReset();
 	interpreter.Reset(scriptSource);
 	interpreter.Compile();
 
@@ -260,6 +265,8 @@ void MainLoop() {
 	// and the queue is what script sees, by base name, never by path.
 	userdisks::PollDroppedFiles();
 #endif
+
+	PluginsUpdate();
 
 	// Start the script when it's loaded but not yet started
 	if (scriptState == LOADING && !scriptSource.empty()) {
@@ -332,6 +339,7 @@ void MainLoop() {
 //--------------------------------------------------------------------------------
 
 void CleanupMiniScript() {
+	PluginsShutdown();
 	ResetRaylibCallbackBridge();
 	interpreter = nullptr;   // releases the shared InterpreterStorage
 	fs::CloseAllMounts();    // a writable backend may have buffered state to flush

@@ -1299,6 +1299,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	// must be 16-bit (ushort).  offset is in indices; buffer is a byte offset
 	// into the element buffer, and must be 0: raylib takes it as a pointer, and
 	// script-supplied numbers must never become addresses.
+	// API: Draw vertex array elements (buffer must be 0)
 	i = Intrinsic::Create("");
 	i.AddParam("offset", Value::zero);
 	i.AddParam("count");
@@ -1327,6 +1328,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("rlDrawVertexArrayInstanced", i.GetFunc());
 
+	// API: Draw vertex array elements instanced (buffer must be 0)
 	i = Intrinsic::Create("");
 	i.AddParam("offset", Value::zero);
 	i.AddParam("count");

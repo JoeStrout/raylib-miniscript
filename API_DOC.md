@@ -291,8 +291,8 @@
 |LoadMaterials |**fileName** |Load materials from model file |
 |LoadMaterialDefault | |Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps) |
 |IsMaterialValid |**material** |Check if material is valid (map textures loaded in GPU) |
-|UnloadMaterial |**material** |Unload material from memory |
-|SetMaterialTexture |**material**, **mapType**, **texture** |Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded |
+|UnloadMaterial |**material** |Unload material from memory. Also unloads the shader and every texture map set on it, so don't unload those separately |
+|SetMaterialTexture |**material**, **mapType**, **texture** |Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded. The material owns the new texture: UnloadMaterial unloads it |
 |GetMaterialShader |**material** | |
 |SetMaterialShader |**material**, **shader** | |
 |GetMaterialShaderLocation |**material**, **uniformName** | |
@@ -925,7 +925,7 @@
 |SeekMusicStream |**music**, **position**=0 |Seek music to a certain position (in seconds) |
 |SetMusicVolume |**music**, **volume**=1.0 |Set volume for music |
 |SetMusicPitch |**music**, **pitch**=1.0 |Set pitch for music |
-|SetMusicPan |**music**, **pan**=0.5 |Set pan for music |
+|SetMusicPan |**music**, **pan**=0.0 |Set pan for music |
 |GetMusicTimeLength |**music** |Get music time length (in seconds) |
 |GetMusicTimePlayed |**music** |Get current music time played (in seconds) |
 |LoadSound |**fileName** |Load sound from file NOTE: The entire file is loaded to memory to be played (no-streaming) |
@@ -933,7 +933,7 @@
 |LoadSoundAlias |**source** |Load sound alias, clone sound from existing sound data, clone does not own wave data NOTE: Wave data must be unallocated manually and will be shared across all clones |
 |IsSoundValid |**sound** |Check if sound is valid (data loaded and buffers initialized) |
 |UnloadSound |**sound** |Unload sound |
-|UnloadSoundAlias |**alias** | |
+|UnloadSoundAlias |**alias** |Unload a sound alias (does not deallocate sample data) |
 |PlaySound |**sound** |Play a sound |
 |StopSound |**sound** |Stop reproducing a sound |
 |PauseSound |**sound** |Pause a sound |
@@ -942,7 +942,7 @@
 |UpdateSound |**sound**, **data**, **frameCount** |Update sound buffer with new data PARAMS: [data], format must match sound.stream.sampleSize, default 32 bit float - stereo PARAMS: [frameCount] must not exceed sound.frameCount |
 |SetSoundVolume |**sound**, **volume**=1.0 |Set volume for a sound |
 |SetSoundPitch |**sound**, **pitch**=1.0 |Set pitch for a sound |
-|SetSoundPan |**sound**, **pan**=0.5 |Set pan for a sound |
+|SetSoundPan |**sound**, **pan**=0.0 |Set pan for a sound |
 |LoadAudioStream |**sampleRate**=44100, **sampleSize**=32, **channels**=1 |Load audio stream (to stream audio pcm data) |
 |IsAudioStreamValid |**stream** |Check if an audio stream is valid (buffers initialized) |
 |UnloadAudioStream |**stream** |Unload audio stream and free memory |
@@ -955,7 +955,7 @@
 |StopAudioStream |**stream** |Stop audio stream |
 |SetAudioStreamVolume |**stream**, **volume**=1.0 |Set volume for audio stream (1.0 is max level) |
 |SetAudioStreamPitch |**stream**, **pitch**=1.0 |Set pitch for audio stream (1.0 is base level) |
-|SetAudioStreamPan |**stream**, **pan**=0.5 |Set pan for audio stream |
+|SetAudioStreamPan |**stream**, **pan**=0.0 |Set pan for audio stream |
 |SetAudioStreamBufferSizeDefault |**size**=4096 |Default size for new audio streams |
 
 ## Global Intrinsics
@@ -1119,3 +1119,10 @@
 |findPairs |**shapes**, **invMass**, **margin**=0, **pairs** |Find the pairs of shapes whose bounding boxes overlap and that may collide |
 |solveContacts |**contacts**, **pos**, **vel**, **invMass**, **dt**, **iterations**=10, **biasFactor**=0.2, **slop**=0.5, **restThreshold**=30 |Solve contact impulses for one step, updating vel and the contacts' ColPn/ColPt in place |
 |collidePairs |**pairs**, **shapes**, **verts**, **margin**=0, **prevContacts**, **contacts** |Collide shape pairs into a contact matrix (one row per point), warm-started from prevContacts |
+
+## Plugins
+
+Each plugin documents its own API, in an API.md next to its source.  The examples
+(plugins/examples) are built only when asked for; see plugins/README.md.
+
+- [quadtree](plugins/examples/quadtree/API.md)

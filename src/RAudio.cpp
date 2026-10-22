@@ -504,6 +504,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("UnloadSound", i.GetFunc());
 
+	// API: Unload a sound alias (does not deallocate sample data)
 	i = Intrinsic::Create("");
 	i.AddParam("alias");
 	i.set_Code(INTRINSIC_LAMBDA {
