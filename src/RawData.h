@@ -21,16 +21,19 @@ public:
     bool littleEndian;
     bool ownsBuffer;  // If true, we free the buffer on destruction
 
-    // Constructor: creates a new buffer of the given size
-    BinaryData(int size);
+    // Create a new zero-filled buffer of the given size, or return nullptr if
+    // the memory can't be had.  (A factory rather than a constructor, so that
+    // failure needs no exception: the web build compiles without them.)
+    static BinaryData* New(int size);
 
     // Constructor: wraps an existing buffer (takes ownership if own=true)
     BinaryData(unsigned char* buffer, int size, bool own);
 
     ~BinaryData();
 
-    // Resize the buffer (only if we own it)
-    void Resize(int newSize);
+    // Resize the buffer (only if we own it).  Returns false, leaving the
+    // buffer unchanged, if the memory can't be had.
+    bool Resize(int newSize);
 
     // Transfer ownership of the buffer to external code
     // After this, we no longer free the buffer

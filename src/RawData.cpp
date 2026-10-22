@@ -10,8 +10,6 @@
 #include "miniscript.h"
 #include <cstdlib>
 #include <cstring>
-#include <stdexcept>
-#include <new>
 
 namespace MiniScript {
 
@@ -60,15 +58,14 @@ static unsigned char* ReallocOrCollect(unsigned char* oldPtr, int size) {
     return (unsigned char*)realloc(oldPtr, size);
 }
 
-BinaryData::BinaryData(int size)
-    : bytes(nullptr), length(size), littleEndian(true), ownsBuffer(true) {
+BinaryData* BinaryData::New(int size) {
+    unsigned char* bytes = nullptr;
     if (size > 0) {
         bytes = AllocOrCollect(size);
-        if (bytes == nullptr) {
-            throw std::bad_alloc();
-        }
+        if (bytes == nullptr) return nullptr;
         memset(bytes, 0, size);
     }
+    return new BinaryData(bytes, size, true);
 }
 
 BinaryData::BinaryData(unsigned char* buffer, int size, bool own)
@@ -82,14 +79,14 @@ BinaryData::~BinaryData() {
     }
 }
 
-void BinaryData::Resize(int newSize) {
+bool BinaryData::Resize(int newSize) {
     if (!ownsBuffer) {
         // Defensive: the resize intrinsic guards this and reports a script-level
         // error via the VM; we simply refuse the resize here.
-        return;
+        return false;
     }
 
-    if (newSize == length) return;
+    if (newSize == length) return true;
 
     if (newSize == 0) {
         if (bytes != nullptr) {
@@ -97,13 +94,11 @@ void BinaryData::Resize(int newSize) {
             bytes = nullptr;
         }
         length = 0;
-        return;
+        return true;
     }
 
     unsigned char* newBytes = ReallocOrCollect(bytes, newSize);
-    if (newBytes == nullptr) {
-        throw std::bad_alloc();
-    }
+    if (newBytes == nullptr) return false;
 
     // Zero out any new bytes
     if (newSize > length) {
@@ -112,6 +107,7 @@ void BinaryData::Resize(int newSize) {
 
     bytes = newBytes;
     length = newSize;
+    return true;
 }
 
 void BinaryData::ReleaseOwnership() {
@@ -345,11 +341,12 @@ static IntrinsicResult ResizeRawData(Context context, int newSize) {
 
     // Create new data or resize existing
     if (oldData == nullptr) {
-        BinaryData* newData = new BinaryData(newSize);
+        BinaryData* newData = BinaryData::New(newSize);
+        if (newData == nullptr) return raiseError(context, "out of memory");
         map.SetValue(kHandle(), MakeHandle(newData));
     } else {
         if (!oldData->ownsBuffer) return raiseError(context, "Cannot resize RawData buffer that we don't own");
-        oldData->Resize(newSize);
+        if (!oldData->Resize(newSize)) return raiseError(context, "out of memory");
     }
 
     return IntrinsicResult::Null;
@@ -768,9 +765,8 @@ BinaryData* RawDataEnsureSize(Value value, int size, String* outErr) {
     if (data == nullptr) {
         // A bare `new RawData` has no buffer at all.  Make one the same way the
         // resize intrinsic does, handle and all, so the two paths cannot drift.
-        try {
-            data = new BinaryData(size);
-        } catch (std::bad_alloc&) {
+        data = BinaryData::New(size);
+        if (data == nullptr) {
             *outErr = "out of memory";
             return nullptr;
         }
@@ -780,9 +776,7 @@ BinaryData* RawDataEnsureSize(Value value, int size, String* outErr) {
             *outErr = "cannot grow a RawData buffer that we don't own";
             return nullptr;
         }
-        try {
-            data->Resize(size);
-        } catch (std::bad_alloc&) {
+        if (!data->Resize(size)) {
             *outErr = "out of memory";
             return nullptr;
         }

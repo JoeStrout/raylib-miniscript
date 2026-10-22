@@ -136,7 +136,8 @@ static bool GetBytesFromValue(Value value, int requestedSize, std::vector<unsign
 static Value BytesToRawDataValue(const unsigned char* bytes, int length) {
 	if (bytes == nullptr || length <= 0) return Value::Null;
 
-	BinaryData* raw = new BinaryData(length);
+	BinaryData* raw = BinaryData::New(length);
+	if (raw == nullptr) return Value::Null;
 	memcpy(raw->bytes, bytes, (size_t)length);
 	return RawDataToValue(raw);
 }

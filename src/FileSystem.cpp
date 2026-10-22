@@ -293,7 +293,8 @@ BinaryData* RealDirBackend::ReadBinary(const String& path) {
 	fseek(f, 0, SEEK_SET);
 	if (size < 0) { fclose(f); return nullptr; }
 
-	BinaryData* data = new BinaryData((int)size);
+	BinaryData* data = BinaryData::New((int)size);
+	if (data == nullptr) { fclose(f); return nullptr; }
 	if (size > 0 && fread(data->bytes, 1, (size_t)size, f) != (size_t)size) {
 		fclose(f);
 		delete data;
