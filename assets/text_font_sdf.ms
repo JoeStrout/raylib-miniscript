@@ -46,7 +46,9 @@ main = function
 	atlas = rl.GenImageFontAtlas(fontDefault.glyphs, fontDefault.recs, 16, 4, 0)
 	fontDefault.texture = rl.LoadTextureFromImage(atlas)
 	rl.UnloadImage atlas
+	fontGlyphsDefault = fontDefault.glyphs
 	fontDefault = rl.MakeFont(fontDefault.baseSize, fontDefault.glyphs, fontDefault.recs, fontDefault.texture, 4)
+	rl.UnloadFontData fontGlyphsDefault	// MakeFont copied what it needs
 
 	// SDF font generation from TTF font
 	fontSDF = {}
@@ -62,7 +64,9 @@ main = function
 	atlas = rl.GenImageFontAtlas(fontSDF.glyphs, fontSDF.recs, 16, 0, 1)
 	fontSDF.texture = rl.LoadTextureFromImage(atlas)
 	rl.UnloadImage atlas
+	fontGlyphsSDF = fontSDF.glyphs
 	fontSDF = rl.MakeFont(fontSDF.baseSize, fontSDF.glyphs, fontSDF.recs, fontSDF.texture)
+	rl.UnloadFontData fontGlyphsSDF	// MakeFont copied what it needs
 
 	rl.UnloadFileData fileData	// Free memory from loaded file
 
