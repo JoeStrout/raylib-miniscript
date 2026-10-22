@@ -70,6 +70,8 @@ struct Args {
 	String usrPath;         // -usr <path>
 	String usr2Path;        // -usr2 <path>
 	bool ignorePrefs = false;   // --ignore-prefs
+	String profileBase;     // --profile <name>: profile the script (see Profiler.h)
+	int profileInterval = 0;    // --profile-interval <n>: instructions per sample
 	String scriptPath;      // first non-option argument
 	std::vector<String> scriptArgs;   // non-option arguments after scriptPath
 };

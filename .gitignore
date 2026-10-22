@@ -5,6 +5,11 @@ dist/
 *.o
 *.a
 
+# Profiler output (--profile <name>)
+*.folded
+*.speedscope.json
+*profile.txt
+
 # IDE files
 .vscode/
 .idea/

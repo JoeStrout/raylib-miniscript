@@ -13,6 +13,7 @@
 #include "rcamera.h"
 #include "miniscript.h"
 #include "macros.h"
+#include "Profiler.h"
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -730,7 +731,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
-		EndDrawing();
+		{
+			// EndDrawing also waits out the frame for SetTargetFPS; in profile
+			// mode, charge that to this call rather than to the code after it.
+			profiler::TimedScope timed("raylib.EndDrawing");
+			EndDrawing();
+		}
 		// The batch is flushed, so nothing refers to a collected resource now:
 		// the best moment to unload any the collector has queued.
 		SetDrawingActive(false);
@@ -755,6 +761,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("camera");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Camera3D camera = ValueToCamera3D(context.GetArg(0));
+		profiler::TimedScope timed("raylib.BeginMode3D");
 		BeginMode3D(camera);
 		return IntrinsicResult::Null;
 	});
@@ -762,6 +769,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndMode3D");
 		EndMode3D();
 		return IntrinsicResult::Null;
 	});
@@ -1060,6 +1068,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("shader");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Shader shader = ValueToShader(context.GetArg(0));
+		profiler::TimedScope timed("raylib.BeginShaderMode");
 		BeginShaderMode(shader);
 		return IntrinsicResult::Null;
 	});
@@ -1067,6 +1076,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndShaderMode");
 		EndShaderMode();
 		return IntrinsicResult::Null;
 	});
@@ -2196,6 +2206,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
 		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
 		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+		profiler::TimedScope timed("raylib.BeginMode2D");
 		BeginMode2D(camera);
 		return IntrinsicResult::Null;
 	});
@@ -2203,6 +2214,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndMode2D");
 		EndMode2D();
 		return IntrinsicResult::Null;
 	});
@@ -2274,6 +2286,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("mode");
 	i.set_Code(INTRINSIC_LAMBDA {
 		int mode = context.GetArg(0).IntValue();
+		profiler::TimedScope timed("raylib.BeginBlendMode");
 		BeginBlendMode(mode);
 		return IntrinsicResult::Null;
 	});
@@ -2281,6 +2294,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndBlendMode");
 		EndBlendMode();
 		return IntrinsicResult::Null;
 	});
@@ -2298,6 +2312,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		int y = context.GetArg(1).IntValue();
 		int width = context.GetArg(2).IntValue();
 		int height = context.GetArg(3).IntValue();
+		profiler::TimedScope timed("raylib.BeginScissorMode");
 		BeginScissorMode(x, y, width, height);
 		return IntrinsicResult::Null;
 	});
@@ -2305,6 +2320,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndScissorMode");
 		EndScissorMode();
 		return IntrinsicResult::Null;
 	});
@@ -2488,6 +2504,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("seconds", 1.0);
 	i.set_Code(INTRINSIC_LAMBDA {
 		double seconds = context.GetArg(0).DoubleValue();
+		profiler::TimedScope timed("raylib.WaitTime");
 		WaitTime(seconds);
 		return IntrinsicResult::Null;
 	});
@@ -2499,6 +2516,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		PrintWebNotSupported("SwapScreenBuffer");
 		return IntrinsicResult::Null;
 	#endif
+		profiler::TimedScope timed("raylib.SwapScreenBuffer");
 		SwapScreenBuffer();
 		return IntrinsicResult::Null;
 	});

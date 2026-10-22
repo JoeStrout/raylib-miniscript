@@ -16,6 +16,7 @@
 #include "UserDisks.h"
 #include "loadfile.h"
 #include "RaylibTypes.h"
+#include "Profiler.h"
 #include <stdio.h>
 
 #ifdef PLATFORM_WEB
@@ -295,7 +296,10 @@ void MainLoop() {
 		if (!interpreter.Done()) {
 			// MS2 does not throw for runtime errors; they are delivered to the
 			// errorOutput delegate (PrintErr), which sets the ERRORED state.
-			interpreter.RunUntilDone(0.1, true);
+			// In profile mode, the profiler runs the slice instead, sampling
+			// the call stack as it goes (see Profiler.h).
+			if (profiler::Enabled()) profiler::RunUntilDone(interpreter, 0.1, true);
+			else interpreter.RunUntilDone(0.1, true);
 			// One GC tick per frame.  This is a safe point -- RunUntilDone has
 			// returned, so the VM is between steps with no intrinsic in flight.
 			// MaybeCollect decides whether it is actually worth collecting (see
@@ -418,6 +422,14 @@ int main(int argc, char *argv[]) {
 	userdisks::Args args = userdisks::ParseArgs(argc, argv);
 	userdisks::SetArgs(args);
 
+	// --profile <name>: sample the script as it runs, and write a report when
+	// it ends (including on Ctrl-C).
+	if (!args.profileBase.empty()) {
+		profiler::Start(args.profileBase.c_str(),
+			args.profileInterval > 0 ? (unsigned int)args.profileInterval : 0);
+		profiler::InstallInterruptHandler();
+	}
+
 	String defaultScript = "assets/main.ms";
 	if (!FileExists(defaultScript.c_str())) defaultScript = exeDir + "/assets/main.ms";
 	const char* scriptPath = args.scriptPath.empty() ? defaultScript.c_str() : args.scriptPath.c_str();
@@ -484,6 +496,7 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		MainLoop();
 		if (interpreter.ExitRequested()) break;
+		if (profiler::Interrupted()) break;
 		if (IsWindowReady()) {
 			if (WindowShouldClose()) {
 				if (scriptState != RUNNING || !scriptPollsWindowClose) break;
@@ -496,6 +509,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 #endif
+
+	// Write the profile, if we were making one.
+	if (profiler::Enabled()) profiler::Finish();
 
 	// The `exit` state lives on the interpreter's VM, so read it before cleanup
 	// releases the interpreter.

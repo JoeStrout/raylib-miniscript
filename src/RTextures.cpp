@@ -12,6 +12,7 @@
 #include "raylib.h"
 #include "miniscript.h"
 #include "macros.h"
+#include "Profiler.h"
 #include <iostream>
 
 using namespace MiniScript;
@@ -840,6 +841,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i.AddParam("target");
 	i.set_Code(INTRINSIC_LAMBDA {
 		RenderTexture2D target = ValueToRenderTexture(context.GetArg(0));
+		profiler::TimedScope timed("raylib.BeginTextureMode");
 		BeginTextureMode(target);
 		return IntrinsicResult::Null;
 	});
@@ -847,6 +849,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		profiler::TimedScope timed("raylib.EndTextureMode");
 		EndTextureMode();
 		return IntrinsicResult::Null;
 	});
