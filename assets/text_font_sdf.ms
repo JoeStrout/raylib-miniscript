@@ -149,6 +149,7 @@ main = function
 	rl.UnloadShader shader			// Unload SDF shader
 
 	rl.CloseWindow					// Close window and OpenGL context
+	print "Cleanup complete"
 	//--------------------------------------------------------------------------------------
 end function
 
