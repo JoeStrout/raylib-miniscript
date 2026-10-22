@@ -114,11 +114,15 @@ if(EMSCRIPTEN)
 
     target_include_directories(raylib-miniscript PRIVATE ${CMAKE_SOURCE_DIR}/raylib/src)
 
+    # -O2, and no -fexceptions: with it, Emscripten implements C++ exceptions
+    # in JavaScript, wrapping every call that might throw -- the dominant cost
+    # of running a bytecode VM.  (-fwasm-exceptions would avoid that, but
+    # ASYNCIFY, which the web file loaders need, can't handle it.)  Without
+    # exceptions a throw aborts, so nothing on web may rely on catching one.
     target_compile_options(raylib-miniscript PRIVATE
-        -Os
+        -O2
         -Wall
         -DPLATFORM_WEB
-        -fexceptions
     )
 
     target_link_options(raylib-miniscript PRIVATE
@@ -128,7 +132,6 @@ if(EMSCRIPTEN)
         -sALLOW_MEMORY_GROWTH=1
         -sTOTAL_MEMORY=67108864
         -sSTACK_SIZE=5242880
-        -fexceptions
         -sEXPORTED_FUNCTIONS=['_main','_malloc']
         --pre-js ${CMAKE_SOURCE_DIR}/web/prevent-defaults.js
     )
