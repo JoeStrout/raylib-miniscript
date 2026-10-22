@@ -27,6 +27,18 @@ For the web build, install [Emscripten](https://emscripten.org/) and run `script
 
 When run with no script argument, it looks for `assets/main.ms` in the current working directory first, and failing that, next to the executable itself.  The second case is what lets a packaged app (where the payload ships beside the binary) work when launched from the Finder or a desktop shortcut, since the working directory is then something unrelated.
 
+## Web build
+
+`scripts/build-web.sh` builds `build-web/raylib-miniscript.{html,js,wasm}` (needs Emscripten).  The page loads `assets/main.ms` and every other file the game reads (images, sounds, shaders, imported modules) with `fetch()`, one request each.
+
+For a game with many files, you can instead bundle them into an Emscripten **file package**: one `game.data` file the page downloads in a single request and unpacks into memory before the engine starts.  After a web build, run
+
+```
+scripts/package-web.sh
+```
+
+which packages `assets/` into `build-web/game.data` (plus its loader, `game.data.js`) and adds the loader to `build-web/raylib-miniscript.html`.  Run it again after each web build, since the build rewrites the page.  With a package loaded, *every* file comes from the package, and a file that isn't in it is simply not found.  See [Publishing to the Web](https://github.com/JoeStrout/raylib-miniscript/wiki/Publishing-to-the-Web) in the wiki for the details, and for when to use a package.
+
 ## Documentation
 
 Most of the added intrinsics (i.e., ones not part of the standard MiniScript language) are direct wrappings of the Raylib APIs.

@@ -2864,10 +2864,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-	#ifdef PLATFORM_WEB
-		PrintWebNotSupported("FileExists");
-		return IntrinsicResult::Zero;
-	#endif
+		// (On web this sees the in-memory file system, i.e. a preloaded file package.)
 		String fileName;
 		if (!fs::HostPath(context.GetArg(0), fileName)) return IntrinsicResult::Zero;
 		return IntrinsicResult(FileExists(fileName.c_str()));
@@ -2877,10 +2874,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
 	i.set_Code(INTRINSIC_LAMBDA {
-	#ifdef PLATFORM_WEB
-		PrintWebNotSupported("DirectoryExists");
-		return IntrinsicResult::Zero;
-	#endif
+		// (On web this sees the in-memory file system, i.e. a preloaded file package.)
 		String dirPath;
 		if (!fs::HostPath(context.GetArg(0), dirPath)) return IntrinsicResult::Zero;
 		return IntrinsicResult(DirectoryExists(dirPath.c_str()));

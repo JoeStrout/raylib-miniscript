@@ -10,6 +10,7 @@
 #include "RaylibTypes.h"
 #include "raylib.h"
 #include "miniscript.h"
+#include "loadfile.h"
 #include <map>
 #include <set>
 #include <string>
@@ -371,8 +372,8 @@ static IntrinsicResult StartImportedModule(Context& context, const String& libna
 	return IntrinsicResult(libname, false);
 }
 
-// Search the import directories from the given index on.  Answers from the
-// caches where it can, and otherwise starts a fetch of the first unknown URL
+// Search the import directories from the given index on.  Answers from a file
+// package, or else from the caches where it can, and otherwise starts a fetch of the first unknown URL
 // and returns its pending result (the fetch id, for State 2).
 static IntrinsicResult SearchImportDirs(Context& context, const String& libname, int startIndex) {
 	for (int index = startIndex; ; index++) {
@@ -382,8 +383,18 @@ static IntrinsicResult SearchImportDirs(Context& context, const String& libname,
 			return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
 		}
 		String path = dir + "/" + libname + ".ms";
-		std::string key(path.c_str());
 
+		// With a file package loaded, the in-memory file system is the whole
+		// story: a module that is not in it does not exist, and costs no request.
+		if (WebPackageLoaded()) {
+			unsigned char* data = ReadMemFile(path.c_str(), nullptr);
+			if (data == nullptr) continue;
+			String moduleSource((char*)data);
+			free(data);
+			return StartImportedModule(context, libname, moduleSource);
+		}
+
+		std::string key(path.c_str());
 		auto cached = importSourceCache.find(key);
 		if (cached != importSourceCache.end()) {
 			return StartImportedModule(context, libname, String(cached->second.c_str()));

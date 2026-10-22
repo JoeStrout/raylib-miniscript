@@ -132,6 +132,8 @@ if(EMSCRIPTEN)
         -sALLOW_MEMORY_GROWTH=1
         -sTOTAL_MEMORY=67108864
         -sSTACK_SIZE=5242880
+        -sFORCE_FILESYSTEM=1
+        -sEXPORTED_RUNTIME_METHODS=FS_createPath,FS_createDataFile,addRunDependency,removeRunDependency
         -sEXPORTED_FUNCTIONS=['_main','_malloc']
         --pre-js ${CMAKE_SOURCE_DIR}/web/prevent-defaults.js
     )

@@ -178,6 +178,10 @@
             };
         };
     </script>
+    <!-- Optional file package: scripts/package-web.sh adds its loader just before the engine
+         script below (after `var Module` above, which the loader needs):
+             <script src="game.data.js"></script>
+         With a package loaded, a file that isn't in it is never requested over the network. -->
     {{{ SCRIPT }}}
 </body>
 </html>
