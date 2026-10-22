@@ -11,6 +11,8 @@
 #include "raylib.h"
 #include "miniscript.h"
 #include <map>
+#include <set>
+#include <string>
 #include <cstring>
 
 #ifdef PLATFORM_WEB
@@ -322,6 +324,7 @@ struct ImportFetchData {
 	bool completed;
 	int status;
 	String libname;
+	String path;
 	int searchPathIndex;
 	ImportFetchData() : fetch(nullptr), completed(false), status(0), searchPathIndex(0) {}
 };
@@ -343,11 +346,16 @@ static void import_fetch_completed(emscripten_fetch_t *fetch) {
 	}
 }
 
-// Source of every module fetched so far, by library name.  A repeat import
-// (most modules import importUtil, for one) then costs no requests, instead of
-// probing each import directory again.  Kept as std::string: a host String is
-// not reachable by the GC and would be swept.
+// What every import fetch so far has found, by URL: the module source for a
+// 200, and the URL alone for a 404.  A repeat import (most modules import
+// importUtil, for one) then walks the search path without a single request.
+// Keyed by URL rather than library name so that a change of search path (`run`
+// of a script in another directory changes MS_SCRIPT_DIR) finds the right file.
+// The files on the server don't change during a session, so neither goes
+// stale.  Kept as std::string: a host String is not reachable by the GC and
+// would be swept.
 static std::map<std::string, std::string> importSourceCache;
+static std::set<std::string> importMissingCache;
 
 // Compile a fetched module and push it to run inline; the same hand-off the
 // desktop import makes.  Returns the intrinsic's pending result (the library
@@ -361,6 +369,47 @@ static IntrinsicResult StartImportedModule(Context& context, const String& libna
 	}
 	context.vm.ManuallyPushCall(context.baseIndex, moduleMain);
 	return IntrinsicResult(libname, false);
+}
+
+// Search the import directories from the given index on.  Answers from the
+// caches where it can, and otherwise starts a fetch of the first unknown URL
+// and returns its pending result (the fetch id, for State 2).
+static IntrinsicResult SearchImportDirs(Context& context, const String& libname, int startIndex) {
+	for (int index = startIndex; ; index++) {
+		String dir = GetImportDir(index);
+		if (dir.empty()) {
+			if (index == 0) return IntrinsicResult(ErrorTypes::FileError("import: no import paths configured"));
+			return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
+		}
+		String path = dir + "/" + libname + ".ms";
+		std::string key(path.c_str());
+
+		auto cached = importSourceCache.find(key);
+		if (cached != importSourceCache.end()) {
+			return StartImportedModule(context, libname, String(cached->second.c_str()));
+		}
+		if (importMissingCache.count(key)) continue;
+
+		long fetchId = nextImportFetchId++;
+		ImportFetchData& data = activeImportFetches[fetchId];
+		data.libname = libname;
+		data.path = path;
+		data.searchPathIndex = index;
+
+		emscripten_fetch_attr_t attr;
+		emscripten_fetch_attr_init(&attr);
+		strcpy(attr.requestMethod, "GET");
+		attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+		attr.onsuccess = import_fetch_completed;
+		attr.onerror = import_fetch_completed;
+
+		data.fetch = emscripten_fetch(&attr, path.c_str());
+
+		// Yield while the fetch is in flight: the host loop otherwise spins in
+		// its time slice, and the browser can't deliver the response meanwhile.
+		context.vm.yielding = true;
+		return IntrinsicResult(Value((double)fetchId), false);
+	}
 }
 
 static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partialResult) {
@@ -386,65 +435,33 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		ImportFetchData& data = it->second;
 
 		if (!data.completed) {
-			// Yield while the fetch is in flight: the host loop otherwise spins in
-			// its time slice, and the browser can't deliver the response meanwhile.
 			context.vm.yielding = true;
 			return partialResult;
 		}
 
 		emscripten_fetch_t* fetch = data.fetch;
 		String libname = data.libname;
+		std::string key(data.path.c_str());
 
 		if (data.status == 200) {
-			char* moduleData = (char*)malloc(fetch->numBytes + 1);
-			if (!moduleData) {
-				emscripten_fetch_close(fetch);
-				activeImportFetches.erase(it);
-				context.vm.RaiseRuntimeError("import: memory allocation failed");
-				return IntrinsicResult::Null;
-			}
-			memcpy(moduleData, fetch->data, fetch->numBytes);
-			moduleData[fetch->numBytes] = '\0';
-			importSourceCache[libname.c_str()] = std::string(moduleData, fetch->numBytes);
-			String moduleSource(moduleData);
-			free(moduleData);
-
+			std::string source(fetch->data, fetch->numBytes);
+			importSourceCache[key] = source;
 			emscripten_fetch_close(fetch);
 			activeImportFetches.erase(it);
 
-			return StartImportedModule(context, libname, moduleSource);
+			return StartImportedModule(context, libname, String(source.c_str()));
 		} else {
+			// Only a 404 is a definite answer; anything else may succeed next time.
+			if (data.status == 404) importMissingCache.insert(key);
 			emscripten_fetch_close(fetch);
 			int nextPathIndex = data.searchPathIndex + 1;
 			activeImportFetches.erase(it);
 
-			String dir = GetImportDir(nextPathIndex);
-			if (!dir.empty()) {
-				String path = dir + "/" + libname + ".ms";
-
-				long newFetchId = nextImportFetchId++;
-				ImportFetchData& newData = activeImportFetches[newFetchId];
-				newData.libname = libname;
-				newData.searchPathIndex = nextPathIndex;
-
-				emscripten_fetch_attr_t attr;
-				emscripten_fetch_attr_init(&attr);
-				strcpy(attr.requestMethod, "GET");
-				attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-				attr.onsuccess = import_fetch_completed;
-				attr.onerror = import_fetch_completed;
-
-				newData.fetch = emscripten_fetch(&attr, path.c_str());
-
-				context.vm.yielding = true;
-				return IntrinsicResult(Value((double)newFetchId), false);
-			} else {
-				return IntrinsicResult(ErrorTypes::FileError("import: library not found: " + libname));
-			}
+			return SearchImportDirs(context, libname, nextPathIndex);
 		}
 	}
 
-	// State 1: Start the import - fetch the file
+	// State 1: Start the import - search the import directories
 	String libname = context.GetVar("libname").ToString();
 	if (libname.empty()) {
 		return IntrinsicResult(ErrorTypes::FileError("import: no library name given"));
@@ -457,33 +474,7 @@ static IntrinsicResult intrinsic_import(Context context, IntrinsicResult partial
 		return IntrinsicResult(ErrorTypes::FileError("import: argument must be library name, not path"));
 	}
 
-	auto cached = importSourceCache.find(libname.c_str());
-	if (cached != importSourceCache.end()) {
-		return StartImportedModule(context, libname, String(cached->second.c_str()));
-	}
-
-	String dir = GetImportDir(0);
-	if (dir.empty()) {
-		return IntrinsicResult(ErrorTypes::FileError("import: no import paths configured"));
-	}
-	String path = dir + "/" + libname + ".ms";
-
-	long fetchId = nextImportFetchId++;
-	ImportFetchData& data = activeImportFetches[fetchId];
-	data.libname = libname;
-	data.searchPathIndex = 0;
-
-	emscripten_fetch_attr_t attr;
-	emscripten_fetch_attr_init(&attr);
-	strcpy(attr.requestMethod, "GET");
-	attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-	attr.onsuccess = import_fetch_completed;
-	attr.onerror = import_fetch_completed;
-
-	data.fetch = emscripten_fetch(&attr, path.c_str());
-
-	context.vm.yielding = true;
-	return IntrinsicResult(Value((double)fetchId), false);
+	return SearchImportDirs(context, libname, 0);
 }
 
 #else // PLATFORM_DESKTOP
