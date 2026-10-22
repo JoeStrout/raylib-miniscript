@@ -292,6 +292,8 @@ static AutomationEventList* GetAutomationEventListPtr(Value value) {
 
 // raylib records into the list SetAutomationEventList was given, through a
 // pointer into its resource box; this keeps that box alive meanwhile.
+bool scriptPollsWindowClose = false;
+
 static PinnedResource activeAutomationEventList;
 static AutomationEventList* activeAutomationEventListPtr = nullptr;
 
@@ -1633,6 +1635,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
+		scriptPollsWindowClose = true;
 		return IntrinsicResult(WindowShouldClose());
 	});
 	raylibModule.SetValue("WindowShouldClose", i.GetFunc());

@@ -448,11 +448,22 @@ int main(int argc, char *argv[]) {
 #ifdef PLATFORM_WEB
 	emscripten_set_main_loop(MainLoop, 0, 1);
 #else
+	// Closing the window (the X button, or ESC) need not cut a script off
+	// mid-run: one that polls WindowShouldClose() ends its own loop and runs its
+	// cleanup afterwards.  So on a close request we keep stepping such a script
+	// until it finishes -- but only for a grace period, in case it never does.
+	// A script that never polls (a bare `while true`) is ended at once.
+	const double kCloseGraceSeconds = 2.0;
+	double closeDeadline = -1;
 	while (true) {
 		MainLoop();
 		if (interpreter.ExitRequested()) break;
 		if (IsWindowReady()) {
-			if (WindowShouldClose()) break;
+			if (WindowShouldClose()) {
+				if (scriptState != RUNNING || !scriptPollsWindowClose) break;
+				if (closeDeadline < 0) closeDeadline = GetTime() + kCloseGraceSeconds;
+				else if (GetTime() > closeDeadline) break;
+			}
 		} else if (scriptState == ERRORED || scriptState == COMPLETE) {
 			// Headless script: nothing to keep on screen, so we're done.
 			break;
