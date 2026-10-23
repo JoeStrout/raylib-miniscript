@@ -157,6 +157,7 @@ blockExists = function(blocks, x,y)
 end function
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	blocks = list.init2d(NUM_BLOCKS_X, NUM_BLOCKS_Y)
 	
 	for x in range(NUM_BLOCKS_X - 1)
@@ -333,8 +334,8 @@ run = function
 		end if
 
 		rl.EndDrawing
-		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 		yield
+		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 	end while
 end function
 

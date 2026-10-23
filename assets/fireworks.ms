@@ -192,6 +192,7 @@ end function
 // stress: start with the stress test running.
 // maxSeconds: quit automatically after this long (0 = run until ESC).
 run = function(stress = false, maxSeconds = 0)
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Matrix Fireworks"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth

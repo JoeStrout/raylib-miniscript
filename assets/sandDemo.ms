@@ -76,6 +76,7 @@ obsNames = ["Hourglass", "Pegs", "Shelves"]
 obstacleIdx = 0
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Sand Simulation"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth

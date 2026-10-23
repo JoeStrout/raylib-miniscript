@@ -84,6 +84,7 @@ makeWorld = function
 end function
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Physics"
 	rl.SetTargetFPS 60
 	world = makeWorld

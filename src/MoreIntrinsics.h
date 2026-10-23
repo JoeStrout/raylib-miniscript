@@ -22,6 +22,11 @@ void AddMoreIntrinsics();
 /// before the script runs; if never called, shellArgs is an empty list.
 void SetShellArgs(const std::vector<MiniScript::String>& args);
 
+/// Make version.platform report the given name, for a host running somewhere
+/// the core can't identify (it says "Unknown").  Call before any script runs:
+/// a VM takes its copy of the intrinsics when it loads its first program.
+void SetVersionPlatform(MiniScript::String platform);
+
 /// Update the MS_SCRIPT_DIR environment variable to the directory containing
 /// the given file path.
 void UpdateScriptDir(const char* path);

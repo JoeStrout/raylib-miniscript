@@ -414,6 +414,7 @@ unload = function
 end function
 
 run = function
+	raylib.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	init
 	while true
 		raylib.BeginDrawing
@@ -421,8 +422,8 @@ run = function
 		update
 		render
 		raylib.EndDrawing
-		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) or raylib.IsKeyPressed(raylib.KEY_Q) then break
 		yield
+		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) or raylib.IsKeyPressed(raylib.KEY_Q) then break
 	end while
 	unload
 end function

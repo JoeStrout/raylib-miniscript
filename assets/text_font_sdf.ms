@@ -8,13 +8,16 @@
 // Copyright (c) 2015-2025 Ramon Santamaria (@raysan5)
 
 rl = raylib
-rl.SetConfigFlags rl.FLAG_WINDOW_HIGHDPI
-rl.InitWindow
+if not rl.IsWindowReady then
+	rl.SetConfigFlags rl.FLAG_WINDOW_HIGHDPI
+	rl.InitWindow
+end if
 
 FONT_DEFAULT = 0
 FONT_SDF = 2
 
-main = function
+run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	// Initialization
 	//--------------------------------------------------------------------------------------
 	screenWidth = 800
@@ -139,6 +142,7 @@ main = function
 		rl.EndDrawing
 		//----------------------------------------------------------------------------------
 		yield
+		if rl.IsKeyPressed(rl.KEY_ESCAPE) then break
 	end while
 
 	// De-Initialization
@@ -148,9 +152,8 @@ main = function
 
 	rl.UnloadShader shader			// Unload SDF shader
 
-	rl.CloseWindow					// Close window and OpenGL context
 	print "Cleanup complete"
 	//--------------------------------------------------------------------------------------
 end function
 
-if locals == globals then main
+if locals == globals then run

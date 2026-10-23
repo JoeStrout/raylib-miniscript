@@ -15,29 +15,11 @@
 #include "macros.h"
 #include <vector>
 
-// rlgl's own rlGetActiveFramebuffer is compiled only for GL 3.3, ES 3 and the
-// software renderer (see the guard in rlgl.h); on the ES2/WebGL1 web build it
-// is a stub that always returns 0.  ES2 can answer the same question perfectly
-// well -- it just spells the enum GL_FRAMEBUFFER_BINDING rather than
-// GL_DRAW_FRAMEBUFFER_BINDING (both are 0x8CA6) -- so supply it ourselves
-// there.  Script sees one function that works on every backend.
-#ifdef PLATFORM_WEB
-#include <GLES2/gl2.h>
-static unsigned int GetActiveFramebuffer() {
-	GLint fboId = 0;
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboId);
-	return (unsigned int)fboId;
-}
-#else
-static unsigned int GetActiveFramebuffer() {
-	return rlGetActiveFramebuffer();
-}
-#endif
-
 using namespace MiniScript;
 
 // Defined in RCore.cpp
 const void* PackUniformValue(Value value, int uniformType, int& count, std::vector<unsigned char>& storage);
+String AdaptShaderCode(String code);
 
 static IntrinsicResult RaiseError(Context context, const char* msg) {
 	context.vm.RaiseRuntimeError(msg);
@@ -298,7 +280,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	// Get the currently active render texture (fbo); 0 for the default framebuffer
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(Value((double)GetActiveFramebuffer()));
+		return IntrinsicResult(Value((double)rlGetActiveFramebuffer()));
 	});
 	raylibModule.SetValue("rlGetActiveFramebuffer", i.GetFunc());
 
@@ -957,7 +939,6 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	// Copies the read framebuffer to the draw framebuffer (see rlBindFramebuffer
 	// with RL_READ_FRAMEBUFFER / RL_DRAW_FRAMEBUFFER).  bufferMask is a GL mask:
 	// 0x4000 = color (the default), 0x0100 = depth, 0x0400 = stencil.
-	// Desktop only; does nothing on web (WebGL1).
 	i = Intrinsic::Create("");
 	i.AddParam("srcX");
 	i.AddParam("srcY");
@@ -984,7 +965,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	raylibModule.SetValue("rlBlitFramebuffer", i.GetFunc());
 
 	// Activates `count` color attachments (up to 8) for multiple render
-	// targets.  Desktop only; does nothing on web (WebGL1).
+	// targets.
 	i = Intrinsic::Create("");
 	i.AddParam("count", Value::one);
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -999,7 +980,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("numBuffers", Value(RL_DEFAULT_BATCH_BUFFERS));
 #ifdef PLATFORM_WEB
-	i.AddParam("bufferElements", Value(2048));	// rlgl's default for ES2
+	i.AddParam("bufferElements", Value(2048));	// rlgl's default for ES2/ES3
 #else
 	i.AddParam("bufferElements", Value(RL_DEFAULT_BATCH_BUFFER_ELEMENTS));
 #endif
@@ -1550,7 +1531,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.AddParam("code");
 	i.AddParam("type", Value(RL_FRAGMENT_SHADER));
 	i.set_Code(INTRINSIC_LAMBDA {
-		String code = context.GetArg(0).ToString();
+		String code = AdaptShaderCode(context.GetArg(0).ToString());
 		int type = context.GetArg(1).IntValue();
 		return IntrinsicResult(Value((int)rlLoadShader(code.c_str(), type)));
 	});
@@ -1561,8 +1542,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 	i.AddParam("vsCode", String());
 	i.AddParam("fsCode", String());
 	i.set_Code(INTRINSIC_LAMBDA {
-		String vsCode = context.GetArg(0).ToString();
-		String fsCode = context.GetArg(1).ToString();
+		String vsCode = AdaptShaderCode(context.GetArg(0).ToString());
+		String fsCode = AdaptShaderCode(context.GetArg(1).ToString());
 		const char* vsPtr = vsCode.LengthB() > 0 ? vsCode.c_str() : nullptr;
 		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
 		return IntrinsicResult(Value((int)rlLoadShaderProgram(vsPtr, fsPtr)));
@@ -1667,7 +1648,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		for (int j = 0; j < list.Count(); j++) {
 			Matrix m = ValueToMatrix(list[j]);
 #ifdef PLATFORM_WEB
-			// rlgl uploads these transposed on GL 3.3 but not on ES2 (WebGL
+			// rlgl uploads these transposed on GL 3.3 but not on ES (WebGL
 			// can't transpose), so pre-transpose here for the same result.
 			m = MatrixTranspose(m);
 #endif

@@ -267,6 +267,7 @@ end function
 //----------------------------------------------------------------------
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	if not rl.IsWindowReady then
 		rl.InitWindow WIDTH, HEIGHT, "Connect 4 vs AlphaZero"
 	else

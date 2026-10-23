@@ -9,8 +9,9 @@ rl.SetTraceLogLevel(rl.LOG_WARNING)
 if not rl.IsWindowReady then rl.InitWindow 
 
 configWindow = function
-	rl.SetWindowSize 960, 640
+	if version.platform[:3] != "Web" then rl.SetWindowSize 960, 640
 	rl.SetWindowTitle "raylib-miniscript demos"
+	rl.SetExitKey 0  // Esc is handled by script (each demo returns to this menu on Esc)
 end function
 configWindow
 
@@ -174,16 +175,13 @@ addButton "Sand Demo", "sandDemo"
 addButton "Sounds"
 addButton "3D Models", "rmodels_smoke"
 addButton "Shader Demo", "shaderDemo"
+addButton "SDF Fonts", "text_font_sdf"
+addButton "Game of Life", "lifeDemo"
 addButton "Physics Demo", "physicsDemo"
 addButton "Angry Balls", "angryBalls"
 
 printCentered = function(s, y, fontSize=20, color)
 	if color == null then color = rl.WHITE
-	// DrawText uses a spacing equal to fontSize/10, so measure as:
-
-	//size = rl.MeasureTextEx(rl.GetFontDefault, s, fontSize, fontSize/10)
-	//rl.DrawText s, 480 - size.x/2, y, fontSize, color
-	
 	size = rl.MeasureTextEx(titleFont, s, fontSize, 0)
 	raylib.DrawTextEx titleFont, s, [480 - size.x/2, y], fontSize, 0, color
 
@@ -246,12 +244,12 @@ render = function
 end function
 
 // Main loop
-rl.SetExitKey 0  // disable automatic window closing -- we'll handle it below
+print "Starting main loop"
 while true
 	yield
-	render
 	// Exit when Esc or Q is pressed
 	if rl.IsKeyPressed(rl.KEY_ESCAPE) or rl.GetCharPressed == "q".code then break
+	render
 end while
 
 // Clean up (technically not necessary when about to exit, but good practice

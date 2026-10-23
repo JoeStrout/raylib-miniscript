@@ -101,6 +101,7 @@ main = function
 		   rl.DrawTextEx rl.GetFontDefault, text, pos, 20, 3, rl.LIGHTGRAY
 
         rl.EndDrawing
+        yield
         //----------------------------------------------------------------------------------
 	end while
 

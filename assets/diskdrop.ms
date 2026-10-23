@@ -74,6 +74,7 @@ while not raylib.WindowShouldClose
 		y = y + 24
 	end for
 	raylib.EndDrawing
+	yield
 end while
 
 raylib.CloseWindow

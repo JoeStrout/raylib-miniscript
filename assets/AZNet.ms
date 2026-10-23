@@ -51,7 +51,7 @@ buf = null          // preallocated activation buffers
 
 // Load the weight blob.  Returns the net, or an error value.
 load = function(path = "assets/az_c4.msmx")
-	rd = file.loadRaw(path)
+	rd = raylib.LoadFileData(path)		// (not file.loadRaw, which isn't available on web)
 	if rd == null then return err("aznet: cannot read " + path)
 
 	net = new self

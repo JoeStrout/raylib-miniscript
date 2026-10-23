@@ -92,16 +92,32 @@ target_include_directories(raylib-miniscript PRIVATE
     ${MS2_DIR}/generated
 )
 
-# Copy assets to the build directory.  This is its own target, with no
-# outputs, so it runs on every build -- not only when the binary relinks, as a
-# POST_BUILD step would -- and build/assets never lags behind edits to assets/.
-add_custom_target(copy_assets ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets
-    ${CMAKE_BINARY_DIR}/assets
-    COMMENT "Copying assets to build directory"
-)
-add_dependencies(raylib-miniscript copy_assets)
+if(EMSCRIPTEN)
+    # On web, build-web/assets is a symlink to assets/, so the page always
+    # serves the live files: edit, then reload, with no rebuild.  (A local
+    # server follows the link; to upload the loose files, copy with cp -RL or
+    # rsync -L, or use a file package -- see package-web.sh.)  A real directory
+    # left there by an older build, which copied the files, is replaced.
+    set(WEB_ASSETS_LINK ${CMAKE_BINARY_DIR}/assets)
+    if(NOT IS_SYMLINK ${WEB_ASSETS_LINK})
+        file(REMOVE_RECURSE ${WEB_ASSETS_LINK})
+        file(RELATIVE_PATH WEB_ASSETS_TARGET ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/assets)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+            ${WEB_ASSETS_TARGET} ${WEB_ASSETS_LINK})
+    endif()
+else()
+    # Copy assets to the build directory.  This is its own target, with no
+    # outputs, so it runs on every build -- not only when the binary relinks, as
+    # a POST_BUILD step would -- and build/assets never lags behind edits to
+    # assets/.
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_BINARY_DIR}/assets
+        COMMENT "Copying assets to build directory"
+    )
+    add_dependencies(raylib-miniscript copy_assets)
+endif()
 
 if(EMSCRIPTEN)
     #---------------------------------------------------------------------------
@@ -128,6 +144,9 @@ if(EMSCRIPTEN)
 
     target_link_options(raylib-miniscript PRIVATE
         -sUSE_GLFW=3
+        # raylib is built for GRAPHICS_API_OPENGL_ES3 (see build-web.sh)
+        -sUSE_WEBGL2=1
+        -sMIN_WEBGL_VERSION=2
         -sASYNCIFY
         -sFETCH=1
         -sALLOW_MEMORY_GROWTH=1

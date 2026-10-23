@@ -6,6 +6,7 @@ if not raylib.IsWindowReady then raylib.InitWindow
 rl = raylib
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Metaball Shader Demo"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth

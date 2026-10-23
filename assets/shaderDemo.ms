@@ -5,6 +5,7 @@ rl = raylib
 if not rl.IsWindowReady then rl.InitWindow 
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Plasma Shader Demo"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth

@@ -32,11 +32,12 @@ drawBackground = function
 end function
 
 run = function
+	raylib.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	x = 100; y = 100
 	dx = 10; dy = 10
 	
 	print "Move with arrow keys, or click with the mouse."
-	while true
+	while not raylib.WindowShouldClose
 		raylib.BeginDrawing
 		raylib.ClearBackground
 		
@@ -60,8 +61,8 @@ run = function
 		
 		raylib.DrawFPS
 		raylib.EndDrawing
-		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) then break
 		yield
+		if raylib.IsKeyPressed(raylib.KEY_ESCAPE) then break
 	end while
 end function
 

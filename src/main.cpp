@@ -216,6 +216,9 @@ void InitMiniScript() {
 	MiniScript::hostVersion = "0.9";
 	MiniScript::hostName = "raylib-miniscript";
 	MiniScript::hostInfo = "https://github.com/JoeStrout/raylib-miniscript";
+#ifdef PLATFORM_WEB
+	SetVersionPlatform("Web");
+#endif
 	ResetRaylibCallbackBridge();
 
 	interpreter = Interpreter::New();

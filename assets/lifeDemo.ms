@@ -102,6 +102,11 @@ Life.setCell = function(row, col, value)
 	self.src.setElem row + 1, col + 1, value
 end function
 
+Life.getCell = function(row, col)
+	if row < 0 or row >= self.rows or col < 0 or col >= self.cols then return 0
+	return self.src.getElem(row + 1, col + 1)
+end function	
+
 Life.place = function(pattern, top, left)
 	for r in pattern.indexes
 		for c in range(0, pattern[r].len - 1)
@@ -121,6 +126,7 @@ Life.draw = function(left, top, cellSize, tint)
 end function
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Life"
 	rl.SetTargetFPS 60
 	screenW = rl.GetScreenWidth
@@ -166,16 +172,12 @@ run = function
 
 		// Draw or erase with the mouse (a few cells wide when cells are tiny).
 		mx = rl.GetMouseX; my = rl.GetMouseY - barH
+		col = floor(mx / cellSize); row = floor(my / cellSize)
 		drawing = rl.IsMouseButtonDown(rl.MOUSE_BUTTON_LEFT)
-		if drawing or rl.IsMouseButtonDown(rl.MOUSE_BUTTON_RIGHT) then
-			value = 255 * drawing
-			col = floor(mx / cellSize); row = floor(my / cellSize)
-			brush = floor(3 / cellSize)
-			for dr in range(-brush, brush)
-				for dc in range(-brush, brush)
-					life.setCell row + dr, col + dc, value
-				end for
-			end for
+		if drawing then
+			life.setCell row, col, drawValue * 255
+		else
+			drawValue = not life.getCell(row, col)
 		end if
 
 		steps = 0

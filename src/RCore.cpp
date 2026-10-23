@@ -14,10 +14,12 @@
 #include "miniscript.h"
 #include "macros.h"
 #include "Profiler.h"
+#include <cctype>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #ifdef PLATFORM_WEB
@@ -518,6 +520,46 @@ static void PackUIntUniformData(Value value, int components, int& count, std::ve
 	int needed = count * components;
 	if ((int)out.size() < needed) out.resize(needed, 0);
 	if ((int)out.size() > needed) out.resize(needed);
+}
+
+// Make shader source written for desktop GL work on the web build too.  Web
+// runs WebGL2 (GLSL ES 3.00), which is nearly the same language as desktop
+// GLSL 3.30, but it insists on "#version 300 es" as the very first line and on
+// an explicit float precision in fragment shaders.  So on web, a desktop
+// "#version 330" (or later, non-"es") directive is replaced by that header;
+// anything else passes through unchanged.  On desktop this is a no-op.
+// (Also used by rlLoadShader and rlLoadShaderProgram, in RLgl.cpp.)
+String AdaptShaderCode(String code) {
+#ifdef PLATFORM_WEB
+	const char* src = code.c_str();
+	// Find the first token, skipping whitespace and comments.
+	const char* p = src;
+	while (*p) {
+		if (isspace((unsigned char)*p)) p++;
+		else if (p[0] == '/' && p[1] == '/') { while (*p && *p != '\n') p++; }
+		else if (p[0] == '/' && p[1] == '*') {
+			const char* end = strstr(p + 2, "*/");
+			p = end ? end + 2 : p + strlen(p);
+		}
+		else break;
+	}
+	if (strncmp(p, "#version", 8) != 0) return code;
+	const char* lineEnd = strchr(p, '\n');
+	if (!lineEnd) lineEnd = p + strlen(p);
+	int version = 0;
+	char profile[16] = "";
+	sscanf(p + 8, "%d %15s", &version, profile);
+	if (version < 330 || strcmp(profile, "es") == 0) return code;
+	// Keep the comments before the directive, and put the precision statements
+	// where the directive was, so line numbers in errors are off by just one.
+	std::string result = "#version 300 es\n";
+	result.append(src, p - src);
+	result += "precision highp float; precision highp int;";
+	result += lineEnd;
+	return String(result.c_str());
+#else
+	return code;
+#endif
 }
 
 // Get the bytes for `count` uniforms of the given type from a script value:
@@ -1032,9 +1074,29 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		String vsFileName, fsFileName;
 		if (vsArg.LengthB() > 0 && !fs::HostPath(vsArg, vsFileName)) return IntrinsicResult::Null;
 		if (fsArg.LengthB() > 0 && !fs::HostPath(fsArg, fsFileName)) return IntrinsicResult::Null;
+#ifdef PLATFORM_WEB
+		// Load the text ourselves, so it can go through AdaptShaderCode.
+		String vsCode, fsCode;
+		if (vsFileName.LengthB() > 0) {
+			char* text = LoadFileText(vsFileName.c_str());
+			if (!text) return IntrinsicResult::Null;
+			vsCode = AdaptShaderCode(String(text));
+			UnloadFileText(text);
+		}
+		if (fsFileName.LengthB() > 0) {
+			char* text = LoadFileText(fsFileName.c_str());
+			if (!text) return IntrinsicResult::Null;
+			fsCode = AdaptShaderCode(String(text));
+			UnloadFileText(text);
+		}
+		const char* vsPtr = vsCode.LengthB() > 0 ? vsCode.c_str() : nullptr;
+		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
+		Shader shader = LoadShaderFromMemory(vsPtr, fsPtr);
+#else
 		const char* vsPtr = vsFileName.LengthB() > 0 ? vsFileName.c_str() : nullptr;
 		const char* fsPtr = fsFileName.LengthB() > 0 ? fsFileName.c_str() : nullptr;
 		Shader shader = LoadShader(vsPtr, fsPtr);
+#endif
 		if (!IsShaderValid(shader)) return IntrinsicResult::Null;
 		rcShader++;
 		return IntrinsicResult(ShaderToValue(shader));
@@ -1045,8 +1107,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.AddParam("vsCode", String());
 	i.AddParam("fsCode", String());
 	i.set_Code(INTRINSIC_LAMBDA {
-		String vsCode = context.GetArg(0).ToString();
-		String fsCode = context.GetArg(1).ToString();
+		String vsCode = AdaptShaderCode(context.GetArg(0).ToString());
+		String fsCode = AdaptShaderCode(context.GetArg(1).ToString());
 		const char* vsPtr = vsCode.LengthB() > 0 ? vsCode.c_str() : nullptr;
 		const char* fsPtr = fsCode.LengthB() > 0 ? fsCode.c_str() : nullptr;
 		Shader shader = LoadShaderFromMemory(vsPtr, fsPtr);
@@ -1647,7 +1709,21 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		scriptPollsWindowClose = true;
+#ifdef PLATFORM_WEB
+		// An exception to our rule of doing exactly what raylib does.  raylib's
+		// web WindowShouldClose is just emscripten_sleep(12) followed by "return
+		// false": the sleep hands control to the browser, so that a program
+		// written as one endless loop still gets its frames shown and its input
+		// delivered.  We never need that -- the host runs scripts from
+		// emscripten_set_main_loop, and a script's `yield` already returns to
+		// the browser every frame -- so the sleep only takes 12+ ms out of each
+		// 16.7 ms frame, and opens a second point mid-frame where input arrives
+		// (which the next EndDrawing then marks as old, so presses get missed).
+		// The answer is the same without it: there's no window to close.
+		return IntrinsicResult(false);
+#else
 		return IntrinsicResult(WindowShouldClose());
+#endif
 	});
 	raylibModule.SetValue("WindowShouldClose", i.GetFunc());
 

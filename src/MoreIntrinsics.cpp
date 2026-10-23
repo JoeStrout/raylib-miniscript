@@ -776,6 +776,34 @@ static long long HostBytesInUse() {
 #endif
 }
 
+// The core `version` map names the platform from the compile target, and knows
+// only macOS, Windows and Linux; anything else (such as the web build) gets
+// "Unknown".  SetVersionPlatform wraps the core intrinsic so its map carries
+// the given name instead.  The copy is built on first call, as the core map
+// is, and rooted in the same step.
+// ToDo: remove this workaround once MS2 itself offers a hostPlatform setting
+// (alongside hostName etc.), or recognizes the web platform on its own.
+static String versionPlatform;
+static Value versionMapValue;
+
+void SetVersionPlatform(String platform) {
+	versionPlatform = platform;
+	Intrinsic::Count();		// make sure the core intrinsics exist
+	Intrinsic versionFunc = Intrinsic::GetByName("version");
+	if (IsNull(versionFunc)) return;
+	NativeCallbackDelegate coreCode = versionFunc.Code();
+	versionFunc.set_Code([coreCode](Context context, IntrinsicResult partialResult) {
+		if (versionMapValue.IsNull()) {
+			Value coreMap = coreCode(context, partialResult).result;
+			versionMapValue = coreMap.MapConcat(Value::make_empty_map());
+			versionMapValue.MapSet("platform", Value(versionPlatform));
+			versionMapValue.Freeze();
+			GCManager::AddRoot(versionMapValue);
+		}
+		return IntrinsicResult(versionMapValue);
+	});
+}
+
 void AddMoreIntrinsics() {
 	// Import a MiniScript library by name, searching MS_IMPORT_PATH; stores the module under that name and returns it
 	Intrinsic importFunc = Intrinsic::Create("import");

@@ -7,7 +7,10 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-cd "$(dirname "$0")/.."
+# -P resolves symlinks, so the project path CMake records (in every include
+# flag) is the same however the script was reached; a different spelling
+# would change the flags and force a full rebuild.
+cd -P "$(dirname "$0")/.."
 
 if [ "$1" == "clean" ]; then
     echo -e "${YELLOW}Cleaning build directory...${NC}"

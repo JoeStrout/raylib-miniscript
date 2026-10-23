@@ -351,6 +351,7 @@ end function
 //----------------------------------------------------------------------
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "Angry Balls"
 	rl.SetTargetFPS 60
 	world = makeWorld

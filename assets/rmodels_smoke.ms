@@ -21,6 +21,7 @@ boolText = function(b)
 end function
 
 run = function
+	rl.SetExitKey 0  // let Esc end the loop below (and its cleanup), not the whole program
 	rl.SetWindowTitle "RModels Smoke"
 	rl.SetTargetFPS 60
 
