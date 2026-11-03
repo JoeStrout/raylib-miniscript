@@ -302,6 +302,7 @@
 |SetMaterialShaderValueMatrix |**material**, **locIndex**, **mat** | |
 |SetMaterialShaderValueTexture |**material**, **locIndex**, **texture** | |
 |SetModelMeshMaterial |**model**, **meshId**, **materialId** |Set the material for a mesh |
+|SetModelMaterialShader |**model**, **materialIndex**, **shader** |Set the shader of one material of a model. Use this to shade a model with a custom shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the shader and must unload it with UnloadShader. |
 |LoadModelAnimations |**fileName** |Load model animations from file |
 |UpdateModelAnimation |**model**, **animation**, **frame**=0 |Update model animation data (vertex buffers / bone matrices) for a specific pose NOTE 1: Request frame could be fractional, using a lerp interpolation between two frames NOTE 2: Updated vertex animation data is uploaded to GPU in case of CPU skinning, for GPU skinning, bone matrices are uploaded to shader on DrawModelEx() |
 |UpdateModelAnimationEx |**model**, **animationA**, **frameA**=0, **animationB**, **frameB**=0, **blend**=0 |Update model animation data (vertex buffers / bone matrices) for a specific pose, defined by two different animations at specific frames blended together NOTE 1: Request frames could be fractional, using a lerp interpolation between two frames NOTE 2: Updated vertex animation data is uploaded to GPU in case of CPU skinning, for GPU skinning, bone matrices are uploaded to shader on DrawModelEx() |
