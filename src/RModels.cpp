@@ -7,6 +7,8 @@
 #include "miniscript.h"
 #include "macros.h"
 #include <vector>
+#include <cstdio>
+#include <cstring>
 
 using namespace MiniScript;
 
@@ -41,6 +43,129 @@ static void KeepModelMaterialRef(Value modelValue, const char* groupKey, Value k
 		modelMap.SetValue(String(groupKey), group);
 	}
 	group.GetDict().SetValue(key, resource);
+}
+
+// Layout of each mesh vertex buffer, by the index UpdateMeshBuffer and
+// GetMeshBuffer take (raylib's RL_DEFAULT_SHADER_ATTRIB_LOCATION_* order).
+enum class MeshElem { Float, UByte, UShort };
+struct MeshBufferLayout { int components; MeshElem elem; };
+static bool GetMeshBufferLayout(int index, MeshBufferLayout* out) {
+	switch (index) {
+		case 0: *out = {3, MeshElem::Float}; return true;	// vertices
+		case 1: *out = {2, MeshElem::Float}; return true;	// texcoords
+		case 2: *out = {3, MeshElem::Float}; return true;	// normals
+		case 3: *out = {4, MeshElem::UByte}; return true;	// colors
+		case 4: *out = {4, MeshElem::Float}; return true;	// tangents
+		case 5: *out = {2, MeshElem::Float}; return true;	// texcoords2
+		case 6: *out = {1, MeshElem::UShort}; return true;	// indices
+		case 7: *out = {4, MeshElem::UByte}; return true;	// boneIndices
+		case 8: *out = {4, MeshElem::Float}; return true;	// boneWeights
+		default: return false;
+	}
+}
+
+static int MeshElemSize(MeshElem elem) {
+	switch (elem) {
+		case MeshElem::UByte: return 1;
+		case MeshElem::UShort: return 2;
+		default: return 4;
+	}
+}
+
+static void AppendMeshNumber(std::vector<unsigned char>& bytes, MeshElem elem, double value) {
+	switch (elem) {
+		case MeshElem::UByte: {
+			unsigned char v = (unsigned char)value;
+			bytes.push_back(v);
+			break;
+		}
+		case MeshElem::UShort: {
+			unsigned short v = (unsigned short)value;
+			const unsigned char* p = (const unsigned char*)&v;
+			bytes.insert(bytes.end(), p, p + sizeof(v));
+			break;
+		}
+		default: {
+			float v = (float)value;
+			const unsigned char* p = (const unsigned char*)&v;
+			bytes.insert(bytes.end(), p, p + sizeof(v));
+			break;
+		}
+	}
+}
+
+// Pack mesh buffer data given as RawData (raw bytes, used as is), a flat list
+// of numbers, or a list of vectors/colors (one per vertex) into the buffer's
+// element type.  Sets *outCount to the number of elements (numbers) packed;
+// a null value packs nothing.  Returns false with *err set on bad data.
+static bool PackMeshData(Value value, MeshBufferLayout layout,
+		std::vector<unsigned char>& bytes, int* outCount, String* err) {
+	bytes.clear();
+	*outCount = 0;
+	if (value.IsNull()) return true;
+	int elemSize = MeshElemSize(layout.elem);
+
+	if (value.Type() == ValueType::Map) {
+		BinaryData* raw = ValueToRawData(value);
+		if (raw == nullptr) { *err = "expected a list or RawData"; return false; }
+		if (raw->bytes == nullptr || raw->length <= 0) return true;
+		if (raw->length % elemSize != 0) { *err = "RawData length is not a whole number of elements"; return false; }
+		const unsigned char* p = (const unsigned char*)raw->bytes;
+		bytes.assign(p, p + raw->length);
+		*outCount = raw->length / elemSize;
+		return true;
+	}
+
+	if (value.Type() != ValueType::List) { *err = "expected a list or RawData"; return false; }
+	ValueList list = value.GetList();
+	bytes.reserve(list.Count() * layout.components * elemSize);
+	for (int n = 0; n < list.Count(); n++) {
+		Value item = list[n];
+		if (item.Type() == ValueType::Map || item.Type() == ValueType::List) {
+			// One vector (or color) per vertex
+			if (layout.components == 1) { *err = "expected a flat list of numbers"; return false; }
+			if (layout.elem == MeshElem::UByte) {
+				Color c = ValueToColor(item);
+				AppendMeshNumber(bytes, layout.elem, c.r);
+				AppendMeshNumber(bytes, layout.elem, c.g);
+				AppendMeshNumber(bytes, layout.elem, c.b);
+				AppendMeshNumber(bytes, layout.elem, c.a);
+			} else if (layout.components == 2) {
+				Vector2 v = ValueToVector2(item);
+				AppendMeshNumber(bytes, layout.elem, v.x);
+				AppendMeshNumber(bytes, layout.elem, v.y);
+			} else if (layout.components == 3) {
+				Vector3 v = ValueToVector3(item);
+				AppendMeshNumber(bytes, layout.elem, v.x);
+				AppendMeshNumber(bytes, layout.elem, v.y);
+				AppendMeshNumber(bytes, layout.elem, v.z);
+			} else {
+				Vector4 v = ValueToVector4(item);
+				AppendMeshNumber(bytes, layout.elem, v.x);
+				AppendMeshNumber(bytes, layout.elem, v.y);
+				AppendMeshNumber(bytes, layout.elem, v.z);
+				AppendMeshNumber(bytes, layout.elem, v.w);
+			}
+			*outCount += layout.components;
+		} else {
+			double d = item.DoubleValue();
+			if (layout.elem == MeshElem::UShort && (d < 0 || d > 65535)) {
+				*err = "index out of range 0-65535";
+				return false;
+			}
+			AppendMeshNumber(bytes, layout.elem, d);
+			*outCount += 1;
+		}
+	}
+	return true;
+}
+
+// Copy packed bytes into a buffer from raylib's allocator (UnloadMesh frees it).
+template<typename T> static T* MeshAllocCopy(const std::vector<unsigned char>& bytes) {
+	if (bytes.empty()) return nullptr;
+	void* p = MemAlloc((unsigned int)bytes.size());
+	memcpy(p, bytes.data(), bytes.size());
+	return (T*)p;
 }
 
 // The map UnloadModelAnimations is given: the list LoadModelAnimations
@@ -853,20 +978,132 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		}
 
 		if (dataVal.Type() == ValueType::List) {
-			ValueList list = dataVal.GetList();
-			if (list.Count() == 0) return IntrinsicResult::Null;
-
-			std::vector<float> data;
-			data.reserve(list.Count());
-			for (int n = 0; n < list.Count(); n++) data.push_back(list[n].FloatValue());
-
-			UpdateMeshBuffer(*meshPtr, index, data.data(), (int)(data.size()*sizeof(float)), offset);
+			// Pack the numbers as the buffer's own element type: bytes for
+			// colors and bone indices, 16-bit for indices, floats otherwise.
+			MeshBufferLayout layout;
+			if (!GetMeshBufferLayout(index, &layout)) layout = {1, MeshElem::Float};
+			std::vector<unsigned char> bytes;
+			int count;
+			String err;
+			if (!PackMeshData(dataVal, layout, bytes, &count, &err)) {
+				context.vm.RaiseRuntimeError(String("UpdateMeshBuffer: ") + err);
+				return IntrinsicResult::Null;
+			}
+			if (bytes.empty()) return IntrinsicResult::Null;
+			UpdateMeshBuffer(*meshPtr, index, bytes.data(), (int)bytes.size(), offset);
 			return IntrinsicResult::Null;
 		}
 
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateMeshBuffer", i.GetFunc());
+
+	// API: Make a mesh from vertex data: flat lists of numbers, lists of vectors/colors (one per vertex), or RawData. vertices is required (3 numbers per vertex); indices (3 per triangle, 0-65535), texcoords (2 per vertex), normals (3 per vertex) and colors (4 per vertex, 0-255) are optional. The mesh is uploaded to the GPU (with dynamic buffers if dynamic is true, for frequent UpdateMeshBuffer calls), ready to draw; UnloadMesh frees it
+	i = Intrinsic::Create("");
+	i.AddParam("vertices");
+	i.AddParam("indices", Value::Null);
+	i.AddParam("texcoords", Value::Null);
+	i.AddParam("normals", Value::Null);
+	i.AddParam("colors", Value::Null);
+	i.AddParam("dynamic", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		static const char* names[] = {"vertices", "indices", "texcoords", "normals", "colors"};
+		static const int bufferIndex[] = {0, 6, 1, 2, 3};
+		std::vector<unsigned char> data[5];
+		int counts[5];
+		for (int a = 0; a < 5; a++) {
+			MeshBufferLayout layout;
+			GetMeshBufferLayout(bufferIndex[a], &layout);
+			String err;
+			if (!PackMeshData(context.GetArg(a), layout, data[a], &counts[a], &err)) {
+				context.vm.RaiseRuntimeError(String("MakeMesh: ") + names[a] + ": " + err);
+				return IntrinsicResult::Null;
+			}
+		}
+
+		if (counts[0] == 0 || counts[0] % 3 != 0) {
+			context.vm.RaiseRuntimeError("MakeMesh: vertices must hold 3 numbers per vertex, and at least one vertex");
+			return IntrinsicResult::Null;
+		}
+		int vertexCount = counts[0] / 3;
+		static const int perVertex[] = {3, 0, 2, 3, 4};
+		for (int a = 2; a < 5; a++) {
+			if (counts[a] != 0 && counts[a] != vertexCount * perVertex[a]) {
+				char msg[160];
+				snprintf(msg, sizeof(msg), "MakeMesh: %s must hold %d numbers per vertex (%d for %d vertices), not %d",
+					names[a], perVertex[a], vertexCount * perVertex[a], vertexCount, counts[a]);
+				context.vm.RaiseRuntimeError(msg);
+				return IntrinsicResult::Null;
+			}
+		}
+		if (counts[1] % 3 != 0) {
+			context.vm.RaiseRuntimeError("MakeMesh: indices must hold 3 numbers per triangle");
+			return IntrinsicResult::Null;
+		}
+		// raylib reads vertices[index] on the CPU too (GetRayCollisionMesh), so
+		// an index past the last vertex would read outside the array.
+		const unsigned short* idx = (const unsigned short*)data[1].data();
+		for (int n = 0; n < counts[1]; n++) {
+			if (idx[n] >= vertexCount) {
+				context.vm.RaiseRuntimeError("MakeMesh: an index refers past the last vertex");
+				return IntrinsicResult::Null;
+			}
+		}
+
+		Mesh mesh = { 0 };
+		mesh.vertexCount = vertexCount;
+		mesh.triangleCount = (counts[1] > 0) ? counts[1] / 3 : vertexCount / 3;
+		mesh.vertices = MeshAllocCopy<float>(data[0]);
+		mesh.indices = MeshAllocCopy<unsigned short>(data[1]);
+		mesh.texcoords = MeshAllocCopy<float>(data[2]);
+		mesh.normals = MeshAllocCopy<float>(data[3]);
+		mesh.colors = MeshAllocCopy<unsigned char>(data[4]);
+		// Upload now, as GenMesh* do: raylib only creates the mesh's buffer
+		// table in UploadMesh, and DrawMesh, UpdateMeshBuffer and IsModelValid
+		// read it unchecked.
+		UploadMesh(&mesh, context.GetArg(5).IntValue() != 0);
+		rcMesh++;
+		return IntrinsicResult(MeshToValue(mesh));
+	});
+	raylibModule.SetValue("MakeMesh", i.GetFunc());
+
+	// API: Get a copy of one of a mesh's vertex data arrays, as a flat list of numbers, by the same index UpdateMeshBuffer takes: 0 vertices, 1 texcoords, 2 normals, 3 colors, 4 tangents, 5 texcoords2, 6 indices, 7 boneIndices, 8 boneWeights. Returns null if the mesh has no such data
+	i = Intrinsic::Create("");
+	i.AddParam("mesh");
+	i.AddParam("index");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Mesh* meshPtr = GetMeshPtr(context.GetArg(0));
+		if (meshPtr == nullptr) return IntrinsicResult::Null;
+		int index = context.GetArg(1).IntValue();
+		MeshBufferLayout layout;
+		if (!GetMeshBufferLayout(index, &layout)) return IntrinsicResult::Null;
+
+		const void* src = nullptr;
+		switch (index) {
+			case 0: src = meshPtr->vertices; break;
+			case 1: src = meshPtr->texcoords; break;
+			case 2: src = meshPtr->normals; break;
+			case 3: src = meshPtr->colors; break;
+			case 4: src = meshPtr->tangents; break;
+			case 5: src = meshPtr->texcoords2; break;
+			case 6: src = meshPtr->indices; break;
+			case 7: src = meshPtr->boneIndices; break;
+			case 8: src = meshPtr->boneWeights; break;
+		}
+		if (src == nullptr) return IntrinsicResult::Null;
+		int count = (index == 6) ? meshPtr->triangleCount * 3 : meshPtr->vertexCount * layout.components;
+
+		ValueList result;
+		for (int n = 0; n < count; n++) {
+			switch (layout.elem) {
+				case MeshElem::UByte: result.Add(Value((int)((const unsigned char*)src)[n])); break;
+				case MeshElem::UShort: result.Add(Value((int)((const unsigned short*)src)[n])); break;
+				default: result.Add(Value((double)((const float*)src)[n])); break;
+			}
+		}
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("GetMeshBuffer", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1183,6 +1420,21 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("SetMaterialTexture", i.GetFunc());
 
+	// API: Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of a material. The diffuse color tints whatever is drawn with the material, multiplied with its texture.
+	i = Intrinsic::Create("");
+	i.AddParam("material");
+	i.AddParam("mapType");
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Material* materialPtr = GetMaterialPtr(context.GetArg(0));
+		if (materialPtr == nullptr || materialPtr->maps == nullptr) return IntrinsicResult::Null;
+		int mapType = context.GetArg(1).IntValue();
+		if (mapType < 0 || mapType >= MAX_MATERIAL_MAPS) return IntrinsicResult::Null;
+		materialPtr->maps[mapType].color = ValueToColor(context.GetArg(2));
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetMaterialColor", i.GetFunc());
+
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1454,6 +1706,45 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("SetModelMaterialColor", i.GetFunc());
 
+	// API: Get one of a model's meshes, for DrawMesh, GetRayCollisionMesh, GetMeshBoundingBox, GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: don't unload it separately. Functions that change the Mesh struct itself (GenMeshTangents, UploadMesh) do not affect the model; use them before LoadModelFromMesh
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.AddParam("meshIndex", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value modelValue = context.GetArg(0);
+		Model* modelPtr = GetModelPtr(modelValue);
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+		int idx = context.GetArg(1).IntValue();
+		if (idx < 0 || idx >= modelPtr->meshCount) return IntrinsicResult::Null;
+
+		Value meshValue = MeshToValue(modelPtr->meshes[idx]);
+		MarkBorrowed(meshValue, modelValue);		// UnloadModel unloads it
+		return IntrinsicResult(meshValue);
+	});
+	raylibModule.SetValue("GetModelMesh", i.GetFunc());
+
+	// API: Get a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Model* modelPtr = GetModelPtr(context.GetArg(0));
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+		return IntrinsicResult(MatrixToValue(modelPtr->transform));
+	});
+	raylibModule.SetValue("GetModelTransform", i.GetFunc());
+
+	// API: Set a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.AddParam("transform");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Model* modelPtr = GetModelPtr(context.GetArg(0));
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+		modelPtr->transform = ValueToMatrix(context.GetArg(1));
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetModelTransform", i.GetFunc());
+
 	// Model animations
 
 	i = Intrinsic::Create("");
@@ -1530,6 +1821,24 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsModelAnimationValid(model, animation));
 	});
 	raylibModule.SetValue("IsModelAnimationValid", i.GetFunc());
+
+	// API: Get an animation's bone poses at one keyframe: a list of {translation, rotation, scale}, one per bone (in the order of the model's bones list). Returns null if the frame is out of range
+	i = Intrinsic::Create("");
+	i.AddParam("animation");
+	i.AddParam("frame", Value::zero);
+	i.set_Code(INTRINSIC_LAMBDA {
+		ModelAnimation anim = ValueToModelAnimation(context.GetArg(0));
+		if (anim.keyframePoses == nullptr) return IntrinsicResult::Null;
+		int frame = context.GetArg(1).IntValue();
+		if (frame < 0 || frame >= anim.keyframeCount) return IntrinsicResult::Null;
+		ModelAnimPose pose = anim.keyframePoses[frame];
+		if (pose == nullptr) return IntrinsicResult::Null;
+
+		ValueList result;
+		for (unsigned int b = 0; b < anim.boneCount; b++) result.Add(TransformToValue(pose[b]));
+		return IntrinsicResult(DynamicList(result));
+	});
+	raylibModule.SetValue("GetModelAnimationPose", i.GetFunc());
 
 	// Collision detection
 

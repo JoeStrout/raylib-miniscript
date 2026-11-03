@@ -270,6 +270,8 @@
 |DrawBoundingBox |**box**, **color**=WHITE |Draw a bounding box with wires |
 |UploadMesh |**mesh**, **dynamic**=0 |Upload vertex data into a VAO (if supported) and VBO |
 |UpdateMeshBuffer |**mesh**, **index**, **data**, **offset**=0 |Update mesh vertex data in GPU for a specific buffer index |
+|MakeMesh |**vertices**, **indices**=null, **texcoords**=null, **normals**=null, **colors**=null, **dynamic**=0 |Make a mesh from vertex data: flat lists of numbers, lists of vectors/colors (one per vertex), or RawData. vertices is required (3 numbers per vertex); indices (3 per triangle, 0-65535), texcoords (2 per vertex), normals (3 per vertex) and colors (4 per vertex, 0-255) are optional. The mesh is uploaded to the GPU (with dynamic buffers if dynamic is true, for frequent UpdateMeshBuffer calls), ready to draw; UnloadMesh frees it |
+|GetMeshBuffer |**mesh**, **index** |Get a copy of one of a mesh's vertex data arrays, as a flat list of numbers, by the same index UpdateMeshBuffer takes: 0 vertices, 1 texcoords, 2 normals, 3 colors, 4 tangents, 5 texcoords2, 6 indices, 7 boneIndices, 8 boneWeights. Returns null if the mesh has no such data |
 |UnloadMesh |**mesh** |Unload mesh from memory (RAM and VRAM) |
 |DrawMesh |**mesh**, **material**, **transform**=MatrixIdentity |Draw a 3d mesh with material and transform |
 |DrawMeshInstanced |**mesh**, **material**, **transforms** |Draw multiple mesh instances with material and different transforms |
@@ -293,6 +295,7 @@
 |IsMaterialValid |**material** |Check if material is valid (map textures loaded in GPU) |
 |UnloadMaterial |**material** |Unload material from memory. Also unloads the shader and every texture map set on it, so don't unload those separately |
 |SetMaterialTexture |**material**, **mapType**, **texture** |Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded. The material owns the new texture: UnloadMaterial unloads it |
+|SetMaterialColor |**material**, **mapType**, **color**=WHITE |Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of a material. The diffuse color tints whatever is drawn with the material, multiplied with its texture. |
 |GetMaterialShader |**material** | |
 |SetMaterialShader |**material**, **shader** | |
 |GetMaterialShaderLocation |**material**, **uniformName** | |
@@ -305,11 +308,15 @@
 |SetModelMaterialShader |**model**, **materialIndex**, **shader** |Set the shader of one material of a model. Use this to shade a model with a custom shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the shader and must unload it with UnloadShader. |
 |SetModelMaterialTexture |**model**, **materialIndex**, **mapType**, **texture** |Set the texture of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The script keeps ownership of the texture and must unload it with UnloadTexture. |
 |SetModelMaterialColor |**model**, **materialIndex**, **mapType**, **color**=WHITE |Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The diffuse color tints the model, multiplied with the texture and the DrawModel tint. |
+|GetModelMesh |**model**, **meshIndex**=0 |Get one of a model's meshes, for DrawMesh, GetRayCollisionMesh, GetMeshBoundingBox, GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: don't unload it separately. Functions that change the Mesh struct itself (GenMeshTangents, UploadMesh) do not affect the model; use them before LoadModelFromMesh |
+|GetModelTransform |**model** |Get a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given |
+|SetModelTransform |**model**, **transform** |Set a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given |
 |LoadModelAnimations |**fileName** |Load model animations from file |
 |UpdateModelAnimation |**model**, **animation**, **frame**=0 |Update model animation data (vertex buffers / bone matrices) for a specific pose NOTE 1: Request frame could be fractional, using a lerp interpolation between two frames NOTE 2: Updated vertex animation data is uploaded to GPU in case of CPU skinning, for GPU skinning, bone matrices are uploaded to shader on DrawModelEx() |
 |UpdateModelAnimationEx |**model**, **animationA**, **frameA**=0, **animationB**, **frameB**=0, **blend**=0 |Update model animation data (vertex buffers / bone matrices) for a specific pose, defined by two different animations at specific frames blended together NOTE 1: Request frames could be fractional, using a lerp interpolation between two frames NOTE 2: Updated vertex animation data is uploaded to GPU in case of CPU skinning, for GPU skinning, bone matrices are uploaded to shader on DrawModelEx() |
 |UnloadModelAnimations |**animations** |Unload animation array data |
 |IsModelAnimationValid |**model**, **animation** |Check model animation skeleton match NOTE: Only number of bones and parent connections are checked |
+|GetModelAnimationPose |**animation**, **frame**=0 |Get an animation's bone poses at one keyframe: a list of {translation, rotation, scale}, one per bone (in the order of the model's bones list). Returns null if the frame is out of range |
 |CheckCollisionSpheres |**center1**, **radius1**, **center2**, **radius2** |Check collision between two spheres |
 |CheckCollisionBoxes |**box1**, **box2** |Check collision between two boxes NOTE: Boxes are defined by two points minimum and maximum |
 |CheckCollisionBoxSphere |**box**, **center**, **radius** |Check collision between box and sphere |
@@ -697,6 +704,8 @@
 |EndShaderMode | |End custom shader mode (returns to default shader) |
 |GetShaderLocation |**shader**, **uniformName** |Get shader uniform location |
 |GetShaderLocationAttrib |**shader**, **attribName** |Get shader attribute location |
+|GetShaderLoc |**shader**, **locIndex** |Get one entry of a shader's location table (SHADER_LOC_MATRIX_MODEL, SHADER_LOC_VECTOR_VIEW...): the uniform or attribute location raylib uses for it, or -1 if none |
+|SetShaderLoc |**shader**, **locIndex**, **location** |Set one entry of a shader's location table (SHADER_LOC_MATRIX_MODEL, SHADER_LOC_VECTOR_VIEW...), usually to a location from GetShaderLocation, so raylib feeds that uniform or attribute when drawing. Every copy of the shader shares the table |
 |SetShaderValueMatrix |**shader**, **locIndex**, **mat** |Set shader uniform value (matrix 4x4) |
 |SetShaderValueTexture |**shader**, **locIndex**, **texture** |Set shader uniform value for texture |
 |SetShaderValue |**shader**, **locIndex**, **value**, **uniformType**=SHADER_UNIFORM_FLOAT |Set shader uniform value |

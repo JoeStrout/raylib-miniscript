@@ -387,6 +387,8 @@ const Value& ModelClass() {
 		map.SetValue(String("_handle"), Value::Null);
 		map.SetValue(String("meshCount"), Value::zero);
 		map.SetValue(String("materialCount"), Value::zero);
+		map.SetValue(String("bones"), Value::Null);		// set on models with a skeleton
+		map.SetValue(String("bindPose"), Value::Null);
 		classValue = GCManager::NewMapFromDict(map);   // shares map's storage
 		GCManager::AddRoot(classValue);
 		Intrinsic::AddShortName(classValue, String("raylib.Model"));
@@ -903,12 +905,41 @@ Material ValueToMaterial(Value value) {
 	return *materialPtr;
 }
 
+Value TransformToValue(const Transform& t) {
+	ValueDict map;
+	map.SetValue(String("translation"), Vector3ToValue(t.translation));
+	map.SetValue(String("rotation"), QuaternionToValue(t.rotation));
+	map.SetValue(String("scale"), Vector3ToValue(t.scale));
+	return DynamicMap(map);
+}
+
 Value ModelToValue(Model model) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelClass());
 	map.SetValue(String("_handle"), NewResourceHandle(model));
 	map.SetValue(String("meshCount"), Value(model.meshCount));
 	map.SetValue(String("materialCount"), Value(model.materialCount));
+
+	// The skeleton never changes after loading, so copy it into plain fields:
+	// bones (a list of {name, parent}) and bindPose (a list of Transforms).
+	if (model.skeleton.boneCount > 0 && model.skeleton.bones != nullptr) {
+		ValueList bones;
+		for (unsigned int b = 0; b < model.skeleton.boneCount; b++) {
+			ValueDict bone;
+			bone.SetValue(String("name"), Value(String(model.skeleton.bones[b].name)));
+			bone.SetValue(String("parent"), Value(model.skeleton.bones[b].parent));
+			bones.Add(DynamicMap(bone));
+		}
+		map.SetValue(String("bones"), DynamicList(bones));
+
+		if (model.skeleton.bindPose != nullptr) {
+			ValueList pose;
+			for (unsigned int b = 0; b < model.skeleton.boneCount; b++) {
+				pose.Add(TransformToValue(model.skeleton.bindPose[b]));
+			}
+			map.SetValue(String("bindPose"), DynamicList(pose));
+		}
+	}
 	return DynamicMap(map);
 }
 

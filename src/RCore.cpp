@@ -57,6 +57,11 @@ EM_ASYNC_JS(void, _SetWindowIcon_Web, (unsigned char *data, long size), {
 
 using namespace MiniScript;
 
+// Size of every Shader's locs table (set in rlgl.h, not included here).
+#ifndef RL_MAX_SHADER_LOCATIONS
+#define RL_MAX_SHADER_LOCATIONS 32
+#endif
+
 static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
 	if (cameraValue.Type() != ValueType::Map) return;
 	ValueDict map = cameraValue.GetDict();
@@ -1212,6 +1217,32 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetShaderLocationAttrib(shader, attribName.c_str()));
 	});
 	raylibModule.SetValue("GetShaderLocationAttrib", i.GetFunc());
+
+	// API: Get one entry of a shader's location table (SHADER_LOC_MATRIX_MODEL, SHADER_LOC_VECTOR_VIEW...): the uniform or attribute location raylib uses for it, or -1 if none
+	i = Intrinsic::Create("");
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		if (shader.locs == nullptr || locIndex < 0 || locIndex >= RL_MAX_SHADER_LOCATIONS) return IntrinsicResult(-1);
+		return IntrinsicResult(shader.locs[locIndex]);
+	});
+	raylibModule.SetValue("GetShaderLoc", i.GetFunc());
+
+	// API: Set one entry of a shader's location table (SHADER_LOC_MATRIX_MODEL, SHADER_LOC_VECTOR_VIEW...), usually to a location from GetShaderLocation, so raylib feeds that uniform or attribute when drawing. Every copy of the shader shares the table
+	i = Intrinsic::Create("");
+	i.AddParam("shader");
+	i.AddParam("locIndex");
+	i.AddParam("location");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Shader shader = ValueToShader(context.GetArg(0));
+		int locIndex = context.GetArg(1).IntValue();
+		if (shader.locs == nullptr || locIndex < 0 || locIndex >= RL_MAX_SHADER_LOCATIONS) return IntrinsicResult::Null;
+		shader.locs[locIndex] = context.GetArg(2).IntValue();
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetShaderLoc", i.GetFunc());
 
 	i = Intrinsic::Create("");
 	i.AddParam("shader");

@@ -192,6 +192,10 @@ Matrix ValueToMatrix(Value value);
 // Convert a Raylib Matrix to a MiniScript matrixUtil-compatible map
 Value MatrixToValue(Matrix mat);
 
+// Convert a Raylib Transform (a bone pose) to a map:
+// {"translation": Vector3, "rotation": Quaternion, "scale": Vector3}
+Value TransformToValue(const Transform& t);
+
 // Convert a MiniScript value to a Raylib BoundingBox
 // Accepts map form with "min" and "max" Vector3 values
 BoundingBox ValueToBoundingBox(Value value);
