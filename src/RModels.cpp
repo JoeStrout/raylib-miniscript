@@ -4,6 +4,7 @@
 #include "RawData.h"
 #include "raylib.h"
 #include "raymath.h"
+#include "rlgl.h"
 #include "miniscript.h"
 #include "macros.h"
 #include <vector>
@@ -700,6 +701,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Model model;
 		if (!TakeResource(context.GetArg(0), &model)) return IntrinsicResult::Null;
+		// Material shaders come from SetModelMaterialShader, and the script
+		// owns and unloads them; reset them so UnloadMaterial leaves them alone.
+		for (int m = 0; m < model.materialCount; m++) {
+			model.materials[m].shader.id = rlGetShaderIdDefault();
+			model.materials[m].shader.locs = rlGetShaderLocsDefault();
+		}
 		UnloadModel(model);
 		rcModel--;
 
@@ -1358,6 +1365,41 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetModelMeshMaterial", i.GetFunc());
+
+	// API: Set the shader of one material of a model. Use this to shade a model with a custom shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the shader and must unload it with UnloadShader.
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.AddParam("materialIndex");
+	i.AddParam("shader");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value modelValue = context.GetArg(0);
+		Model* modelPtr = GetModelPtr(modelValue);
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+
+		int idx = context.GetArg(1).IntValue();
+		if (idx < 0 || idx >= modelPtr->materialCount) return IntrinsicResult::Null;
+
+		Value shaderValue = context.GetArg(2);
+		Shader shader = ValueToShader(shaderValue);
+		if (shader.id == 0) return IntrinsicResult::Null;
+
+		// The script keeps ownership of the shader (no TransferOwnership):
+		// UnloadModel resets material shaders, so it is never unloaded twice.
+		modelPtr->materials[idx].shader = shader;
+
+		// Keep the shader map reachable from the model, so an auto-unloading
+		// shader is not collected while the model still draws with it.
+		ValueDict modelMap = modelValue.GetDict();
+		Value shaders = modelMap.Lookup(String("_materialShaders"), Value::Null);
+		if (shaders.Type() != ValueType::Map) {
+			ValueDict shaderMap;
+			shaders = DynamicMap(shaderMap);
+			modelMap.SetValue(String("_materialShaders"), shaders);
+		}
+		shaders.GetDict().SetValue(Value(idx), shaderValue);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetModelMaterialShader", i.GetFunc());
 
 	// Model animations
 
