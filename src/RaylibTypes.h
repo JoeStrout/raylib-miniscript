@@ -60,6 +60,11 @@ Image* ValueToImagePtr(Value value);
 // After mutating an Image, sync its properties back to the MiniScript map
 void UpdateImageValue(Value value);
 
+// After mutating a Texture or Wave in place (through its handle), sync its
+// properties back to the MiniScript map
+void UpdateTextureValue(Value value);
+void UpdateWaveValue(Value value);
+
 // Convert a Raylib Font to a MiniScript map
 Value FontToValue(Font font);
 

@@ -519,6 +519,31 @@ void UpdateImageValue(Value value) {
 	map.SetValue(String("format"), Value(imgPtr->format));
 }
 
+// After mutating a Texture in place, sync its properties back to the map
+void UpdateTextureValue(Value value) {
+	if (value.Type() != ValueType::Map) return;
+	Texture* texPtr = ResourcePtr<Texture>(value);
+	if (!texPtr) return;
+	ValueDict map = value.GetDict();
+	map.SetValue(String("id"), Value((int)texPtr->id));
+	map.SetValue(String("width"), Value(texPtr->width));
+	map.SetValue(String("height"), Value(texPtr->height));
+	map.SetValue(String("mipmaps"), Value(texPtr->mipmaps));
+	map.SetValue(String("format"), Value(texPtr->format));
+}
+
+// After mutating a Wave in place, sync its properties back to the map
+void UpdateWaveValue(Value value) {
+	if (value.Type() != ValueType::Map) return;
+	Wave* wavePtr = ResourcePtr<Wave>(value);
+	if (!wavePtr) return;
+	ValueDict map = value.GetDict();
+	map.SetValue(String("frameCount"), Value((int)wavePtr->frameCount));
+	map.SetValue(String("sampleRate"), Value((int)wavePtr->sampleRate));
+	map.SetValue(String("sampleSize"), Value((int)wavePtr->sampleSize));
+	map.SetValue(String("channels"), Value((int)wavePtr->channels));
+}
+
 // Convert a Raylib Font to a MiniScript map
 Value FontToValue(Font font) {
 	ValueDict map;

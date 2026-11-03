@@ -300,6 +300,10 @@ bool scriptPollsWindowClose = false;
 
 static PinnedResource activeAutomationEventList;
 static AutomationEventList* activeAutomationEventListPtr = nullptr;
+// The script's map for that list (a GC root while set), so the events raylib
+// records into the list can be copied into the map's `count` and `events`.
+static Value activeAutomationEventListMap;
+static bool automationEventRecording = false;
 
 static Value AutomationEventListToValue(const AutomationEventList& list) {
 	ValueDict map;
@@ -312,6 +316,49 @@ static Value AutomationEventListToValue(const AutomationEventList& list) {
 	map.SetValue(String("events"), DynamicList(events));
 
 	return DynamicMap(map);
+}
+
+// Bring a list map's `capacity`, `count` and `events` up to date with the list
+// behind its handle, which raylib appends to while recording.  New events are
+// appended to the existing `events` list; it is rebuilt only if it is longer
+// than the list (which raylib never shrinks while it is set).
+static void SyncAutomationEventListValue(Value listValue) {
+	if (listValue.Type() != ValueType::Map) return;
+	AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
+	if (listPtr == nullptr) return;
+
+	ValueDict map = listValue.GetDict();
+	map.SetValue(String("capacity"), Value((double)listPtr->capacity));
+	map.SetValue(String("count"), Value((double)listPtr->count));
+
+	Value eventsValue = map.Lookup(String("events"), Value::Null);
+	if (eventsValue.Type() != ValueType::List || eventsValue.GetList().Count() > (int)listPtr->count) {
+		ValueList fresh;
+		eventsValue = DynamicList(fresh);
+		map.SetValue(String("events"), eventsValue);
+	}
+	ValueList events = eventsValue.GetList();
+	for (unsigned int i = (unsigned int)events.Count(); i < listPtr->count; i++) {
+		events.Add(AutomationEventToValue(listPtr->events[i]));
+	}
+}
+
+// Make listValue (a list map, or null) the list raylib records into.
+static void SetActiveAutomationEventList(Value listValue, AutomationEventList* listPtr) {
+	// Catch the old list's map up before letting go of it.
+	SyncAutomationEventListValue(activeAutomationEventListMap);
+	if (!activeAutomationEventListMap.IsNull()) GCManager::RemoveRoot(activeAutomationEventListMap);
+	activeAutomationEventListMap = Value::Null;
+
+	SetAutomationEventList(listPtr);
+	activeAutomationEventListPtr = listPtr;
+	if (listPtr == nullptr) {
+		activeAutomationEventList.Clear();
+		return;
+	}
+	activeAutomationEventList.Set(listValue);
+	activeAutomationEventListMap = listValue;
+	GCManager::AddRoot(activeAutomationEventListMap);
 }
 
 static int ShaderUniformComponentCount(int uniformType) {
@@ -783,6 +830,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		// the best moment to unload any the collector has queued.
 		SetDrawingActive(false);
 		ProcessPendingUnloads();
+		// EndDrawing is where raylib records input events into the active list.
+		if (automationEventRecording) SyncAutomationEventListValue(activeAutomationEventListMap);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EndDrawing", i.GetFunc());
@@ -3447,11 +3496,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Value listValue = context.GetArg(0);
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
-		if (listPtr == activeAutomationEventListPtr) {
-			SetAutomationEventList(nullptr);
-			activeAutomationEventListPtr = nullptr;
-			activeAutomationEventList.Clear();
-		}
+		if (listPtr == activeAutomationEventListPtr) SetActiveAutomationEventList(Value::Null, nullptr);
 		AutomationEventList list;
 		TakeResource(listValue, &list);
 
@@ -3511,18 +3556,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	#endif
 		Value listValue = context.GetArg(0);
 		if (listValue.IsNull()) {
-			SetAutomationEventList(nullptr);
-			activeAutomationEventListPtr = nullptr;
-			activeAutomationEventList.Clear();
+			SetActiveAutomationEventList(Value::Null, nullptr);
 			return IntrinsicResult::Null;
 		}
 
 		AutomationEventList* listPtr = GetAutomationEventListPtr(listValue);
 		if (listPtr == nullptr) return IntrinsicResult::Null;
 
-		SetAutomationEventList(listPtr);
-		activeAutomationEventListPtr = listPtr;
-		activeAutomationEventList.Set(listValue);
+		SetActiveAutomationEventList(listValue, listPtr);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetAutomationEventList", i.GetFunc());
@@ -3547,6 +3588,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	#endif
 		StartAutomationEventRecording();
+		automationEventRecording = true;
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("StartAutomationEventRecording", i.GetFunc());
@@ -3558,6 +3600,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	#endif
 		StopAutomationEventRecording();
+		automationEventRecording = false;
+		SyncAutomationEventListValue(activeAutomationEventListMap);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("StopAutomationEventRecording", i.GetFunc());

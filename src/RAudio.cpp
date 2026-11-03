@@ -264,10 +264,14 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("initFrame", Value::zero);
 	i.AddParam("finalFrame", Value(100));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetArg(0));
+		// Work on the handle's Wave itself: raylib replaces its sample buffer.
+		Value waveValue = context.GetArg(0);
+		Wave* wavePtr = ResourcePtr<Wave>(waveValue);
+		if (wavePtr == nullptr) return IntrinsicResult::Null;
 		int initFrame = context.GetArg(1).IntValue();
 		int finalFrame = context.GetArg(2).IntValue();
-		WaveCrop(&wave, initFrame, finalFrame);
+		WaveCrop(wavePtr, initFrame, finalFrame);
+		UpdateWaveValue(waveValue);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("WaveCrop", i.GetFunc());
@@ -278,11 +282,15 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("sampleSize", Value(16));
 	i.AddParam("channels", Value(2));
 	i.set_Code(INTRINSIC_LAMBDA {
-		Wave wave = ValueToWave(context.GetArg(0));
+		// Work on the handle's Wave itself: raylib replaces its sample buffer.
+		Value waveValue = context.GetArg(0);
+		Wave* wavePtr = ResourcePtr<Wave>(waveValue);
+		if (wavePtr == nullptr) return IntrinsicResult::Null;
 		int sampleRate = context.GetArg(1).IntValue();
 		int sampleSize = context.GetArg(2).IntValue();
 		int channels = context.GetArg(3).IntValue();
-		WaveFormat(&wave, sampleRate, sampleSize, channels);
+		WaveFormat(wavePtr, sampleRate, sampleSize, channels);
+		UpdateWaveValue(waveValue);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("WaveFormat", i.GetFunc());

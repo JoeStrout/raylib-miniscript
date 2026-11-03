@@ -790,8 +790,11 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Texture tex = ValueToTexture(context.GetArg(0));
-		GenTextureMipmaps(&tex);
+		Value texValue = context.GetArg(0);
+		Texture* texPtr = ResourcePtr<Texture>(texValue);
+		if (texPtr == nullptr) return IntrinsicResult::Null;
+		GenTextureMipmaps(texPtr);		// sets the mipmap count SetTextureFilter checks
+		UpdateTextureValue(texValue);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("GenTextureMipmaps", i.GetFunc());
@@ -1367,6 +1370,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		if (!image) return IntrinsicResult::Null;
 		Image alphaMask = ValueToImage(context.GetArg(1));
 		ImageAlphaMask(image, alphaMask);
+		UpdateImageValue(context.GetArg(0));	// the format changes
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageAlphaMask", i.GetFunc());
@@ -1423,6 +1427,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		int bBpp = context.GetArg(3).IntValue();
 		int aBpp = context.GetArg(4).IntValue();
 		ImageDither(image, rBpp, gBpp, bBpp, aBpp);
+		UpdateImageValue(context.GetArg(0));	// the format changes
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDither", i.GetFunc());
