@@ -4,12 +4,16 @@
 #include "RawData.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "rlgl.h"
 #include "miniscript.h"
 #include "macros.h"
 #include <vector>
 
 using namespace MiniScript;
+
+// Size of every Material's maps array (set privately in raylib's rmodels.c).
+#ifndef MAX_MATERIAL_MAPS
+#define MAX_MATERIAL_MAPS 12
+#endif
 
 static Mesh* GetMeshPtr(Value value) {
 	return ResourcePtr<Mesh>(value);
@@ -21,6 +25,22 @@ static Material* GetMaterialPtr(Value value) {
 
 static Model* GetModelPtr(Value value) {
 	return ResourcePtr<Model>(value);
+}
+
+// Record, in the model map's `groupKey` sub-map under `key`, a resource map the
+// model's materials now use.  raylib's UnloadModel never unloads material
+// shaders or textures, so the script keeps ownership of them; this reference
+// just keeps an auto-unloading resource from being collected while the model
+// still draws with it.
+static void KeepModelMaterialRef(Value modelValue, const char* groupKey, Value key, Value resource) {
+	ValueDict modelMap = modelValue.GetDict();
+	Value group = modelMap.Lookup(String(groupKey), Value::Null);
+	if (group.Type() != ValueType::Map) {
+		ValueDict groupMap;
+		group = DynamicMap(groupMap);
+		modelMap.SetValue(String(groupKey), group);
+	}
+	group.GetDict().SetValue(key, resource);
 }
 
 // The map UnloadModelAnimations is given: the list LoadModelAnimations
@@ -701,12 +721,6 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Model model;
 		if (!TakeResource(context.GetArg(0), &model)) return IntrinsicResult::Null;
-		// Material shaders come from SetModelMaterialShader, and the script
-		// owns and unloads them; reset them so UnloadMaterial leaves them alone.
-		for (int m = 0; m < model.materialCount; m++) {
-			model.materials[m].shader.id = rlGetShaderIdDefault();
-			model.materials[m].shader.locs = rlGetShaderLocsDefault();
-		}
 		UnloadModel(model);
 		rcModel--;
 
@@ -1383,23 +1397,62 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		Shader shader = ValueToShader(shaderValue);
 		if (shader.id == 0) return IntrinsicResult::Null;
 
-		// The script keeps ownership of the shader (no TransferOwnership):
-		// UnloadModel resets material shaders, so it is never unloaded twice.
+		// The script keeps ownership of the shader (no TransferOwnership),
+		// as raylib's UnloadModel does not unload material shaders.
 		modelPtr->materials[idx].shader = shader;
-
-		// Keep the shader map reachable from the model, so an auto-unloading
-		// shader is not collected while the model still draws with it.
-		ValueDict modelMap = modelValue.GetDict();
-		Value shaders = modelMap.Lookup(String("_materialShaders"), Value::Null);
-		if (shaders.Type() != ValueType::Map) {
-			ValueDict shaderMap;
-			shaders = DynamicMap(shaderMap);
-			modelMap.SetValue(String("_materialShaders"), shaders);
-		}
-		shaders.GetDict().SetValue(Value(idx), shaderValue);
+		KeepModelMaterialRef(modelValue, "_materialShaders", Value(idx), shaderValue);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetModelMaterialShader", i.GetFunc());
+
+	// API: Set the texture of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The script keeps ownership of the texture and must unload it with UnloadTexture.
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.AddParam("materialIndex");
+	i.AddParam("mapType");
+	i.AddParam("texture");
+	i.set_Code(INTRINSIC_LAMBDA {
+		Value modelValue = context.GetArg(0);
+		Model* modelPtr = GetModelPtr(modelValue);
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+
+		int idx = context.GetArg(1).IntValue();
+		if (idx < 0 || idx >= modelPtr->materialCount) return IntrinsicResult::Null;
+		int mapType = context.GetArg(2).IntValue();
+		if (mapType < 0 || mapType >= MAX_MATERIAL_MAPS) return IntrinsicResult::Null;
+
+		Value textureValue = context.GetArg(3);
+		Texture texture = ValueToTexture(textureValue);
+		if (texture.id == 0) return IntrinsicResult::Null;
+
+		// The script keeps ownership of the texture (no TransferOwnership),
+		// as raylib's UnloadModel does not unload material textures.
+		modelPtr->materials[idx].maps[mapType].texture = texture;
+		KeepModelMaterialRef(modelValue, "_materialTextures",
+			Value(idx * MAX_MATERIAL_MAPS + mapType), textureValue);
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetModelMaterialTexture", i.GetFunc());
+
+	// API: Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The diffuse color tints the model, multiplied with the texture and the DrawModel tint.
+	i = Intrinsic::Create("");
+	i.AddParam("model");
+	i.AddParam("materialIndex");
+	i.AddParam("mapType");
+	i.AddParam("color", ColorToValue(WHITE));
+	i.set_Code(INTRINSIC_LAMBDA {
+		Model* modelPtr = GetModelPtr(context.GetArg(0));
+		if (modelPtr == nullptr) return IntrinsicResult::Null;
+
+		int idx = context.GetArg(1).IntValue();
+		if (idx < 0 || idx >= modelPtr->materialCount) return IntrinsicResult::Null;
+		int mapType = context.GetArg(2).IntValue();
+		if (mapType < 0 || mapType >= MAX_MATERIAL_MAPS) return IntrinsicResult::Null;
+
+		modelPtr->materials[idx].maps[mapType].color = ValueToColor(context.GetArg(3));
+		return IntrinsicResult::Null;
+	});
+	raylibModule.SetValue("SetModelMaterialColor", i.GetFunc());
 
 	// Model animations
 

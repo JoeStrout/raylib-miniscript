@@ -7,6 +7,7 @@
 // 3) BeginMode3D/EndMode3D + camera helpers
 // 4) DrawModel / DrawBoundingBox + 3D primitive draws
 // 5) Collision APIs (sphere/box/ray)
+// 6) SetModelMaterialShader / SetModelMaterialTexture / SetModelMaterialColor
 
 rl = raylib
 if not rl.IsWindowReady then rl.InitWindow 
@@ -36,6 +37,18 @@ run = function
 		print "LoadModelFromMesh failed"
 		return
 	end if
+
+	// Give the model a lit look: a Lambert shader, a checkerboard texture, and
+	// a diffuse tint.  The script owns the shader and texture (unloaded below).
+	shader = rl.LoadShader("assets/shaders/lambert.vs", "assets/shaders/lambert.fs")
+	lightDir = [0.5, 1.0, 0.3]
+	rl.SetShaderValue shader, rl.GetShaderLocation(shader, "uLightDir"), lightDir, rl.SHADER_UNIFORM_VEC3
+	rl.SetModelMaterialShader model, 0, shader
+	checkImage = rl.GenImageChecked(64, 64, 8, 8, rl.WHITE, rl.LIGHTGRAY)
+	checkTex = rl.LoadTextureFromImage(checkImage)
+	rl.UnloadImage checkImage
+	rl.SetModelMaterialTexture model, 0, rl.MATERIAL_MAP_DIFFUSE, checkTex
+	rl.SetModelMaterialColor model, 0, rl.MATERIAL_MAP_DIFFUSE, rl.SKYBLUE
 
 	modelPos = v3(0, 0, 0)
 	modelBounds = rl.GetModelBoundingBox(model)
@@ -138,6 +151,8 @@ run = function
 	end while
 
 	rl.UnloadModel(model)
+	rl.UnloadShader shader
+	rl.UnloadTexture checkTex
 	print "RModels smoke script finished"
 end function
 
