@@ -2,6 +2,8 @@
 
 **Create videogames in [MiniScript](https://miniscript.org), powered by [Raylib](https://www.raylib.com/) graphics!**
 
+### ▶ [Try the live demos in your browser](https://joestrout.github.io/raylib-miniscript/)
+
 This project provides raylib bindings (API wrappers) for MiniScript 2, letting you write 2D and 3D games in the MiniScript language.  The build products are executables for desktop, as well as a web (HTML/JS/emscripten) build.  You, the game developer, can just download the build for the platform of interest, drop your MiniScript and asset files next to it, and run — no other compiler needed.
 
 
@@ -71,6 +73,10 @@ scripts/package-web.sh
 ```
 
 which packages `assets/` into `build-web/game.data` (plus its loader, `game.data.js`) and adds the loader to `build-web/raylib-miniscript.html`.  Run it again after each web build, since the build rewrites the page.  With a package loaded, *every* file comes from the package, and a file that isn't in it is simply not found.  See [Publishing to the Web](https://github.com/JoeStrout/raylib-miniscript/wiki/Publishing-to-the-Web) in the wiki for the details, and for when to use a package.
+
+### Updating the live demo
+
+The [live demo](https://joestrout.github.io/raylib-miniscript/) is served by GitHub Pages from the `docs/` folder on `main`.  To update it, run `scripts/update-demo.sh`, which does a web build and then replaces `docs/` with the engine page plus a file package of the current `assets/`.  Test it locally if you like (`cd docs && python3 -m http.server 8000`), then commit `docs/` and push.
 
 ## Documentation
 
