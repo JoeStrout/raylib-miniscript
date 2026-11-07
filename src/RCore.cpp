@@ -155,21 +155,21 @@ static VrDeviceInfo ValueToVrDeviceInfo(Value value) {
 	if (value.Type() != ValueType::Map) return result;
 
 	ValueDict map = value.GetDict();
-	result.hResolution = map.Lookup(String("hResolution"), Value::zero).IntValue();
-	result.vResolution = map.Lookup(String("vResolution"), Value::zero).IntValue();
-	result.hScreenSize = map.Lookup(String("hScreenSize"), Value::zero).FloatValue();
-	result.vScreenSize = map.Lookup(String("vScreenSize"), Value::zero).FloatValue();
-	result.eyeToScreenDistance = map.Lookup(String("eyeToScreenDistance"), Value::zero).FloatValue();
-	result.lensSeparationDistance = map.Lookup(String("lensSeparationDistance"), Value::zero).FloatValue();
-	result.interpupillaryDistance = map.Lookup(String("interpupillaryDistance"), Value::zero).FloatValue();
+	result.hResolution = map.Lookup(CACHED_KEY("hResolution"), Value::zero).IntValue();
+	result.vResolution = map.Lookup(CACHED_KEY("vResolution"), Value::zero).IntValue();
+	result.hScreenSize = map.Lookup(CACHED_KEY("hScreenSize"), Value::zero).FloatValue();
+	result.vScreenSize = map.Lookup(CACHED_KEY("vScreenSize"), Value::zero).FloatValue();
+	result.eyeToScreenDistance = map.Lookup(CACHED_KEY("eyeToScreenDistance"), Value::zero).FloatValue();
+	result.lensSeparationDistance = map.Lookup(CACHED_KEY("lensSeparationDistance"), Value::zero).FloatValue();
+	result.interpupillaryDistance = map.Lookup(CACHED_KEY("interpupillaryDistance"), Value::zero).FloatValue();
 
-	Value lensValue = map.Lookup(String("lensDistortionValues"), Value::Null);
+	Value lensValue = map.Lookup(CACHED_KEY("lensDistortionValues"), Value::Null);
 	if (lensValue.Type() == ValueType::List) {
 		ValueList lens = lensValue.GetList();
 		for (int i = 0; i < 4 && i < lens.Count(); i++) result.lensDistortionValues[i] = lens[i].FloatValue();
 	}
 
-	Value chromaValue = map.Lookup(String("chromaAbCorrection"), Value::Null);
+	Value chromaValue = map.Lookup(CACHED_KEY("chromaAbCorrection"), Value::Null);
 	if (chromaValue.Type() == ValueType::List) {
 		ValueList chroma = chromaValue.GetList();
 		for (int i = 0; i < 4 && i < chroma.Count(); i++) result.chromaAbCorrection[i] = chroma[i].FloatValue();
@@ -184,14 +184,14 @@ static VrStereoConfig ValueToVrStereoConfig(Value value) {
 
 	ValueDict map = value.GetDict();
 
-	Value projectionValue = map.Lookup(String("projection"), Value::Null);
+	Value projectionValue = map.Lookup(CACHED_KEY("projection"), Value::Null);
 	if (projectionValue.Type() == ValueType::List) {
 		ValueList projection = projectionValue.GetList();
 		if (projection.Count() > 0) result.projection[0] = ValueToMatrix(projection[0]);
 		if (projection.Count() > 1) result.projection[1] = ValueToMatrix(projection[1]);
 	}
 
-	Value viewOffsetValue = map.Lookup(String("viewOffset"), Value::Null);
+	Value viewOffsetValue = map.Lookup(CACHED_KEY("viewOffset"), Value::Null);
 	if (viewOffsetValue.Type() == ValueType::List) {
 		ValueList viewOffset = viewOffsetValue.GetList();
 		if (viewOffset.Count() > 0) result.viewOffset[0] = ValueToMatrix(viewOffset[0]);
@@ -205,12 +205,12 @@ static VrStereoConfig ValueToVrStereoConfig(Value value) {
 		if (list.Count() > 1) out[1] = list[1].FloatValue();
 	};
 
-	ReadFloatPair(map.Lookup(String("leftLensCenter"), Value::Null), result.leftLensCenter);
-	ReadFloatPair(map.Lookup(String("rightLensCenter"), Value::Null), result.rightLensCenter);
-	ReadFloatPair(map.Lookup(String("leftScreenCenter"), Value::Null), result.leftScreenCenter);
-	ReadFloatPair(map.Lookup(String("rightScreenCenter"), Value::Null), result.rightScreenCenter);
-	ReadFloatPair(map.Lookup(String("scale"), Value::Null), result.scale);
-	ReadFloatPair(map.Lookup(String("scaleIn"), Value::Null), result.scaleIn);
+	ReadFloatPair(map.Lookup(CACHED_KEY("leftLensCenter"), Value::Null), result.leftLensCenter);
+	ReadFloatPair(map.Lookup(CACHED_KEY("rightLensCenter"), Value::Null), result.rightLensCenter);
+	ReadFloatPair(map.Lookup(CACHED_KEY("leftScreenCenter"), Value::Null), result.leftScreenCenter);
+	ReadFloatPair(map.Lookup(CACHED_KEY("rightScreenCenter"), Value::Null), result.rightScreenCenter);
+	ReadFloatPair(map.Lookup(CACHED_KEY("scale"), Value::Null), result.scale);
+	ReadFloatPair(map.Lookup(CACHED_KEY("scaleIn"), Value::Null), result.scaleIn);
 
 	return result;
 }
@@ -266,18 +266,18 @@ static AutomationEvent ValueToAutomationEvent(Value value) {
 	if (value.Type() != ValueType::Map) return result;
 
 	ValueDict map = value.GetDict();
-	result.frame = (unsigned int)map.Lookup(String("frame"), Value::zero).IntValue();
-	result.type = (unsigned int)map.Lookup(String("type"), Value::zero).IntValue();
+	result.frame = (unsigned int)map.Lookup(CACHED_KEY("frame"), Value::zero).IntValue();
+	result.type = (unsigned int)map.Lookup(CACHED_KEY("type"), Value::zero).IntValue();
 
-	Value paramsValue = map.Lookup(String("params"), Value::Null);
+	Value paramsValue = map.Lookup(CACHED_KEY("params"), Value::Null);
 	if (paramsValue.Type() == ValueType::List) {
 		ValueList params = paramsValue.GetList();
 		for (int i = 0; i < 4 && i < params.Count(); i++) result.params[i] = params[i].IntValue();
 	} else {
-		result.params[0] = map.Lookup(String("p0"), Value::zero).IntValue();
-		result.params[1] = map.Lookup(String("p1"), Value::zero).IntValue();
-		result.params[2] = map.Lookup(String("p2"), Value::zero).IntValue();
-		result.params[3] = map.Lookup(String("p3"), Value::zero).IntValue();
+		result.params[0] = map.Lookup(CACHED_KEY("p0"), Value::zero).IntValue();
+		result.params[1] = map.Lookup(CACHED_KEY("p1"), Value::zero).IntValue();
+		result.params[2] = map.Lookup(CACHED_KEY("p2"), Value::zero).IntValue();
+		result.params[3] = map.Lookup(CACHED_KEY("p3"), Value::zero).IntValue();
 	}
 
 	return result;
@@ -336,7 +336,7 @@ static void SyncAutomationEventListValue(Value listValue) {
 	map.SetValue(String("capacity"), Value((double)listPtr->capacity));
 	map.SetValue(String("count"), Value((double)listPtr->count));
 
-	Value eventsValue = map.Lookup(String("events"), Value::Null);
+	Value eventsValue = map.Lookup(CACHED_KEY("events"), Value::Null);
 	if (eventsValue.Type() != ValueType::List || eventsValue.GetList().Count() > (int)listPtr->count) {
 		ValueList fresh;
 		eventsValue = DynamicList(fresh);
@@ -416,10 +416,10 @@ static void FillFloatComponentsFromValue(Value value, float* out, int components
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).FloatValue();
-		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).FloatValue();
-		if (components > 2) out[2] = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).FloatValue();
-		if (components > 3) out[3] = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).FloatValue();
+		if (components > 0) out[0] = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).FloatValue();
+		if (components > 1) out[1] = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).FloatValue();
+		if (components > 2) out[2] = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).FloatValue();
+		if (components > 3) out[3] = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).FloatValue();
 		return;
 	}
 
@@ -439,10 +439,10 @@ static void FillIntComponentsFromValue(Value value, int* out, int components) {
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue();
-		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue();
-		if (components > 2) out[2] = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).IntValue();
-		if (components > 3) out[3] = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).IntValue();
+		if (components > 0) out[0] = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).IntValue();
+		if (components > 1) out[1] = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).IntValue();
+		if (components > 2) out[2] = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).IntValue();
+		if (components > 3) out[3] = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).IntValue();
 		return;
 	}
 
@@ -465,10 +465,10 @@ static void FillUIntComponentsFromValue(Value value, unsigned int* out, int comp
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) { int v = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue(); out[0] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 1) { int v = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue(); out[1] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 2) { int v = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).IntValue(); out[2] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 3) { int v = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).IntValue(); out[3] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 0) { int v = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).IntValue(); out[0] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 1) { int v = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).IntValue(); out[1] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 2) { int v = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).IntValue(); out[2] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 3) { int v = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).IntValue(); out[3] = (unsigned int)(v < 0 ? 0 : v); }
 		return;
 	}
 
@@ -2356,12 +2356,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		ValueDict cameraMap = context.GetArg(0).GetDict();
 		Camera2D camera;
-		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
-		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
-		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
-		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
-		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
-		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+		camera.offset.x = cameraMap.Lookup(CACHED_KEY("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(CACHED_KEY("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(CACHED_KEY("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(CACHED_KEY("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(CACHED_KEY("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(CACHED_KEY("zoom"), Value::one).FloatValue();
 		profiler::TimedScope timed("raylib.BeginMode2D");
 		BeginMode2D(camera);
 		return IntrinsicResult::Null;
@@ -2381,12 +2381,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		ValueDict cameraMap = context.GetArg(0).GetDict();
 		Camera2D camera;
-		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
-		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
-		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
-		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
-		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
-		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+		camera.offset.x = cameraMap.Lookup(CACHED_KEY("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(CACHED_KEY("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(CACHED_KEY("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(CACHED_KEY("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(CACHED_KEY("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(CACHED_KEY("zoom"), Value::one).FloatValue();
 
 		return IntrinsicResult(MatrixToValue(GetCameraMatrix2D(camera)));
 	});
@@ -2399,12 +2399,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Vector2 position = ValueToVector2(context.GetArg(0));
 		ValueDict cameraMap = context.GetArg(1).GetDict();
 		Camera2D camera;
-		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
-		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
-		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
-		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
-		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
-		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+		camera.offset.x = cameraMap.Lookup(CACHED_KEY("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(CACHED_KEY("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(CACHED_KEY("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(CACHED_KEY("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(CACHED_KEY("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(CACHED_KEY("zoom"), Value::one).FloatValue();
 
 		Vector2 result = GetWorldToScreen2D(position, camera);
 		ValueDict resultMap;
@@ -2421,12 +2421,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		Vector2 position = ValueToVector2(context.GetArg(0));
 		ValueDict cameraMap = context.GetArg(1).GetDict();
 		Camera2D camera;
-		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
-		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
-		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
-		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
-		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
-		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+		camera.offset.x = cameraMap.Lookup(CACHED_KEY("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(CACHED_KEY("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(CACHED_KEY("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(CACHED_KEY("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(CACHED_KEY("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(CACHED_KEY("zoom"), Value::one).FloatValue();
 
 		Vector2 result = GetScreenToWorld2D(position, camera);
 		ValueDict resultMap;
@@ -3562,7 +3562,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		if (listValue.Type() != ValueType::Map) return IntrinsicResult::Zero;
 
 		ValueDict map = listValue.GetDict();
-		Value eventsValue = map.Lookup(String("events"), Value::Null);
+		Value eventsValue = map.Lookup(CACHED_KEY("events"), Value::Null);
 		if (eventsValue.Type() != ValueType::List) return IntrinsicResult::Zero;
 
 		ValueList eventsList = eventsValue.GetList();
