@@ -491,7 +491,7 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		AnyResourceBoxOf(result)->soundAlias = true;
 		// The alias plays the source's samples, so it keeps the source alive:
 		// an auto-unloaded source must not be unloaded out from under it.
-		result.GetDict().SetValue(String("_source"), context.GetArg(0));
+		result.GetDict().SetValue(CACHED_KEY("_source"), context.GetArg(0));
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("LoadSoundAlias", i.GetFunc());

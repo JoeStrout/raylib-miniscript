@@ -596,8 +596,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		Vector3 v2 = ValueToVector3(context.GetArg(1));
 		Vector3OrthoNormalize(&v1, &v2);
 		ValueDict result;
-		result.SetValue(String("v1"), Vector3ToValue(v1));
-		result.SetValue(String("v2"), Vector3ToValue(v2));
+		result.SetValue(CACHED_KEY("v1"), Vector3ToValue(v1));
+		result.SetValue(CACHED_KEY("v2"), Vector3ToValue(v2));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("Vector3OrthoNormalize", i.GetFunc());
@@ -1252,9 +1252,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		MatrixDecompose(mat, &translation, &rotation, &scale);
 
 		ValueDict result;
-		result.SetValue(String("translation"), Vector3ToValue(translation));
-		result.SetValue(String("rotation"), QuaternionToValue(rotation));
-		result.SetValue(String("scale"), Vector3ToValue(scale));
+		result.SetValue(CACHED_KEY("translation"), Vector3ToValue(translation));
+		result.SetValue(CACHED_KEY("rotation"), QuaternionToValue(rotation));
+		result.SetValue(CACHED_KEY("scale"), Vector3ToValue(scale));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("MatrixDecompose", i.GetFunc());
@@ -1456,8 +1456,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		float outAngle = 0;
 		QuaternionToAxisAngle(q, &outAxis, &outAngle);
 		ValueDict result;
-		result.SetValue(String("axis"), Vector3ToValue(outAxis));
-		result.SetValue(String("angle"), Value(outAngle));
+		result.SetValue(CACHED_KEY("axis"), Vector3ToValue(outAxis));
+		result.SetValue(CACHED_KEY("angle"), Value(outAngle));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("QuaternionToAxisAngle", i.GetFunc());

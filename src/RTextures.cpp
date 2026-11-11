@@ -963,10 +963,10 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		Color color = ValueToColor(context.GetArg(0));
 		Vector4 result = ColorNormalize(color);
 		ValueDict resultDict;
-		resultDict.SetValue(String("x"), Value(result.x));
-		resultDict.SetValue(String("y"), Value(result.y));
-		resultDict.SetValue(String("z"), Value(result.z));
-		resultDict.SetValue(String("w"), Value(result.w));
+		resultDict.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultDict.SetValue(CACHED_KEY("y"), Value(result.y));
+		resultDict.SetValue(CACHED_KEY("z"), Value(result.z));
+		resultDict.SetValue(CACHED_KEY("w"), Value(result.w));
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("ColorNormalize", i.GetFunc());
@@ -988,9 +988,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		Color color = ValueToColor(context.GetArg(0));
 		Vector3 result = ColorToHSV(color);
 		ValueDict resultDict;
-		resultDict.SetValue(String("x"), Value(result.x));
-		resultDict.SetValue(String("y"), Value(result.y));
-		resultDict.SetValue(String("z"), Value(result.z));
+		resultDict.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultDict.SetValue(CACHED_KEY("y"), Value(result.y));
+		resultDict.SetValue(CACHED_KEY("z"), Value(result.z));
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("ColorToHSV", i.GetFunc());
@@ -1143,8 +1143,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		rcImage++;
 		// Return map with image and frames
 		ValueDict resultDict;
-		resultDict.SetValue(String("image"), ImageToValue(result));
-		resultDict.SetValue(String("frames"), Value(frames));
+		resultDict.SetValue(CACHED_KEY("image"), ImageToValue(result));
+		resultDict.SetValue(CACHED_KEY("frames"), Value(frames));
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("LoadImageAnim", i.GetFunc());
@@ -1162,8 +1162,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		rcImage++;
 		// Return map with image and frames
 		ValueDict resultDict;
-		resultDict.SetValue(String("image"), ImageToValue(result));
-		resultDict.SetValue(String("frames"), Value(frames));
+		resultDict.SetValue(CACHED_KEY("image"), ImageToValue(result));
+		resultDict.SetValue(CACHED_KEY("frames"), Value(frames));
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("LoadImageAnimFromMemory", i.GetFunc());

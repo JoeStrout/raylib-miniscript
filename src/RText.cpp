@@ -398,13 +398,13 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		GlyphInfo info = GetGlyphInfo(font, codepoint);
 
 		ValueDict result;
-		result.SetValue(String("value"), Value(info.value));
-		result.SetValue(String("offsetX"), Value(info.offsetX));
-		result.SetValue(String("offsetY"), Value(info.offsetY));
-		result.SetValue(String("advanceX"), Value(info.advanceX));
+		result.SetValue(CACHED_KEY("value"), Value(info.value));
+		result.SetValue(CACHED_KEY("offsetX"), Value(info.offsetX));
+		result.SetValue(CACHED_KEY("offsetY"), Value(info.offsetY));
+		result.SetValue(CACHED_KEY("advanceX"), Value(info.advanceX));
 		Value image = ImageToValue(info.image);
 		MarkBorrowed(image, context.GetArg(0));		// the font's glyph image
-		result.SetValue(String("image"), image);
+		result.SetValue(CACHED_KEY("image"), image);
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetGlyphInfo", i.GetFunc());
@@ -429,8 +429,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		int codepoint = GetCodepoint(text.c_str(), &codepointSize);
 
 		ValueDict result;
-		result.SetValue(String("codepoint"), Value(codepoint));
-		result.SetValue(String("codepointSize"), Value(codepointSize));
+		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
+		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepoint", i.GetFunc());
@@ -444,8 +444,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		int codepoint = GetCodepointNext(text.c_str(), &codepointSize);
 
 		ValueDict result;
-		result.SetValue(String("codepoint"), Value(codepoint));
-		result.SetValue(String("codepointSize"), Value(codepointSize));
+		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
+		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepointNext", i.GetFunc());
@@ -459,8 +459,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		int codepoint = GetCodepointPrevious(text.c_str(), &codepointSize);
 
 		ValueDict result;
-		result.SetValue(String("codepoint"), Value(codepoint));
-		result.SetValue(String("codepointSize"), Value(codepointSize));
+		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
+		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepointPrevious", i.GetFunc());
@@ -564,12 +564,12 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		if (glyphs) {
 			for (int i = 0; i < glyphCount; i++) {
 				ValueDict glyphDict;
-				glyphDict.SetValue(String("value"), Value(glyphs[i].value));
-				glyphDict.SetValue(String("offsetX"), Value(glyphs[i].offsetX));
-				glyphDict.SetValue(String("offsetY"), Value(glyphs[i].offsetY));
-				glyphDict.SetValue(String("advanceX"), Value(glyphs[i].advanceX));
+				glyphDict.SetValue(CACHED_KEY("value"), Value(glyphs[i].value));
+				glyphDict.SetValue(CACHED_KEY("offsetX"), Value(glyphs[i].offsetX));
+				glyphDict.SetValue(CACHED_KEY("offsetY"), Value(glyphs[i].offsetY));
+				glyphDict.SetValue(CACHED_KEY("advanceX"), Value(glyphs[i].advanceX));
 				// The script now owns this pixel buffer (release with UnloadImage or UnloadFontData).
-				glyphDict.SetValue(String("image"), ImageToValue(glyphs[i].image));
+				glyphDict.SetValue(CACHED_KEY("image"), ImageToValue(glyphs[i].image));
 				rcImage++;
 				result.Add(DynamicMap(glyphDict));
 			}

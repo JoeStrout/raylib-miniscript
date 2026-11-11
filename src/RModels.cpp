@@ -183,21 +183,21 @@ static Value ModelAnimationArrayItemToValue(Value arrayHandle, const ModelAnimat
 	rcModelAnimation++;
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelAnimationClass());
-	map.SetValue(String("_handle"), arrayHandle);
-	map.SetValue(String("name"), Value(String(anim.name)));
-	map.SetValue(String("boneCount"), Value(anim.boneCount));
-	map.SetValue(String("keyframeCount"), Value(anim.keyframeCount));
-	map.SetValue(String("_arrayIndex"), Value(index));
+	map.SetValue(CACHED_KEY("_handle"), arrayHandle);
+	map.SetValue(CACHED_KEY("name"), Value(String(anim.name)));
+	map.SetValue(CACHED_KEY("boneCount"), Value(anim.boneCount));
+	map.SetValue(CACHED_KEY("keyframeCount"), Value(anim.keyframeCount));
+	map.SetValue(CACHED_KEY("_arrayIndex"), Value(index));
 	return DynamicMap(map);
 }
 
 static void SyncMaterialShaderMetadata(Value materialValue, Shader shader) {
 	if (materialValue.Type() != ValueType::Map) return;
 	ValueDict map = materialValue.GetDict();
-	map.SetValue(String("shaderId"), Value((int)shader.id));
+	map.SetValue(CACHED_KEY("shaderId"), Value((int)shader.id));
 	Value shaderValue = ShaderToValue(shader);
 	MarkBorrowed(shaderValue, materialValue);		// UnloadMaterial unloads it
-	map.SetValue(String("shader"), shaderValue);
+	map.SetValue(CACHED_KEY("shader"), shaderValue);
 }
 
 static int ShaderUniformComponentCount(int uniformType) {

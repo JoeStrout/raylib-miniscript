@@ -991,8 +991,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		rlRenderBatch batch = rlLoadRenderBatch(numBuffers, bufferElements);
 		if (batch.vertexBuffer == nullptr) return IntrinsicResult::Null;
 		ValueDict map;
-		map.SetValue(String("_handle"), NewResourceHandle(batch));
-		map.SetValue(String("bufferCount"), Value(batch.bufferCount));
+		map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(batch));
+		map.SetValue(CACHED_KEY("bufferCount"), Value(batch.bufferCount));
 		return IntrinsicResult(DynamicMap(map));
 	});
 	raylibModule.SetValue("rlLoadRenderBatch", i.GetFunc());
@@ -1418,9 +1418,9 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		unsigned int glInternalFormat = 0, glFormat = 0, glType = 0;
 		rlGetGlTextureFormats(format, &glInternalFormat, &glFormat, &glType);
 		ValueDict map;
-		map.SetValue(String("glInternalFormat"), Value((int)glInternalFormat));
-		map.SetValue(String("glFormat"), Value((int)glFormat));
-		map.SetValue(String("glType"), Value((int)glType));
+		map.SetValue(CACHED_KEY("glInternalFormat"), Value((int)glInternalFormat));
+		map.SetValue(CACHED_KEY("glFormat"), Value((int)glFormat));
+		map.SetValue(CACHED_KEY("glType"), Value((int)glType));
 		return IntrinsicResult(DynamicMap(map));
 	});
 	raylibModule.SetValue("rlGetGlTextureFormats", i.GetFunc());

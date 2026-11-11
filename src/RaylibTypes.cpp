@@ -189,7 +189,7 @@ void MarkBorrowed(Value map, Value owner) {
 	if (box == nullptr) return;
 	box->borrowed = true;
 	box->autoUnload = false;
-	if (!owner.IsNull()) map.GetDict().SetValue(String("_owner"), owner);
+	if (!owner.IsNull()) map.GetDict().SetValue(CACHED_KEY("_owner"), owner);
 }
 
 void TransferOwnership(Value map) {
@@ -459,12 +459,12 @@ void AddTypeClasses(ValueDict& raylibModule) {
 Value TextureToValue(Texture texture) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, TextureClass());
-	map.SetValue(String("_handle"), NewResourceHandle(texture));
-	map.SetValue(String("id"), Value((int)texture.id));
-	map.SetValue(String("width"), Value(texture.width));
-	map.SetValue(String("height"), Value(texture.height));
-	map.SetValue(String("mipmaps"), Value(texture.mipmaps));
-	map.SetValue(String("format"), Value(texture.format));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(texture));
+	map.SetValue(CACHED_KEY("id"), Value((int)texture.id));
+	map.SetValue(CACHED_KEY("width"), Value(texture.width));
+	map.SetValue(CACHED_KEY("height"), Value(texture.height));
+	map.SetValue(CACHED_KEY("mipmaps"), Value(texture.mipmaps));
+	map.SetValue(CACHED_KEY("format"), Value(texture.format));
 	return DynamicMap(map);
 }
 
@@ -487,11 +487,11 @@ Texture ValueToTexture(Value value) {
 Value ImageToValue(Image image) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ImageClass());
-	map.SetValue(String("_handle"), NewResourceHandle(image));
-	map.SetValue(String("width"), Value(image.width));
-	map.SetValue(String("height"), Value(image.height));
-	map.SetValue(String("mipmaps"), Value(image.mipmaps));
-	map.SetValue(String("format"), Value(image.format));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(image));
+	map.SetValue(CACHED_KEY("width"), Value(image.width));
+	map.SetValue(CACHED_KEY("height"), Value(image.height));
+	map.SetValue(CACHED_KEY("mipmaps"), Value(image.mipmaps));
+	map.SetValue(CACHED_KEY("format"), Value(image.format));
 	return DynamicMap(map);
 }
 
@@ -515,10 +515,10 @@ void UpdateImageValue(Value value) {
 	Image* imgPtr = ValueToImagePtr(value);
 	if (!imgPtr) return;
 	ValueDict map = value.GetDict();
-	map.SetValue(String("width"), Value(imgPtr->width));
-	map.SetValue(String("height"), Value(imgPtr->height));
-	map.SetValue(String("mipmaps"), Value(imgPtr->mipmaps));
-	map.SetValue(String("format"), Value(imgPtr->format));
+	map.SetValue(CACHED_KEY("width"), Value(imgPtr->width));
+	map.SetValue(CACHED_KEY("height"), Value(imgPtr->height));
+	map.SetValue(CACHED_KEY("mipmaps"), Value(imgPtr->mipmaps));
+	map.SetValue(CACHED_KEY("format"), Value(imgPtr->format));
 }
 
 // After mutating a Texture in place, sync its properties back to the map
@@ -527,11 +527,11 @@ void UpdateTextureValue(Value value) {
 	Texture* texPtr = ResourcePtr<Texture>(value);
 	if (!texPtr) return;
 	ValueDict map = value.GetDict();
-	map.SetValue(String("id"), Value((int)texPtr->id));
-	map.SetValue(String("width"), Value(texPtr->width));
-	map.SetValue(String("height"), Value(texPtr->height));
-	map.SetValue(String("mipmaps"), Value(texPtr->mipmaps));
-	map.SetValue(String("format"), Value(texPtr->format));
+	map.SetValue(CACHED_KEY("id"), Value((int)texPtr->id));
+	map.SetValue(CACHED_KEY("width"), Value(texPtr->width));
+	map.SetValue(CACHED_KEY("height"), Value(texPtr->height));
+	map.SetValue(CACHED_KEY("mipmaps"), Value(texPtr->mipmaps));
+	map.SetValue(CACHED_KEY("format"), Value(texPtr->format));
 }
 
 // After mutating a Wave in place, sync its properties back to the map
@@ -540,22 +540,22 @@ void UpdateWaveValue(Value value) {
 	Wave* wavePtr = ResourcePtr<Wave>(value);
 	if (!wavePtr) return;
 	ValueDict map = value.GetDict();
-	map.SetValue(String("frameCount"), Value((int)wavePtr->frameCount));
-	map.SetValue(String("sampleRate"), Value((int)wavePtr->sampleRate));
-	map.SetValue(String("sampleSize"), Value((int)wavePtr->sampleSize));
-	map.SetValue(String("channels"), Value((int)wavePtr->channels));
+	map.SetValue(CACHED_KEY("frameCount"), Value((int)wavePtr->frameCount));
+	map.SetValue(CACHED_KEY("sampleRate"), Value((int)wavePtr->sampleRate));
+	map.SetValue(CACHED_KEY("sampleSize"), Value((int)wavePtr->sampleSize));
+	map.SetValue(CACHED_KEY("channels"), Value((int)wavePtr->channels));
 }
 
 // Convert a Raylib Font to a MiniScript map
 Value FontToValue(Font font) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, FontClass());
-	map.SetValue(String("_handle"), NewResourceHandle(font));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(font));
 	Value texture = TextureToValue(font.texture);
-	map.SetValue(String("texture"), texture);
-	map.SetValue(String("baseSize"), Value(font.baseSize));
-	map.SetValue(String("glyphCount"), Value(font.glyphCount));
-	map.SetValue(String("glyphPadding"), Value(font.glyphPadding));
+	map.SetValue(CACHED_KEY("texture"), texture);
+	map.SetValue(CACHED_KEY("baseSize"), Value(font.baseSize));
+	map.SetValue(CACHED_KEY("glyphCount"), Value(font.glyphCount));
+	map.SetValue(CACHED_KEY("glyphPadding"), Value(font.glyphPadding));
 	Value result = DynamicMap(map);
 	MarkBorrowed(texture, result);		// UnloadFont unloads it
 	return result;
@@ -581,11 +581,11 @@ Font ValueToFont(Value value) {
 Value WaveToValue(Wave wave) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, WaveClass());
-	map.SetValue(String("_handle"), NewResourceHandle(wave));
-	map.SetValue(String("frameCount"), Value((int)wave.frameCount));
-	map.SetValue(String("sampleRate"), Value((int)wave.sampleRate));
-	map.SetValue(String("sampleSize"), Value((int)wave.sampleSize));
-	map.SetValue(String("channels"), Value((int)wave.channels));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(wave));
+	map.SetValue(CACHED_KEY("frameCount"), Value((int)wave.frameCount));
+	map.SetValue(CACHED_KEY("sampleRate"), Value((int)wave.sampleRate));
+	map.SetValue(CACHED_KEY("sampleSize"), Value((int)wave.sampleSize));
+	map.SetValue(CACHED_KEY("channels"), Value((int)wave.channels));
 	return DynamicMap(map);
 }
 
@@ -605,12 +605,12 @@ Wave ValueToWave(Value value) {
 Value MusicToValue(Music music) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MusicClass());
-	map.SetValue(String("_handle"), NewResourceHandle(music));
-	map.SetValue(String("frameCount"), Value((int)music.frameCount));
-	map.SetValue(String("looping"), Value(music.looping ? 1 : 0));
-	map.SetValue(String("sampleRate"), Value((int)music.stream.sampleRate));
-	map.SetValue(String("sampleSize"), Value((int)music.stream.sampleSize));
-	map.SetValue(String("channels"), Value((int)music.stream.channels));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(music));
+	map.SetValue(CACHED_KEY("frameCount"), Value((int)music.frameCount));
+	map.SetValue(CACHED_KEY("looping"), Value(music.looping ? 1 : 0));
+	map.SetValue(CACHED_KEY("sampleRate"), Value((int)music.stream.sampleRate));
+	map.SetValue(CACHED_KEY("sampleSize"), Value((int)music.stream.sampleSize));
+	map.SetValue(CACHED_KEY("channels"), Value((int)music.stream.channels));
 	return DynamicMap(map);
 }
 
@@ -635,11 +635,11 @@ Music ValueToMusic(Value value) {
 Value SoundToValue(Sound sound) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, SoundClass());
-	map.SetValue(String("_handle"), NewResourceHandle(sound));
-	map.SetValue(String("frameCount"), Value((int)sound.frameCount));
-	map.SetValue(String("sampleRate"), Value((int)sound.stream.sampleRate));
-	map.SetValue(String("sampleSize"), Value((int)sound.stream.sampleSize));
-	map.SetValue(String("channels"), Value((int)sound.stream.channels));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(sound));
+	map.SetValue(CACHED_KEY("frameCount"), Value((int)sound.frameCount));
+	map.SetValue(CACHED_KEY("sampleRate"), Value((int)sound.stream.sampleRate));
+	map.SetValue(CACHED_KEY("sampleSize"), Value((int)sound.stream.sampleSize));
+	map.SetValue(CACHED_KEY("channels"), Value((int)sound.stream.channels));
 	return DynamicMap(map);
 }
 
@@ -659,10 +659,10 @@ Sound ValueToSound(Value value) {
 Value AudioStreamToValue(AudioStream stream) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, AudioStreamClass());
-	map.SetValue(String("_handle"), NewResourceHandle(stream));
-	map.SetValue(String("sampleRate"), Value((int)stream.sampleRate));
-	map.SetValue(String("sampleSize"), Value((int)stream.sampleSize));
-	map.SetValue(String("channels"), Value((int)stream.channels));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(stream));
+	map.SetValue(CACHED_KEY("sampleRate"), Value((int)stream.sampleRate));
+	map.SetValue(CACHED_KEY("sampleSize"), Value((int)stream.sampleSize));
+	map.SetValue(CACHED_KEY("channels"), Value((int)stream.channels));
 	return DynamicMap(map);
 }
 
@@ -683,10 +683,10 @@ AudioStream ValueToAudioStream(Value value) {
 Value RenderTextureToValue(RenderTexture2D renderTexture) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, RenderTextureClass());
-	map.SetValue(String("_handle"), NewResourceHandle(renderTexture));
-	map.SetValue(String("id"), Value((int)renderTexture.id));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(renderTexture));
+	map.SetValue(CACHED_KEY("id"), Value((int)renderTexture.id));
 	Value texture = TextureToValue(renderTexture.texture);
-	map.SetValue(String("texture"), texture);
+	map.SetValue(CACHED_KEY("texture"), texture);
 	Value result = DynamicMap(map);
 	MarkBorrowed(texture, result);		// UnloadRenderTexture unloads it
 	return result;
@@ -709,8 +709,8 @@ RenderTexture2D ValueToRenderTexture(Value value) {
 Value ShaderToValue(Shader shader) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ShaderClass());
-	map.SetValue(String("_handle"), NewResourceHandle(shader));
-	map.SetValue(String("id"), Value((int)shader.id));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(shader));
+	map.SetValue(CACHED_KEY("id"), Value((int)shader.id));
 	return DynamicMap(map);
 }
 

@@ -66,21 +66,21 @@ static void SyncCamera3DValue(Value cameraValue, Camera3D camera) {
 	if (cameraValue.Type() != ValueType::Map) return;
 	ValueDict map = cameraValue.GetDict();
 
-	map.SetValue(String("position"), Vector3ToValue(camera.position));
-	map.SetValue(String("target"), Vector3ToValue(camera.target));
-	map.SetValue(String("up"), Vector3ToValue(camera.up));
-	map.SetValue(String("fovy"), Value(camera.fovy));
-	map.SetValue(String("projection"), Value(camera.projection));
+	map.SetValue(CACHED_KEY("position"), Vector3ToValue(camera.position));
+	map.SetValue(CACHED_KEY("target"), Vector3ToValue(camera.target));
+	map.SetValue(CACHED_KEY("up"), Vector3ToValue(camera.up));
+	map.SetValue(CACHED_KEY("fovy"), Value(camera.fovy));
+	map.SetValue(CACHED_KEY("projection"), Value(camera.projection));
 
-	map.SetValue(String("positionX"), Value(camera.position.x));
-	map.SetValue(String("positionY"), Value(camera.position.y));
-	map.SetValue(String("positionZ"), Value(camera.position.z));
-	map.SetValue(String("targetX"), Value(camera.target.x));
-	map.SetValue(String("targetY"), Value(camera.target.y));
-	map.SetValue(String("targetZ"), Value(camera.target.z));
-	map.SetValue(String("upX"), Value(camera.up.x));
-	map.SetValue(String("upY"), Value(camera.up.y));
-	map.SetValue(String("upZ"), Value(camera.up.z));
+	map.SetValue(CACHED_KEY("positionX"), Value(camera.position.x));
+	map.SetValue(CACHED_KEY("positionY"), Value(camera.position.y));
+	map.SetValue(CACHED_KEY("positionZ"), Value(camera.position.z));
+	map.SetValue(CACHED_KEY("targetX"), Value(camera.target.x));
+	map.SetValue(CACHED_KEY("targetY"), Value(camera.target.y));
+	map.SetValue(CACHED_KEY("targetZ"), Value(camera.target.z));
+	map.SetValue(CACHED_KEY("upX"), Value(camera.up.x));
+	map.SetValue(CACHED_KEY("upY"), Value(camera.up.y));
+	map.SetValue(CACHED_KEY("upZ"), Value(camera.up.z));
 }
 
 #ifdef PLATFORM_WEB
@@ -92,7 +92,7 @@ static void PrintWebNotSupported(const char* functionName) {
 static void SyncShaderValue(Value shaderValue, Shader shader) {
 	if (shaderValue.Type() != ValueType::Map) return;
 	ValueDict map = shaderValue.GetDict();
-	map.SetValue(String("id"), Value((int)shader.id));
+	map.SetValue(CACHED_KEY("id"), Value((int)shader.id));
 }
 
 static bool GetBytesFromValue(Value value, int requestedSize, std::vector<unsigned char>& scratch,
@@ -221,42 +221,42 @@ static Value VrStereoConfigToValue(const VrStereoConfig& config) {
 	ValueList projection;
 	projection.Add(MatrixToValue(config.projection[0]));
 	projection.Add(MatrixToValue(config.projection[1]));
-	map.SetValue(String("projection"), DynamicList(projection));
+	map.SetValue(CACHED_KEY("projection"), DynamicList(projection));
 
 	ValueList viewOffset;
 	viewOffset.Add(MatrixToValue(config.viewOffset[0]));
 	viewOffset.Add(MatrixToValue(config.viewOffset[1]));
-	map.SetValue(String("viewOffset"), DynamicList(viewOffset));
+	map.SetValue(CACHED_KEY("viewOffset"), DynamicList(viewOffset));
 
 	ValueList leftLensCenter;
 	leftLensCenter.Add(Value(config.leftLensCenter[0]));
 	leftLensCenter.Add(Value(config.leftLensCenter[1]));
-	map.SetValue(String("leftLensCenter"), DynamicList(leftLensCenter));
+	map.SetValue(CACHED_KEY("leftLensCenter"), DynamicList(leftLensCenter));
 
 	ValueList rightLensCenter;
 	rightLensCenter.Add(Value(config.rightLensCenter[0]));
 	rightLensCenter.Add(Value(config.rightLensCenter[1]));
-	map.SetValue(String("rightLensCenter"), DynamicList(rightLensCenter));
+	map.SetValue(CACHED_KEY("rightLensCenter"), DynamicList(rightLensCenter));
 
 	ValueList leftScreenCenter;
 	leftScreenCenter.Add(Value(config.leftScreenCenter[0]));
 	leftScreenCenter.Add(Value(config.leftScreenCenter[1]));
-	map.SetValue(String("leftScreenCenter"), DynamicList(leftScreenCenter));
+	map.SetValue(CACHED_KEY("leftScreenCenter"), DynamicList(leftScreenCenter));
 
 	ValueList rightScreenCenter;
 	rightScreenCenter.Add(Value(config.rightScreenCenter[0]));
 	rightScreenCenter.Add(Value(config.rightScreenCenter[1]));
-	map.SetValue(String("rightScreenCenter"), DynamicList(rightScreenCenter));
+	map.SetValue(CACHED_KEY("rightScreenCenter"), DynamicList(rightScreenCenter));
 
 	ValueList scale;
 	scale.Add(Value(config.scale[0]));
 	scale.Add(Value(config.scale[1]));
-	map.SetValue(String("scale"), DynamicList(scale));
+	map.SetValue(CACHED_KEY("scale"), DynamicList(scale));
 
 	ValueList scaleIn;
 	scaleIn.Add(Value(config.scaleIn[0]));
 	scaleIn.Add(Value(config.scaleIn[1]));
-	map.SetValue(String("scaleIn"), DynamicList(scaleIn));
+	map.SetValue(CACHED_KEY("scaleIn"), DynamicList(scaleIn));
 
 	return DynamicMap(map);
 }
@@ -285,12 +285,12 @@ static AutomationEvent ValueToAutomationEvent(Value value) {
 
 static Value AutomationEventToValue(const AutomationEvent& event) {
 	ValueDict map;
-	map.SetValue(String("frame"), Value((double)event.frame));
-	map.SetValue(String("type"), Value((double)event.type));
+	map.SetValue(CACHED_KEY("frame"), Value((double)event.frame));
+	map.SetValue(CACHED_KEY("type"), Value((double)event.type));
 
 	ValueList params;
 	for (int i = 0; i < 4; i++) params.Add(Value(event.params[i]));
-	map.SetValue(String("params"), DynamicList(params));
+	map.SetValue(CACHED_KEY("params"), DynamicList(params));
 
 	return DynamicMap(map);
 }
@@ -312,13 +312,13 @@ static bool automationEventRecording = false;
 
 static Value AutomationEventListToValue(const AutomationEventList& list) {
 	ValueDict map;
-	map.SetValue(String("_handle"), NewResourceHandle(list));
-	map.SetValue(String("capacity"), Value((double)list.capacity));
-	map.SetValue(String("count"), Value((double)list.count));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(list));
+	map.SetValue(CACHED_KEY("capacity"), Value((double)list.capacity));
+	map.SetValue(CACHED_KEY("count"), Value((double)list.count));
 
 	ValueList events;
 	for (unsigned int i = 0; i < list.count; i++) events.Add(AutomationEventToValue(list.events[i]));
-	map.SetValue(String("events"), DynamicList(events));
+	map.SetValue(CACHED_KEY("events"), DynamicList(events));
 
 	return DynamicMap(map);
 }
@@ -333,14 +333,14 @@ static void SyncAutomationEventListValue(Value listValue) {
 	if (listPtr == nullptr) return;
 
 	ValueDict map = listValue.GetDict();
-	map.SetValue(String("capacity"), Value((double)listPtr->capacity));
-	map.SetValue(String("count"), Value((double)listPtr->count));
+	map.SetValue(CACHED_KEY("capacity"), Value((double)listPtr->capacity));
+	map.SetValue(CACHED_KEY("count"), Value((double)listPtr->count));
 
 	Value eventsValue = map.Lookup(CACHED_KEY("events"), Value::Null);
 	if (eventsValue.Type() != ValueType::List || eventsValue.GetList().Count() > (int)listPtr->count) {
 		ValueList fresh;
 		eventsValue = DynamicList(fresh);
-		map.SetValue(String("events"), eventsValue);
+		map.SetValue(CACHED_KEY("events"), eventsValue);
 	}
 	ValueList events = eventsValue.GetList();
 	for (unsigned int i = (unsigned int)events.Count(); i < listPtr->count; i++) {
@@ -1620,8 +1620,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 pos = GetMousePosition();
 		ValueDict posMap;
-		posMap.SetValue(String("x"), Value(pos.x));
-		posMap.SetValue(String("y"), Value(pos.y));
+		posMap.SetValue(CACHED_KEY("x"), Value(pos.x));
+		posMap.SetValue(CACHED_KEY("y"), Value(pos.y));
 		return IntrinsicResult(DynamicMap(posMap));
 	});
 	raylibModule.SetValue("GetMousePosition", i.GetFunc());
@@ -1630,8 +1630,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 delta = GetMouseDelta();
 		ValueDict deltaMap;
-		deltaMap.SetValue(String("x"), Value(delta.x));
-		deltaMap.SetValue(String("y"), Value(delta.y));
+		deltaMap.SetValue(CACHED_KEY("x"), Value(delta.x));
+		deltaMap.SetValue(CACHED_KEY("y"), Value(delta.y));
 		return IntrinsicResult(DynamicMap(deltaMap));
 	});
 	raylibModule.SetValue("GetMouseDelta", i.GetFunc());
@@ -2193,8 +2193,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 wheelMove = GetMouseWheelMoveV();
 		ValueDict wheelMap;
-		wheelMap.SetValue(String("x"), Value(wheelMove.x));
-		wheelMap.SetValue(String("y"), Value(wheelMove.y));
+		wheelMap.SetValue(CACHED_KEY("x"), Value(wheelMove.x));
+		wheelMap.SetValue(CACHED_KEY("y"), Value(wheelMove.y));
 		return IntrinsicResult(DynamicMap(wheelMap));
 	});
 	raylibModule.SetValue("GetMouseWheelMoveV", i.GetFunc());
@@ -2266,8 +2266,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		int index = context.GetArg(0).IntValue();
 		Vector2 pos = GetTouchPosition(index);
 		ValueDict posMap;
-		posMap.SetValue(String("x"), Value(pos.x));
-		posMap.SetValue(String("y"), Value(pos.y));
+		posMap.SetValue(CACHED_KEY("x"), Value(pos.x));
+		posMap.SetValue(CACHED_KEY("y"), Value(pos.y));
 		return IntrinsicResult(DynamicMap(posMap));
 	});
 	raylibModule.SetValue("GetTouchPosition", i.GetFunc());
@@ -2321,8 +2321,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 dragVector = GetGestureDragVector();
 		ValueDict dragMap;
-		dragMap.SetValue(String("x"), Value(dragVector.x));
-		dragMap.SetValue(String("y"), Value(dragVector.y));
+		dragMap.SetValue(CACHED_KEY("x"), Value(dragVector.x));
+		dragMap.SetValue(CACHED_KEY("y"), Value(dragVector.y));
 		return IntrinsicResult(DynamicMap(dragMap));
 	});
 	raylibModule.SetValue("GetGestureDragVector", i.GetFunc());
@@ -2337,8 +2337,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i.set_Code(INTRINSIC_LAMBDA {
 		Vector2 pinchVector = GetGesturePinchVector();
 		ValueDict pinchMap;
-		pinchMap.SetValue(String("x"), Value(pinchVector.x));
-		pinchMap.SetValue(String("y"), Value(pinchVector.y));
+		pinchMap.SetValue(CACHED_KEY("x"), Value(pinchVector.x));
+		pinchMap.SetValue(CACHED_KEY("y"), Value(pinchVector.y));
 		return IntrinsicResult(DynamicMap(pinchMap));
 	});
 	raylibModule.SetValue("GetGesturePinchVector", i.GetFunc());
@@ -2408,8 +2408,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 		Vector2 result = GetWorldToScreen2D(position, camera);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetWorldToScreen2D", i.GetFunc());
@@ -2430,8 +2430,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 		Vector2 result = GetScreenToWorld2D(position, camera);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetScreenToWorld2D", i.GetFunc());
@@ -2742,7 +2742,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 		if (dataValue.Type() == ValueType::Map) {
 			ValueDict map = dataValue.GetDict();
-			map.SetValue(String("_handle"), Value::Null);   // a handle Value now, not a number
+			map.SetValue(CACHED_KEY("_handle"), Value::Null);   // a handle Value now, not a number
 		}
 
 		return IntrinsicResult::Null;
@@ -3535,9 +3535,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 
 		if (listValue.Type() == ValueType::Map) {
 			ValueDict map = listValue.GetDict();
-			map.SetValue(String("capacity"), Value::zero);
-			map.SetValue(String("count"), Value::zero);
-			map.SetValue(String("events"), Value::make_list(0));
+			map.SetValue(CACHED_KEY("capacity"), Value::zero);
+			map.SetValue(CACHED_KEY("count"), Value::zero);
+			map.SetValue(CACHED_KEY("events"), Value::make_list(0));
 		}
 
 		return IntrinsicResult::Null;

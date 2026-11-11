@@ -1135,8 +1135,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float t = context.GetArg(2).FloatValue();
 		Vector2 result = GetSplinePointLinear(startPos, endPos, t);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetSplinePointLinear", i.GetFunc());
@@ -1155,8 +1155,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float t = context.GetArg(4).FloatValue();
 		Vector2 result = GetSplinePointBasis(p1, p2, p3, p4, t);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetSplinePointBasis", i.GetFunc());
@@ -1175,8 +1175,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float t = context.GetArg(4).FloatValue();
 		Vector2 result = GetSplinePointCatmullRom(p1, p2, p3, p4, t);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetSplinePointCatmullRom", i.GetFunc());
@@ -1193,8 +1193,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float t = context.GetArg(3).FloatValue();
 		Vector2 result = GetSplinePointBezierQuadratic(p1, c2, p3, t);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetSplinePointBezierQuadratic", i.GetFunc());
@@ -1213,8 +1213,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float t = context.GetArg(4).FloatValue();
 		Vector2 result = GetSplinePointBezierCubic(p1, c2, c3, p4, t);
 		ValueDict resultMap;
-		resultMap.SetValue(String("x"), Value(result.x));
-		resultMap.SetValue(String("y"), Value(result.y));
+		resultMap.SetValue(CACHED_KEY("x"), Value(result.x));
+		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetSplinePointBezierCubic", i.GetFunc());
