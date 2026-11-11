@@ -163,7 +163,22 @@ void ProcessPendingUnloads() {
 	// that cannot change underneath the loop needs no argument to be safe.
 	std::vector<ResourceHeader*> batch;
 	batch.swap(pendingUnloads);
+
+	// These unloads happen at a moment the script didn't choose, so they must
+	// leave GL state as they found it.  The script may be between draws with a
+	// texture mode still open: finish its queued draws (which may use a texture
+	// we're about to unload) into the framebuffer they were meant for, and
+	// rebind that framebuffer afterward, since unloading a RenderTexture binds
+	// framebuffer 0.  (The bound one is never among those unloaded: the script
+	// still refers to it, or it couldn't still be drawing to it.)
+	bool haveGL = IsWindowReady();
+	unsigned int fbo = 0;
+	if (haveGL) {
+		rlDrawRenderBatchActive();
+		fbo = rlGetActiveFramebuffer();
+	}
 	for (ResourceHeader* box : batch) UnloadPending(box);
+	if (haveGL && fbo != 0) rlEnableFramebuffer(fbo);
 }
 
 Value ResourceHandleOf(Value map) {
@@ -729,11 +744,15 @@ Color ValueToColor(Value value) {
 	Color result;
 
 	// Handle HTML-style color string: "#RRGGBB" or "#RRGGBBAA"
-	if (value.Type() == ValueType::String) {
-		String s = value.ToString();
-		if (s.Length() >= 7 && s[0] == '#') {
+	// (Read the bytes in place via AsCString: ToString would copy the string
+	// into a new allocation, which was most of the cost of a string tint.)
+	if (value.IsString()) {
+		const char* s = value.AsCString();
+		int len = 0;
+		while (len < 9 && s[len]) len++;	// byte length, capped at 9 ("#RRGGBBAA")
+		if (len >= 7 && s[0] == '#') {
 			unsigned int hex = 0;
-			for (int i = 1; i < s.Length() && i < 9; i++) {
+			for (int i = 1; i < len; i++) {
 				char c = s[i];
 				int digit;
 				if (c >= '0' && c <= '9') digit = c - '0';
@@ -742,7 +761,7 @@ Color ValueToColor(Value value) {
 				else break;
 				hex = (hex << 4) | digit;
 			}
-			if (s.Length() >= 9) {
+			if (len >= 9) {
 				// #RRGGBBAA
 				result.r = (hex >> 24) & 0xFF;
 				result.g = (hex >> 16) & 0xFF;
