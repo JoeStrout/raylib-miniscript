@@ -187,13 +187,13 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		font.glyphs = (GlyphInfo*)RL_MALLOC(glyphCount * sizeof(GlyphInfo));
 		for (int i = 0; i < glyphCount; i++) {
 			ValueDict glyphDict = glyphsList[i].GetDict();
-			font.glyphs[i].value = glyphDict.Lookup(String("value"), Value::zero).IntValue();
-			font.glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
-			font.glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
-			font.glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
+			font.glyphs[i].value = glyphDict.Lookup(CACHED_KEY("value"), Value::zero).IntValue();
+			font.glyphs[i].offsetX = glyphDict.Lookup(CACHED_KEY("offsetX"), Value::zero).IntValue();
+			font.glyphs[i].offsetY = glyphDict.Lookup(CACHED_KEY("offsetY"), Value::zero).IntValue();
+			font.glyphs[i].advanceX = glyphDict.Lookup(CACHED_KEY("advanceX"), Value::zero).IntValue();
 			// Copy the pixels: UnloadFont frees them, and the script's glyph images
 			// keep their own buffers (released by UnloadImage / UnloadFontData).
-			font.glyphs[i].image = ImageCopy(ValueToImage(glyphDict.Lookup(String("image"), Value::Null)));
+			font.glyphs[i].image = ImageCopy(ValueToImage(glyphDict.Lookup(CACHED_KEY("image"), Value::Null)));
 		}
 
 		if (!IsFontValid(font)) {
@@ -592,7 +592,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 			Value g = glyphsList[n];
 			if (g.Type() != ValueType::Map) continue;
 			Image img;
-			if (!TakeResource(g.GetDict().Lookup(String("image"), Value::Null), &img)) continue;
+			if (!TakeResource(g.GetDict().Lookup(CACHED_KEY("image"), Value::Null), &img)) continue;
 			UnloadImage(img);
 			rcImage--;
 		}
@@ -705,11 +705,11 @@ void AddRTextMethods(ValueDict& raylibModule) {
 
 		for (int i = 0; i < glyphCount; i++) {
 			ValueDict glyphDict = glyphsList[i].GetDict();
-			glyphs[i].value = glyphDict.Lookup(String("value"), Value::zero).IntValue();
-			glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
-			glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
-			glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
-			glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::Null));
+			glyphs[i].value = glyphDict.Lookup(CACHED_KEY("value"), Value::zero).IntValue();
+			glyphs[i].offsetX = glyphDict.Lookup(CACHED_KEY("offsetX"), Value::zero).IntValue();
+			glyphs[i].offsetY = glyphDict.Lookup(CACHED_KEY("offsetY"), Value::zero).IntValue();
+			glyphs[i].advanceX = glyphDict.Lookup(CACHED_KEY("advanceX"), Value::zero).IntValue();
+			glyphs[i].image = ValueToImage(glyphDict.Lookup(CACHED_KEY("image"), Value::Null));
 
 			recs[i] = ValueToRectangle(recsList[i]);
 		}

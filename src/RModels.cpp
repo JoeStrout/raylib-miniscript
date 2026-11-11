@@ -250,10 +250,10 @@ static void FillFloatComponentsFromValue(Value value, float* out, int components
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).FloatValue();
-		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).FloatValue();
-		if (components > 2) out[2] = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).FloatValue();
-		if (components > 3) out[3] = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).FloatValue();
+		if (components > 0) out[0] = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).FloatValue();
+		if (components > 1) out[1] = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).FloatValue();
+		if (components > 2) out[2] = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).FloatValue();
+		if (components > 3) out[3] = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).FloatValue();
 		return;
 	}
 
@@ -273,10 +273,10 @@ static void FillIntComponentsFromValue(Value value, int* out, int components) {
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) out[0] = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue();
-		if (components > 1) out[1] = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue();
-		if (components > 2) out[2] = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).IntValue();
-		if (components > 3) out[3] = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).IntValue();
+		if (components > 0) out[0] = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).IntValue();
+		if (components > 1) out[1] = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).IntValue();
+		if (components > 2) out[2] = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).IntValue();
+		if (components > 3) out[3] = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).IntValue();
 		return;
 	}
 
@@ -299,10 +299,10 @@ static void FillUIntComponentsFromValue(Value value, unsigned int* out, int comp
 
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		if (components > 0) { int v = map.Lookup(String("x"), map.Lookup(String("r"), Value::zero)).IntValue(); out[0] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 1) { int v = map.Lookup(String("y"), map.Lookup(String("g"), Value::zero)).IntValue(); out[1] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 2) { int v = map.Lookup(String("z"), map.Lookup(String("b"), Value::zero)).IntValue(); out[2] = (unsigned int)(v < 0 ? 0 : v); }
-		if (components > 3) { int v = map.Lookup(String("w"), map.Lookup(String("a"), Value::zero)).IntValue(); out[3] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 0) { int v = map.Lookup(CACHED_KEY("x"), map.Lookup(CACHED_KEY("r"), Value::zero)).IntValue(); out[0] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 1) { int v = map.Lookup(CACHED_KEY("y"), map.Lookup(CACHED_KEY("g"), Value::zero)).IntValue(); out[1] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 2) { int v = map.Lookup(CACHED_KEY("z"), map.Lookup(CACHED_KEY("b"), Value::zero)).IntValue(); out[2] = (unsigned int)(v < 0 ? 0 : v); }
+		if (components > 3) { int v = map.Lookup(CACHED_KEY("w"), map.Lookup(CACHED_KEY("a"), Value::zero)).IntValue(); out[3] = (unsigned int)(v < 0 ? 0 : v); }
 		return;
 	}
 

@@ -626,7 +626,7 @@ Music ValueToMusic(Value value) {
 	// raylib reads looping from the Music passed in (e.g. to UpdateMusicStream),
 	// so apply the script-visible flag to the copy we return.
 	Music music = *musicPtr;
-	Value loopVal = value.GetDict().Lookup(String("looping"), Value(music.looping ? 1 : 0));
+	Value loopVal = value.GetDict().Lookup(CACHED_KEY("looping"), Value(music.looping ? 1 : 0));
 	music.looping = (loopVal.FloatValue() != 0);
 	return music;
 }
@@ -776,10 +776,10 @@ Color ValueToColor(Value value) {
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
 
-		Value rVal = map.Lookup(String("r"), Value::zero);
-		Value gVal = map.Lookup(String("g"), Value::zero);
-		Value bVal = map.Lookup(String("b"), Value::zero);
-		Value aVal = map.Lookup(String("a"), Value::Null);
+		Value rVal = map.Lookup(CACHED_KEY("r"), Value::zero);
+		Value gVal = map.Lookup(CACHED_KEY("g"), Value::zero);
+		Value bVal = map.Lookup(CACHED_KEY("b"), Value::zero);
+		Value aVal = map.Lookup(CACHED_KEY("a"), Value::Null);
 
 		result.r = (unsigned char)(rVal.IntValue());
 		result.g = (unsigned char)(gVal.IntValue());
@@ -796,10 +796,10 @@ Color ValueToColor(Value value) {
 // Convert a Raylib Color to a MiniScript map
 Value ColorToValue(Color color) {
 	ValueDict map;
-	map.SetValue(String("r"), Value((int)color.r));
-	map.SetValue(String("g"), Value((int)color.g));
-	map.SetValue(String("b"), Value((int)color.b));
-	map.SetValue(String("a"), Value((int)color.a));
+	map.SetValue(CACHED_KEY("r"), Value((int)color.r));
+	map.SetValue(CACHED_KEY("g"), Value((int)color.g));
+	map.SetValue(CACHED_KEY("b"), Value((int)color.b));
+	map.SetValue(CACHED_KEY("a"), Value((int)color.a));
 	return DynamicMap(map);
 }
 
@@ -817,10 +817,10 @@ Rectangle ValueToRectangle(Value value) {
 	} else if (value.Type() == ValueType::Map) {
 		// Map format: {x: ..., y: ..., width: ..., height: ...}
 		ValueDict map = value.GetDict();
-		Value xVal = map.Lookup(String("x"), Value::zero);
-		Value yVal = map.Lookup(String("y"), Value::zero);
-		Value widthVal = map.Lookup(String("width"), Value::zero);
-		Value heightVal = map.Lookup(String("height"), Value::zero);
+		Value xVal = map.Lookup(CACHED_KEY("x"), Value::zero);
+		Value yVal = map.Lookup(CACHED_KEY("y"), Value::zero);
+		Value widthVal = map.Lookup(CACHED_KEY("width"), Value::zero);
+		Value heightVal = map.Lookup(CACHED_KEY("height"), Value::zero);
 
 		Rectangle result;
 		result.x = xVal.FloatValue();
@@ -838,10 +838,10 @@ Rectangle ValueToRectangle(Value value) {
 // Convert a Raylib Rectangle to a MiniScript map
 Value RectangleToValue(Rectangle rect) {
 	ValueDict map;
-	map.SetValue(String("x"), Value(rect.x));
-	map.SetValue(String("y"), Value(rect.y));
-	map.SetValue(String("width"), Value(rect.width));
-	map.SetValue(String("height"), Value(rect.height));
+	map.SetValue(CACHED_KEY("x"), Value(rect.x));
+	map.SetValue(CACHED_KEY("y"), Value(rect.y));
+	map.SetValue(CACHED_KEY("width"), Value(rect.width));
+	map.SetValue(CACHED_KEY("height"), Value(rect.height));
 	return DynamicMap(map);
 }
 
@@ -857,8 +857,8 @@ Vector2 ValueToVector2(Value value) {
 	} else if (value.Type() == ValueType::Map) {
 		// Map format: {x: ..., y: ...}
 		ValueDict map = value.GetDict();
-		Value xVal = map.Lookup(String("x"), Value::zero);
-		Value yVal = map.Lookup(String("y"), Value::zero);
+		Value xVal = map.Lookup(CACHED_KEY("x"), Value::zero);
+		Value yVal = map.Lookup(CACHED_KEY("y"), Value::zero);
 		return Vector2{xVal.FloatValue(), yVal.FloatValue()};
 	} else {
 		// Default to zero vector if not a map or list
@@ -869,17 +869,17 @@ Vector2 ValueToVector2(Value value) {
 // Convert a Raylib Vector2 to a MiniScript map
 Value Vector2ToValue(Vector2 vec) {
 	ValueDict map;
-	map.SetValue(String("x"), Value(vec.x));
-	map.SetValue(String("y"), Value(vec.y));
+	map.SetValue(CACHED_KEY("x"), Value(vec.x));
+	map.SetValue(CACHED_KEY("y"), Value(vec.y));
 	return DynamicMap(map);
 }
 
 Value MeshToValue(Mesh mesh) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MeshClass());
-	map.SetValue(String("_handle"), NewResourceHandle(mesh));
-	map.SetValue(String("vertexCount"), Value(mesh.vertexCount));
-	map.SetValue(String("triangleCount"), Value(mesh.triangleCount));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(mesh));
+	map.SetValue(CACHED_KEY("vertexCount"), Value(mesh.vertexCount));
+	map.SetValue(CACHED_KEY("triangleCount"), Value(mesh.triangleCount));
 	return DynamicMap(map);
 }
 
@@ -893,8 +893,8 @@ Mesh ValueToMesh(Value value) {
 Value MaterialToValue(Material material) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, MaterialClass());
-	map.SetValue(String("_handle"), NewResourceHandle(material));
-	map.SetValue(String("shaderId"), Value((int)material.shader.id));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(material));
+	map.SetValue(CACHED_KEY("shaderId"), Value((int)material.shader.id));
 	return DynamicMap(map);
 }
 
@@ -907,18 +907,18 @@ Material ValueToMaterial(Value value) {
 
 Value TransformToValue(const Transform& t) {
 	ValueDict map;
-	map.SetValue(String("translation"), Vector3ToValue(t.translation));
-	map.SetValue(String("rotation"), QuaternionToValue(t.rotation));
-	map.SetValue(String("scale"), Vector3ToValue(t.scale));
+	map.SetValue(CACHED_KEY("translation"), Vector3ToValue(t.translation));
+	map.SetValue(CACHED_KEY("rotation"), QuaternionToValue(t.rotation));
+	map.SetValue(CACHED_KEY("scale"), Vector3ToValue(t.scale));
 	return DynamicMap(map);
 }
 
 Value ModelToValue(Model model) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelClass());
-	map.SetValue(String("_handle"), NewResourceHandle(model));
-	map.SetValue(String("meshCount"), Value(model.meshCount));
-	map.SetValue(String("materialCount"), Value(model.materialCount));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(model));
+	map.SetValue(CACHED_KEY("meshCount"), Value(model.meshCount));
+	map.SetValue(CACHED_KEY("materialCount"), Value(model.materialCount));
 
 	// The skeleton never changes after loading, so copy it into plain fields:
 	// bones (a list of {name, parent}) and bindPose (a list of Transforms).
@@ -926,18 +926,18 @@ Value ModelToValue(Model model) {
 		ValueList bones;
 		for (unsigned int b = 0; b < model.skeleton.boneCount; b++) {
 			ValueDict bone;
-			bone.SetValue(String("name"), Value(String(model.skeleton.bones[b].name)));
-			bone.SetValue(String("parent"), Value(model.skeleton.bones[b].parent));
+			bone.SetValue(CACHED_KEY("name"), Value(String(model.skeleton.bones[b].name)));
+			bone.SetValue(CACHED_KEY("parent"), Value(model.skeleton.bones[b].parent));
 			bones.Add(DynamicMap(bone));
 		}
-		map.SetValue(String("bones"), DynamicList(bones));
+		map.SetValue(CACHED_KEY("bones"), DynamicList(bones));
 
 		if (model.skeleton.bindPose != nullptr) {
 			ValueList pose;
 			for (unsigned int b = 0; b < model.skeleton.boneCount; b++) {
 				pose.Add(TransformToValue(model.skeleton.bindPose[b]));
 			}
-			map.SetValue(String("bindPose"), DynamicList(pose));
+			map.SetValue(CACHED_KEY("bindPose"), DynamicList(pose));
 		}
 	}
 	return DynamicMap(map);
@@ -953,10 +953,10 @@ Model ValueToModel(Value value) {
 Value ModelAnimationToValue(ModelAnimation anim) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, ModelAnimationClass());
-	map.SetValue(String("_handle"), NewResourceHandle(anim));
-	map.SetValue(String("name"), Value(String(anim.name)));
-	map.SetValue(String("boneCount"), Value(anim.boneCount));
-	map.SetValue(String("keyframeCount"), Value(anim.keyframeCount));
+	map.SetValue(CACHED_KEY("_handle"), NewResourceHandle(anim));
+	map.SetValue(CACHED_KEY("name"), Value(String(anim.name)));
+	map.SetValue(CACHED_KEY("boneCount"), Value(anim.boneCount));
+	map.SetValue(CACHED_KEY("keyframeCount"), Value(anim.keyframeCount));
 	return DynamicMap(map);
 }
 
@@ -968,7 +968,7 @@ ModelAnimation ValueToModelAnimation(Value value) {
 	// One entry of the array LoadModelAnimations returned
 	ModelAnimationArray* array = ResourcePtr<ModelAnimationArray>(value);
 	if (array == nullptr) return ModelAnimation{};
-	int index = value.GetDict().Lookup(String("_arrayIndex"), Value::zero).IntValue();
+	int index = value.GetDict().Lookup(CACHED_KEY("_arrayIndex"), Value::zero).IntValue();
 	if (index < 0 || index >= array->count) return ModelAnimation{};
 	return array->animations[index];
 }
@@ -982,9 +982,9 @@ Vector3 ValueToVector3(Value value) {
 		return Vector3{x, y, z};
 	} else if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		float x = map.Lookup(String("x"), Value::zero).FloatValue();
-		float y = map.Lookup(String("y"), Value::zero).FloatValue();
-		float z = map.Lookup(String("z"), Value::zero).FloatValue();
+		float x = map.Lookup(CACHED_KEY("x"), Value::zero).FloatValue();
+		float y = map.Lookup(CACHED_KEY("y"), Value::zero).FloatValue();
+		float z = map.Lookup(CACHED_KEY("z"), Value::zero).FloatValue();
 		return Vector3{x, y, z};
 	}
 	return Vector3{0, 0, 0};
@@ -992,9 +992,9 @@ Vector3 ValueToVector3(Value value) {
 
 Value Vector3ToValue(Vector3 vec) {
 	ValueDict map;
-	map.SetValue(String("x"), Value(vec.x));
-	map.SetValue(String("y"), Value(vec.y));
-	map.SetValue(String("z"), Value(vec.z));
+	map.SetValue(CACHED_KEY("x"), Value(vec.x));
+	map.SetValue(CACHED_KEY("y"), Value(vec.y));
+	map.SetValue(CACHED_KEY("z"), Value(vec.z));
 	return DynamicMap(map);
 }
 
@@ -1010,35 +1010,35 @@ Camera3D ValueToCamera3D(Value value) {
 
 	ValueDict map = value.GetDict();
 
-	Value positionVal = map.Lookup(String("position"), Value::Null);
+	Value positionVal = map.Lookup(CACHED_KEY("position"), Value::Null);
 	if (positionVal.Type() == ValueType::Map || positionVal.Type() == ValueType::List) {
 		camera.position = ValueToVector3(positionVal);
 	} else {
-		camera.position.x = map.Lookup(String("positionX"), Value(camera.position.x)).FloatValue();
-		camera.position.y = map.Lookup(String("positionY"), Value(camera.position.y)).FloatValue();
-		camera.position.z = map.Lookup(String("positionZ"), Value(camera.position.z)).FloatValue();
+		camera.position.x = map.Lookup(CACHED_KEY("positionX"), Value(camera.position.x)).FloatValue();
+		camera.position.y = map.Lookup(CACHED_KEY("positionY"), Value(camera.position.y)).FloatValue();
+		camera.position.z = map.Lookup(CACHED_KEY("positionZ"), Value(camera.position.z)).FloatValue();
 	}
 
-	Value targetVal = map.Lookup(String("target"), Value::Null);
+	Value targetVal = map.Lookup(CACHED_KEY("target"), Value::Null);
 	if (targetVal.Type() == ValueType::Map || targetVal.Type() == ValueType::List) {
 		camera.target = ValueToVector3(targetVal);
 	} else {
-		camera.target.x = map.Lookup(String("targetX"), Value(camera.target.x)).FloatValue();
-		camera.target.y = map.Lookup(String("targetY"), Value(camera.target.y)).FloatValue();
-		camera.target.z = map.Lookup(String("targetZ"), Value(camera.target.z)).FloatValue();
+		camera.target.x = map.Lookup(CACHED_KEY("targetX"), Value(camera.target.x)).FloatValue();
+		camera.target.y = map.Lookup(CACHED_KEY("targetY"), Value(camera.target.y)).FloatValue();
+		camera.target.z = map.Lookup(CACHED_KEY("targetZ"), Value(camera.target.z)).FloatValue();
 	}
 
-	Value upVal = map.Lookup(String("up"), Value::Null);
+	Value upVal = map.Lookup(CACHED_KEY("up"), Value::Null);
 	if (upVal.Type() == ValueType::Map || upVal.Type() == ValueType::List) {
 		camera.up = ValueToVector3(upVal);
 	} else {
-		camera.up.x = map.Lookup(String("upX"), Value(camera.up.x)).FloatValue();
-		camera.up.y = map.Lookup(String("upY"), Value(camera.up.y)).FloatValue();
-		camera.up.z = map.Lookup(String("upZ"), Value(camera.up.z)).FloatValue();
+		camera.up.x = map.Lookup(CACHED_KEY("upX"), Value(camera.up.x)).FloatValue();
+		camera.up.y = map.Lookup(CACHED_KEY("upY"), Value(camera.up.y)).FloatValue();
+		camera.up.z = map.Lookup(CACHED_KEY("upZ"), Value(camera.up.z)).FloatValue();
 	}
 
-	camera.fovy = map.Lookup(String("fovy"), Value(camera.fovy)).FloatValue();
-	camera.projection = map.Lookup(String("projection"), Value(camera.projection)).IntValue();
+	camera.fovy = map.Lookup(CACHED_KEY("fovy"), Value(camera.fovy)).FloatValue();
+	camera.projection = map.Lookup(CACHED_KEY("projection"), Value(camera.projection)).IntValue();
 
 	return camera;
 }
@@ -1046,22 +1046,22 @@ Camera3D ValueToCamera3D(Value value) {
 Value Camera3DToValue(Camera3D camera) {
 	ValueDict map;
 	map.SetValue(Value::magicIsA, Camera3DClass());
-	map.SetValue(String("position"), Vector3ToValue(camera.position));
-	map.SetValue(String("target"), Vector3ToValue(camera.target));
-	map.SetValue(String("up"), Vector3ToValue(camera.up));
-	map.SetValue(String("fovy"), Value(camera.fovy));
-	map.SetValue(String("projection"), Value(camera.projection));
+	map.SetValue(CACHED_KEY("position"), Vector3ToValue(camera.position));
+	map.SetValue(CACHED_KEY("target"), Vector3ToValue(camera.target));
+	map.SetValue(CACHED_KEY("up"), Vector3ToValue(camera.up));
+	map.SetValue(CACHED_KEY("fovy"), Value(camera.fovy));
+	map.SetValue(CACHED_KEY("projection"), Value(camera.projection));
 
 	// Convenience flattened fields for scripts that prefer direct scalars.
-	map.SetValue(String("positionX"), Value(camera.position.x));
-	map.SetValue(String("positionY"), Value(camera.position.y));
-	map.SetValue(String("positionZ"), Value(camera.position.z));
-	map.SetValue(String("targetX"), Value(camera.target.x));
-	map.SetValue(String("targetY"), Value(camera.target.y));
-	map.SetValue(String("targetZ"), Value(camera.target.z));
-	map.SetValue(String("upX"), Value(camera.up.x));
-	map.SetValue(String("upY"), Value(camera.up.y));
-	map.SetValue(String("upZ"), Value(camera.up.z));
+	map.SetValue(CACHED_KEY("positionX"), Value(camera.position.x));
+	map.SetValue(CACHED_KEY("positionY"), Value(camera.position.y));
+	map.SetValue(CACHED_KEY("positionZ"), Value(camera.position.z));
+	map.SetValue(CACHED_KEY("targetX"), Value(camera.target.x));
+	map.SetValue(CACHED_KEY("targetY"), Value(camera.target.y));
+	map.SetValue(CACHED_KEY("targetZ"), Value(camera.target.z));
+	map.SetValue(CACHED_KEY("upX"), Value(camera.up.x));
+	map.SetValue(CACHED_KEY("upY"), Value(camera.up.y));
+	map.SetValue(CACHED_KEY("upZ"), Value(camera.up.z));
 
 	return DynamicMap(map);
 }
@@ -1076,10 +1076,10 @@ Vector4 ValueToVector4(Value value) {
 		return Vector4{x, y, z, w};
 	} else if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
-		float x = map.Lookup(String("x"), Value::zero).FloatValue();
-		float y = map.Lookup(String("y"), Value::zero).FloatValue();
-		float z = map.Lookup(String("z"), Value::zero).FloatValue();
-		float w = map.Lookup(String("w"), Value::zero).FloatValue();
+		float x = map.Lookup(CACHED_KEY("x"), Value::zero).FloatValue();
+		float y = map.Lookup(CACHED_KEY("y"), Value::zero).FloatValue();
+		float z = map.Lookup(CACHED_KEY("z"), Value::zero).FloatValue();
+		float w = map.Lookup(CACHED_KEY("w"), Value::zero).FloatValue();
 		return Vector4{x, y, z, w};
 	}
 	return Vector4{0, 0, 0, 0};
@@ -1087,10 +1087,10 @@ Vector4 ValueToVector4(Value value) {
 
 Value Vector4ToValue(Vector4 vec) {
 	ValueDict map;
-	map.SetValue(String("x"), Value(vec.x));
-	map.SetValue(String("y"), Value(vec.y));
-	map.SetValue(String("z"), Value(vec.z));
-	map.SetValue(String("w"), Value(vec.w));
+	map.SetValue(CACHED_KEY("x"), Value(vec.x));
+	map.SetValue(CACHED_KEY("y"), Value(vec.y));
+	map.SetValue(CACHED_KEY("z"), Value(vec.z));
+	map.SetValue(CACHED_KEY("w"), Value(vec.w));
 	return DynamicMap(map);
 }
 
@@ -1174,45 +1174,45 @@ Matrix ValueToMatrix(Value value) {
 	if (value.Type() == ValueType::Map) {
 		ValueDict map = value.GetDict();
 		bool hasLegacyFields =
-			map.Lookup(String("m0"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m1"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m2"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m3"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m4"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m5"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m6"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m7"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m8"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m9"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m10"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m11"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m12"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m13"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m14"), Value::Null).Type() != ValueType::Null ||
-			map.Lookup(String("m15"), Value::Null).Type() != ValueType::Null;
+			map.Lookup(CACHED_KEY("m0"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m1"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m2"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m3"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m4"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m5"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m6"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m7"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m8"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m9"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m10"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m11"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m12"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m13"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m14"), Value::Null).Type() != ValueType::Null ||
+			map.Lookup(CACHED_KEY("m15"), Value::Null).Type() != ValueType::Null;
 
 		if (hasLegacyFields) {
 			Matrix m;
-			m.m0 = map.Lookup(String("m0"), Value::zero).FloatValue();
-			m.m1 = map.Lookup(String("m1"), Value::zero).FloatValue();
-			m.m2 = map.Lookup(String("m2"), Value::zero).FloatValue();
-			m.m3 = map.Lookup(String("m3"), Value::zero).FloatValue();
-			m.m4 = map.Lookup(String("m4"), Value::zero).FloatValue();
-			m.m5 = map.Lookup(String("m5"), Value::zero).FloatValue();
-			m.m6 = map.Lookup(String("m6"), Value::zero).FloatValue();
-			m.m7 = map.Lookup(String("m7"), Value::zero).FloatValue();
-			m.m8 = map.Lookup(String("m8"), Value::zero).FloatValue();
-			m.m9 = map.Lookup(String("m9"), Value::zero).FloatValue();
-			m.m10 = map.Lookup(String("m10"), Value::zero).FloatValue();
-			m.m11 = map.Lookup(String("m11"), Value::zero).FloatValue();
-			m.m12 = map.Lookup(String("m12"), Value::zero).FloatValue();
-			m.m13 = map.Lookup(String("m13"), Value::zero).FloatValue();
-			m.m14 = map.Lookup(String("m14"), Value::zero).FloatValue();
-			m.m15 = map.Lookup(String("m15"), Value::zero).FloatValue();
+			m.m0 = map.Lookup(CACHED_KEY("m0"), Value::zero).FloatValue();
+			m.m1 = map.Lookup(CACHED_KEY("m1"), Value::zero).FloatValue();
+			m.m2 = map.Lookup(CACHED_KEY("m2"), Value::zero).FloatValue();
+			m.m3 = map.Lookup(CACHED_KEY("m3"), Value::zero).FloatValue();
+			m.m4 = map.Lookup(CACHED_KEY("m4"), Value::zero).FloatValue();
+			m.m5 = map.Lookup(CACHED_KEY("m5"), Value::zero).FloatValue();
+			m.m6 = map.Lookup(CACHED_KEY("m6"), Value::zero).FloatValue();
+			m.m7 = map.Lookup(CACHED_KEY("m7"), Value::zero).FloatValue();
+			m.m8 = map.Lookup(CACHED_KEY("m8"), Value::zero).FloatValue();
+			m.m9 = map.Lookup(CACHED_KEY("m9"), Value::zero).FloatValue();
+			m.m10 = map.Lookup(CACHED_KEY("m10"), Value::zero).FloatValue();
+			m.m11 = map.Lookup(CACHED_KEY("m11"), Value::zero).FloatValue();
+			m.m12 = map.Lookup(CACHED_KEY("m12"), Value::zero).FloatValue();
+			m.m13 = map.Lookup(CACHED_KEY("m13"), Value::zero).FloatValue();
+			m.m14 = map.Lookup(CACHED_KEY("m14"), Value::zero).FloatValue();
+			m.m15 = map.Lookup(CACHED_KEY("m15"), Value::zero).FloatValue();
 			return m;
 		}
 
-		Value elemValue = map.Lookup(String("elem"), Value::Null);
+		Value elemValue = map.Lookup(CACHED_KEY("elem"), Value::Null);
 		if (elemValue.Type() == ValueType::List) {
 			return assignFromNestedList(elemValue.GetList());
 		}
@@ -1254,9 +1254,9 @@ Value MatrixToValue(Matrix mat) {
 	elem.Add(DynamicList(row2));
 	elem.Add(DynamicList(row3));
 
-	result.SetValue(String("rows"), Value(4));
-	result.SetValue(String("columns"), Value(4));
-	result.SetValue(String("elem"), DynamicList(elem));
+	result.SetValue(CACHED_KEY("rows"), Value(4));
+	result.SetValue(CACHED_KEY("columns"), Value(4));
+	result.SetValue(CACHED_KEY("elem"), DynamicList(elem));
 	return DynamicMap(result);
 }
 
@@ -1264,15 +1264,15 @@ BoundingBox ValueToBoundingBox(Value value) {
 	if (value.Type() != ValueType::Map) return BoundingBox{};
 	ValueDict map = value.GetDict();
 	BoundingBox box;
-	box.min = ValueToVector3(map.Lookup(String("min"), Value::Null));
-	box.max = ValueToVector3(map.Lookup(String("max"), Value::Null));
+	box.min = ValueToVector3(map.Lookup(CACHED_KEY("min"), Value::Null));
+	box.max = ValueToVector3(map.Lookup(CACHED_KEY("max"), Value::Null));
 	return box;
 }
 
 Value BoundingBoxToValue(BoundingBox box) {
 	ValueDict map;
-	map.SetValue(String("min"), Vector3ToValue(box.min));
-	map.SetValue(String("max"), Vector3ToValue(box.max));
+	map.SetValue(CACHED_KEY("min"), Vector3ToValue(box.min));
+	map.SetValue(CACHED_KEY("max"), Vector3ToValue(box.max));
 	return DynamicMap(map);
 }
 
@@ -1280,23 +1280,23 @@ Ray ValueToRay(Value value) {
 	if (value.Type() != ValueType::Map) return Ray{};
 	ValueDict map = value.GetDict();
 	Ray ray;
-	ray.position = ValueToVector3(map.Lookup(String("position"), map.Lookup(String("origin"), Value::Null)));
-	ray.direction = ValueToVector3(map.Lookup(String("direction"), Value::Null));
+	ray.position = ValueToVector3(map.Lookup(CACHED_KEY("position"), map.Lookup(CACHED_KEY("origin"), Value::Null)));
+	ray.direction = ValueToVector3(map.Lookup(CACHED_KEY("direction"), Value::Null));
 	return ray;
 }
 
 Value RayToValue(Ray ray) {
 	ValueDict map;
-	map.SetValue(String("position"), Vector3ToValue(ray.position));
-	map.SetValue(String("direction"), Vector3ToValue(ray.direction));
+	map.SetValue(CACHED_KEY("position"), Vector3ToValue(ray.position));
+	map.SetValue(CACHED_KEY("direction"), Vector3ToValue(ray.direction));
 	return DynamicMap(map);
 }
 
 Value RayCollisionToValue(RayCollision collision) {
 	ValueDict map;
-	map.SetValue(String("hit"), Value(collision.hit));
-	map.SetValue(String("distance"), Value(collision.distance));
-	map.SetValue(String("point"), Vector3ToValue(collision.point));
-	map.SetValue(String("normal"), Vector3ToValue(collision.normal));
+	map.SetValue(CACHED_KEY("hit"), Value(collision.hit));
+	map.SetValue(CACHED_KEY("distance"), Value(collision.distance));
+	map.SetValue(CACHED_KEY("point"), Vector3ToValue(collision.point));
+	map.SetValue(CACHED_KEY("normal"), Vector3ToValue(collision.normal));
 	return DynamicMap(map);
 }

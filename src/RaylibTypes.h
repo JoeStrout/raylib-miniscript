@@ -381,3 +381,12 @@ extern int rcModel;
 extern int rcModelAnimation;
 
 
+
+// A map key built once per call site.  Lookup(String("r"), ...) makes a String and
+// converts it to a Value on every call (and keys of 6+ characters then allocate on
+// the GC heap); this caches the Value, rooted so a collection can't free it.
+// Use only where the GC already exists (i.e. at run time, not during static init).
+#define CACHED_KEY(lit) ([]() -> const Value& { \
+	static const Value k = [] { Value v(lit); GCManager::AddRoot(v); return v; }(); \
+	return k; }())
+
