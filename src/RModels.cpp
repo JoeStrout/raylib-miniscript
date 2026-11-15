@@ -854,16 +854,34 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
-		Mesh mesh = ValueToMesh(context.GetArg(0));
-		Model model = LoadModelFromMesh(mesh);
-		if (!IsModelValid(model)) return IntrinsicResult::Null;
+		// raylib's model takes a shallow copy of the mesh, pointing at the same
+		// vertex data, and UnloadModel frees that data.  So, as in C, the mesh
+		// passed in stays usable (to draw, read, collide or update) while the
+		// model lives; here it becomes a view of the model's mesh, as from
+		// GetModelMesh: UnloadMesh of it does nothing, and once the model is
+		// unloaded it reads as unloaded.  A mesh that is already a view (of
+		// this or another model) is refused, as two models can't both own it.
+		Value meshValue = context.GetArg(0);
+		Mesh* meshPtr = GetMeshPtr(meshValue);
+		ResourceHeader* meshBox = ResourceBoxOf(meshValue, ResourceKind::Mesh);
+		if (meshPtr == nullptr || meshBox->borrowed) return IntrinsicResult::Null;
+		Model model = LoadModelFromMesh(*meshPtr);
+		if (!IsModelValid(model)) {
+			model.meshCount = 0;		// free the model's own parts, not the mesh
+			UnloadModel(model);
+			return IntrinsicResult::Null;
+		}
+		rcMesh--;		// counted from now on as part of the model
 		rcModel++;
-		return IntrinsicResult(ModelToValue(model));
+		Value modelValue = ModelToValue(model);
+		MarkBorrowed(meshValue, modelValue);
+		return IntrinsicResult(modelValue);
 	});
 	raylibModule.SetValue("LoadModelFromMesh", WithNote(i,
 		"Load a model from a mesh (e.g. from MakeMesh or GenMeshCube), with a default material. "
-		"The model shares the mesh's data rather than copying it: UnloadModel unloads the mesh "
-		"too, so don't also UnloadMesh it"));
+		"The model takes ownership of the mesh's data: you can go on using the mesh while the "
+		"model is loaded, but UnloadModel unloads it (and UnloadMesh of it does nothing).  "
+		"Returns null if the mesh is unloaded or already part of a model"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -1163,6 +1181,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.set_Code(INTRINSIC_LAMBDA {
+		// A mesh a model owns (from GetModelMesh, or given to LoadModelFromMesh)
+		// is unloaded by UnloadModel; unloading it here too would free its data
+		// twice.
+		ResourceHeader* box = ResourceBoxOf(context.GetArg(0), ResourceKind::Mesh);
+		if (box != nullptr && box->borrowed) return IntrinsicResult::Null;
 		Mesh mesh;
 		if (!TakeResource(context.GetArg(0), &mesh)) return IntrinsicResult::Null;
 		UnloadMesh(mesh);
@@ -1171,7 +1194,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadMesh", WithNote(i,
-		"Unload mesh from memory (RAM and VRAM)"));
+		"Unload mesh from memory (RAM and VRAM).  Does nothing for a mesh a model owns (from "
+		"GetModelMesh, or given to LoadModelFromMesh): UnloadModel unloads that"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1179,6 +1203,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("transform", MatrixToValue(MatrixIdentity()));
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
+		// An unloaded mesh (or one a model took over) has no buffer table, and
+		// raylib would read through its null vboId.
+		if (mesh.vboId == nullptr) return IntrinsicResult::Null;
 		Material material = ValueToMaterial(context.GetArg(1));
 		Matrix transform = ValueToMatrix(context.GetArg(2));
 		DrawMesh(mesh, material, transform);
@@ -1193,6 +1220,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	i.AddParam("transforms");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Mesh mesh = ValueToMesh(context.GetArg(0));
+		if (mesh.vboId == nullptr) return IntrinsicResult::Null;	// unloaded (see DrawMesh)
 		Material material = ValueToMaterial(context.GetArg(1));
 		Value transformsValue = context.GetArg(2);
 		if (transformsValue.Type() != ValueType::List) return IntrinsicResult::Null;
@@ -1825,8 +1853,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("GetModelMesh", WithNote(i,
 		"Get one of a model's meshes, for DrawMesh, GetRayCollisionMesh, GetMeshBoundingBox, "
-		"GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: don't unload it "
-		"separately. Functions that change the Mesh struct itself (GenMeshTangents, UploadMesh) do "
+		"GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: UnloadMesh of it "
+		"does nothing, and once the model is unloaded it reads as unloaded too. Functions that "
+		"change the Mesh struct itself (GenMeshTangents, UploadMesh) do "
 		"not affect the model; use them before LoadModelFromMesh"));
 
 	i = Intrinsic::Create("");

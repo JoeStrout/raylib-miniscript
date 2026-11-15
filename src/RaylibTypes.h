@@ -271,14 +271,30 @@ RESOURCE_KIND(AutomationEventList, AutomationEventList)
 RESOURCE_KIND(rlRenderBatch, RenderBatch)
 #undef RESOURCE_KIND
 
+// Whether an owner resource (a Model, Font, Material, ...) is still loaded,
+// shared by the owner's box and the boxes of its views (MarkBorrowed), so a
+// view can tell when its owner has been unloaded.  Reference counted, since
+// either side's box may be collected first.
+struct OwnerLife {
+	bool live = true;
+	int refs = 0;
+};
+
 struct ResourceHeader {
 	ResourceKind kind;
-	bool live;			// false once unloaded
+	bool live;			// false once unloaded (or, for a view, once its owner is)
 	bool autoUnload;	// unload when collected (see autoUnload)
 	bool borrowed;		// a view of a resource something else owns and unloads
 	bool soundAlias;	// a Sound from LoadSoundAlias (unloaded differently)
 	int generation;		// graphics or audio generation it was loaded under
+	OwnerLife* life;		// this resource's own, once it has a view; else null
+	OwnerLife* ownerLife;	// for a view: its owner's; else null
 };
+
+// Mark an owner's life as over (it has been unloaded), so its views lapse.
+inline void EndOwnerLife(ResourceHeader* box) {
+	if (box->life) box->life->live = false;
+}
 
 template<typename T> struct ResourceBox : ResourceHeader {
 	T res;
@@ -307,8 +323,10 @@ bool ResourceKindSupportsAutoUnload(ResourceKind kind);
 
 // Mark a map's resource as a view of one that `owner` owns: it can never be
 // flagged for auto-unloading, and the map keeps its owner alive (in `_owner`),
-// so the owner cannot be auto-unloaded while the view is still in use.  `owner`
-// may be null, for a resource raylib itself owns (the default font).
+// so the owner cannot be auto-unloaded while the view is still in use.  Once
+// the owner is unloaded, the view reads as unloaded too, so it can't reach the
+// data its owner freed.  `owner` may be null, for a resource raylib itself owns
+// (the default font).
 void MarkBorrowed(Value map, Value owner);
 
 // Ownership of a map's resource has passed to something else (a texture given
@@ -351,6 +369,7 @@ template<typename T> bool TakeResource(Value map, T* out) {
 	*out = res;
 	res = T{};
 	box->live = false;
+	EndOwnerLife(box);
 	return true;
 }
 

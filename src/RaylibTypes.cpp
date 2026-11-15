@@ -23,7 +23,13 @@ int rcModelAnimation = 0;
 
 static const Value& HandleKey() { static Value k("_handle"); return k; }
 
+static void ReleaseOwnerLife(OwnerLife* life) {
+	if (life != nullptr && --life->refs == 0) delete life;
+}
+
 static void DeleteResourceBox(ResourceHeader* box) {
+	ReleaseOwnerLife(box->life);
+	ReleaseOwnerLife(box->ownerLife);
 	switch (box->kind) {
 		#define CASE(T, K) case ResourceKind::K: delete static_cast<ResourceBox<T>*>(box); break;
 		CASE(Image, Image)
@@ -154,6 +160,7 @@ static void UnloadPending(ResourceHeader* box) {
 		}
 		#undef RES
 	}
+	EndOwnerLife(box);
 	DeleteResourceBox(box);
 }
 
@@ -190,7 +197,11 @@ ResourceHeader* AnyResourceBoxOf(Value map) {
 	Value handle = ResourceHandleOf(map);
 	if (!handle.IsHandle()) return nullptr;
 	if (GCManager::GetHandle(handle).Callback != FinalizeResource) return nullptr;
-	return (ResourceHeader*)handle.HandlePtr();
+	ResourceHeader* box = (ResourceHeader*)handle.HandlePtr();
+	// A view whose owner has been unloaded lapses: its copy of the struct
+	// points at freed data.
+	if (box->live && box->ownerLife != nullptr && !box->ownerLife->live) box->live = false;
+	return box;
 }
 
 ResourceHeader* ResourceBoxOf(Value map, ResourceKind kind) {
@@ -204,7 +215,19 @@ void MarkBorrowed(Value map, Value owner) {
 	if (box == nullptr) return;
 	box->borrowed = true;
 	box->autoUnload = false;
-	if (!owner.IsNull()) map.GetDict().SetValue(CACHED_KEY("_owner"), owner);
+	if (owner.IsNull()) return;
+	map.GetDict().SetValue(CACHED_KEY("_owner"), owner);
+
+	ResourceHeader* ownerBox = AnyResourceBoxOf(owner);
+	if (ownerBox == nullptr || ownerBox == box) return;
+	if (ownerBox->life == nullptr) {
+		ownerBox->life = new OwnerLife();
+		ownerBox->life->live = ownerBox->live;
+		ownerBox->life->refs = 1;
+	}
+	ReleaseOwnerLife(box->ownerLife);
+	box->ownerLife = ownerBox->life;
+	box->ownerLife->refs++;
 }
 
 void TransferOwnership(Value map) {

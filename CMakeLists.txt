@@ -364,6 +364,32 @@ else()
     target_link_libraries(handle_tests
         $<TARGET_PROPERTY:raylib-miniscript,LINK_LIBRARIES>
     )
+
+    #---------------------------------------------------------------------------
+    # known_issues_tests - one test per bug in notes/KNOWN_ISSUES.md
+    #
+    # Each test checks the fixed behavior, so it fails until its bug is fixed.
+    # Built like handle_tests (the whole app minus main.cpp, no window); each
+    # test runs in a forked child so a crash fails only that test.
+    #
+    #   cmake --build build --target known_issues_tests && ./build/known_issues_tests
+    #---------------------------------------------------------------------------
+    add_executable(known_issues_tests EXCLUDE_FROM_ALL
+        tests/known_issues_tests.cpp
+        ${HANDLE_TEST_APP_SOURCES}
+        ${MINISCRIPT_SOURCES}
+    )
+
+    target_include_directories(known_issues_tests PRIVATE
+        $<TARGET_PROPERTY:raylib-miniscript,INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(known_issues_tests PRIVATE
+        $<TARGET_PROPERTY:raylib-miniscript,COMPILE_DEFINITIONS>
+    )
+    target_compile_options(known_issues_tests PRIVATE -O0 -g -Wall -DPLATFORM_DESKTOP -fexceptions)
+    target_link_libraries(known_issues_tests
+        $<TARGET_PROPERTY:raylib-miniscript,LINK_LIBRARIES>
+    )
 endif()
 
 #-------------------------------------------------------------------------------

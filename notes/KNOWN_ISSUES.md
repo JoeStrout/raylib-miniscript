@@ -2,25 +2,14 @@
 
 Bugs found but not yet fixed.  Remove an entry once its fix lands.
 
-## LoadModelFromMesh leaves the mesh live (likely double free)
-
-`LoadModelFromMesh` (src/RModels.cpp) hands raylib a shallow copy of the mesh,
-so the new Model points at the same vertex data and `UnloadModel` frees it.  But
-the script's Mesh map keeps a live handle, so a script that calls `UnloadMesh` on
-it and later `UnloadModel` will likely free that vertex data twice.  The reverse
-order is also unsafe: after `UnloadModel`, a `DrawMesh(mesh)` or `UnloadMesh(mesh)`
-uses freed data.  (The bundled `assets/rmodels_smoke.ms` avoids this only by never
-unloading the mesh.)  Raylib's own
-note on `LoadModelFromMesh` warns about this shallow copy.
-
-Possible fix: have `LoadModelFromMesh` take the mesh (`TakeResource`, `rcMesh--`),
-so a later `UnloadMesh` is a no-op, and document that the mesh is consumed with an
-`// API:` note.  Not yet verified with a test.
-
----
+Tests: each entry has a test that checks the fixed behavior (so it fails until
+the fix lands) in `tests/known_issues_tests.cpp`
+(`cmake --build build --target known_issues_tests && ./build/known_issues_tests`),
+or, for the ones that need a window, `tests/known_issues_window.ms`
+(`./build/raylib-miniscript tests/known_issues_window.ms`, run by hand).
 
 The entries below were found during the 2026-11-15 review of the API notes
-(`WithNote`).  They are from reading the code and are not yet confirmed with tests.
+(`WithNote`).  All are confirmed by failing tests.
 
 ## UpdateAudioStream leaks and miscounts frames
 
@@ -43,14 +32,6 @@ raylib walks backward into memory before the string.  The result is meaningless
 and the read is out of bounds.  It probably needs an index or offset parameter
 (or to point at the end of the string).
 
-## UnloadFileData frees a RawData buffer with raylib's free
-
-`UnloadFileData` (src/RCore.cpp) calls raylib's `UnloadFileData` (plain `free`)
-on a RawData's buffer.  That buffer came from `BinaryData::New` /
-`AllocOrCollect` via `BytesToRawDataValue`, so this bypasses the allocator's
-accounting, and it accepts any RawData, not just one from `LoadFileData`.  It
-should probably clear the RawData or do nothing.
-
 ## ImageKernelConvolution doesn't check kernelSize
 
 `ImageKernelConvolution` (src/RTextures.cpp) passes the script's `kernelSize`
@@ -71,11 +52,6 @@ In src/RTextures.cpp:
 - `ImageDrawRectangleV` takes a single `rec` instead of `position` and `size`,
   so it duplicates `ImageDrawRectangleRec`.
 - `ImageToPOT` has no fill color parameter; it always pads with BLACK.
-
-## DrawSplineCatmullRom accepts too few points
-
-`DrawSplineCatmullRom` (src/RShapes.cpp) only checks for at least 2 points, but
-raylib needs at least 4 (`DrawSplineBasis` checks for 4).
 
 ## TakeScreenshot doesn't resolve its path
 
