@@ -189,10 +189,17 @@ writing each one's `API.md` but adding no link to the public `API_DOC.md`.
 ## Documenting your plugin
 
 `scripts/gen_doc.ms` writes your plugin's API into `plugins/<name>/API.md` (and adds a link
-to it in `API_DOC.md`; the examples are documented the same way).  It finds your functions from the `SetValue(String("fn"), f.GetFunc())`
-lines in the function you pass to `PluginAddModule`, so keep that shape.  The "Purpose" column
-comes from the comment directly above each `Intrinsic::Create`; for more than one line, or text
-that must be exact, put `// API: text` lines there instead (several are joined with spaces).
+to it in `API_DOC.md`; the examples are documented the same way).  It finds your functions from the
+`SetValue` lines in the function you pass to `PluginAddModule`, so keep one of these shapes:
+
+```cpp
+m.SetValue("fn", WithNote(f, "What fn does, as `info` will show it"));
+m.SetValue(String("fn"), f.GetFunc());
+```
+
+Use the first: `WithNote` (from `macros.h`) attaches the note that becomes the "Purpose" column,
+and that `info fn` shows at run time.  A function registered the second way is listed with no
+Purpose, and gen_doc.ms reports it as having no note.
 
 The generated table sits between `<!-- BEGIN GENERATED API -->` and `<!-- END GENERATED API -->`
 markers.  Write your own notes (setup, caveats, examples) anywhere outside them: reruns replace

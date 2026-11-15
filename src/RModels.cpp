@@ -424,7 +424,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawLine3D(startPos, endPos, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLine3D", i.GetFunc());
+	raylibModule.SetValue("DrawLine3D", WithNote(i,
+		"Draw a line in 3D world space"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -435,7 +436,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawPoint3D(position, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPoint3D", i.GetFunc());
+	raylibModule.SetValue("DrawPoint3D", WithNote(i,
+		"Draw a point in 3D space, actually a small line WARNING: OpenGL ES 2.0 does not support "
+		"point mode drawing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -452,7 +455,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCircle3D(center, radius, rotationAxis, rotationAngle, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircle3D", i.GetFunc());
+	raylibModule.SetValue("DrawCircle3D", WithNote(i,
+		"Draw a circle in 3D world space"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1");
@@ -467,7 +471,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawTriangle3D(v1, v2, v3, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangle3D", i.GetFunc());
+	raylibModule.SetValue("DrawTriangle3D", WithNote(i,
+		"Draw a color-filled triangle (vertex in counter-clockwise order!)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -487,7 +492,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawTriangleStrip3D(points.data(), pointCount, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleStrip3D", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleStrip3D", WithNote(i,
+		"Draw a triangle strip defined by points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -504,7 +510,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCube(position, width, height, length, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCube", i.GetFunc());
+	raylibModule.SetValue("DrawCube", WithNote(i,
+		"Draw cube NOTE: Cube position is the center position"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -517,7 +524,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCubeV(position, size, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCubeV", i.GetFunc());
+	raylibModule.SetValue("DrawCubeV", WithNote(i,
+		"Draw cube (Vector version)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -534,7 +542,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCubeWires(position, width, height, length, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCubeWires", i.GetFunc());
+	raylibModule.SetValue("DrawCubeWires", WithNote(i,
+		"Draw cube wires"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -547,7 +556,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCubeWiresV(position, size, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCubeWiresV", i.GetFunc());
+	raylibModule.SetValue("DrawCubeWiresV", WithNote(i,
+		"Draw cube wires (vector version)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerPos");
@@ -560,7 +570,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawSphere(centerPos, radius, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSphere", i.GetFunc());
+	raylibModule.SetValue("DrawSphere", WithNote(i,
+		"Draw sphere"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerPos");
@@ -577,7 +588,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawSphereEx(centerPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSphereEx", i.GetFunc());
+	raylibModule.SetValue("DrawSphereEx", WithNote(i,
+		"Draw sphere with defined rings and slices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerPos");
@@ -594,7 +606,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawSphereWires(centerPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSphereWires", i.GetFunc());
+	raylibModule.SetValue("DrawSphereWires", WithNote(i,
+		"Draw sphere wires"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -613,7 +626,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCylinder(position, radiusTop, radiusBottom, height, sides, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCylinder", i.GetFunc());
+	raylibModule.SetValue("DrawCylinder", WithNote(i,
+		"Draw a cylinder NOTE: It could be also used for pyramid and cone"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos");
@@ -632,7 +646,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCylinderEx(startPos, endPos, startRadius, endRadius, sides, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCylinderEx", i.GetFunc());
+	raylibModule.SetValue("DrawCylinderEx", WithNote(i,
+		"Draw a cylinder with base at startPos and top at endPos NOTE: It could be also used for "
+		"pyramid and cone"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -651,7 +667,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCylinderWires(position, radiusTop, radiusBottom, height, sides, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCylinderWires", i.GetFunc());
+	raylibModule.SetValue("DrawCylinderWires", WithNote(i,
+		"Draw a wired cylinder NOTE: It could be also used for pyramid and cone"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos");
@@ -670,7 +687,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCylinderWiresEx(startPos, endPos, startRadius, endRadius, sides, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCylinderWiresEx", i.GetFunc());
+	raylibModule.SetValue("DrawCylinderWiresEx", WithNote(i,
+		"Draw a wired cylinder with base at startPos and top at endPos NOTE: It could be also used "
+		"for pyramid and cone"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos");
@@ -689,7 +708,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCapsule(startPos, endPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCapsule", i.GetFunc());
+	raylibModule.SetValue("DrawCapsule", WithNote(i,
+		"Draw a capsule with the center of its sphere caps at startPos and endPos"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos");
@@ -708,7 +728,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawCapsuleWires(startPos, endPos, radius, rings, slices, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCapsuleWires", i.GetFunc());
+	raylibModule.SetValue("DrawCapsuleWires", WithNote(i,
+		"Draw capsule wires with the center of its sphere caps at startPos and endPos"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerPos");
@@ -721,7 +742,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawPlane(centerPos, size, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPlane", i.GetFunc());
+	raylibModule.SetValue("DrawPlane", WithNote(i,
+		"Draw a plane"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -732,7 +754,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawRay(ray, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRay", i.GetFunc());
+	raylibModule.SetValue("DrawRay", WithNote(i,
+		"Draw a ray line"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("slices", Value(10));
@@ -743,7 +766,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawGrid(slices, spacing);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawGrid", i.GetFunc());
+	raylibModule.SetValue("DrawGrid", WithNote(i,
+		"Draw a grid centered at (0, 0, 0)"));
 
 	// Billboards
 
@@ -762,7 +786,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawBillboard(camera, texture, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawBillboard", i.GetFunc());
+	raylibModule.SetValue("DrawBillboard", WithNote(i,
+		"Draw a billboard"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -781,7 +806,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawBillboardRec(camera, texture, rec, position, size, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawBillboardRec", i.GetFunc());
+	raylibModule.SetValue("DrawBillboardRec", WithNote(i,
+		"Draw a billboard (part of a texture defined by a rectangle)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -806,7 +832,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawBillboardPro(camera, texture, rec, position, up, size, origin, rotation, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawBillboardPro", i.GetFunc());
+	raylibModule.SetValue("DrawBillboardPro", WithNote(i,
+		"Draw a billboard texture defined by source rectangle with scaling and rotation"));
 
 	// Model management
 
@@ -820,7 +847,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcModel++;
 		return IntrinsicResult(ModelToValue(model));
 	});
-	raylibModule.SetValue("LoadModel", i.GetFunc());
+	raylibModule.SetValue("LoadModel", WithNote(i,
+		"Load model from files (mesh and material)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -831,7 +859,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcModel++;
 		return IntrinsicResult(ModelToValue(model));
 	});
-	raylibModule.SetValue("LoadModelFromMesh", i.GetFunc());
+	raylibModule.SetValue("LoadModelFromMesh", WithNote(i,
+		"Load model from generated mesh WARNING: A shallow copy of mesh is generated, passed by "
+		"value, as long as struct contains pointers to data and some values, get a copy of mesh "
+		"pointing to same data as original version... be careful!"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -839,7 +870,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		Model model = ValueToModel(context.GetArg(0));
 		return IntrinsicResult(IsModelValid(model));
 	});
-	raylibModule.SetValue("IsModelValid", i.GetFunc());
+	raylibModule.SetValue("IsModelValid", WithNote(i,
+		"Check if model is valid (loaded in GPU, VAO/VBOs)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -851,7 +883,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadModel", i.GetFunc());
+	raylibModule.SetValue("UnloadModel", WithNote(i,
+		"Unload model (meshes/materials) from memory (RAM and/or VRAM) NOTE: This function takes "
+		"care of all model elements, for a detailed control over them, use UnloadMesh() and "
+		"UnloadMaterial()"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -860,7 +895,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		BoundingBox bounds = GetModelBoundingBox(model);
 		return IntrinsicResult(BoundingBoxToValue(bounds));
 	});
-	raylibModule.SetValue("GetModelBoundingBox", i.GetFunc());
+	raylibModule.SetValue("GetModelBoundingBox", WithNote(i,
+		"Compute model bounding box limits (considers all meshes)"));
 
 	// Model drawing
 
@@ -877,7 +913,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawModel(model, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawModel", i.GetFunc());
+	raylibModule.SetValue("DrawModel", WithNote(i,
+		"Draw a model (with texture if set)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -896,7 +933,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawModelEx(model, position, rotationAxis, rotationAngle, scale, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawModelEx", i.GetFunc());
+	raylibModule.SetValue("DrawModelEx", WithNote(i,
+		"Draw a model with custom transform"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -911,7 +949,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawModelWires(model, position, scale, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawModelWires", i.GetFunc());
+	raylibModule.SetValue("DrawModelWires", WithNote(i,
+		"Draw a model wires (with texture if set)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -930,7 +969,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawModelWiresEx(model, position, rotationAxis, rotationAngle, scale, tint);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawModelWiresEx", i.GetFunc());
+	raylibModule.SetValue("DrawModelWiresEx", WithNote(i,
+		"Draw a model wires with custom transform"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("box");
@@ -941,7 +981,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawBoundingBox(box, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawBoundingBox", i.GetFunc());
+	raylibModule.SetValue("DrawBoundingBox", WithNote(i,
+		"Draw a bounding box with wires"));
 
 	// Mesh management
 
@@ -955,7 +996,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		UploadMesh(meshPtr, dynamic);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UploadMesh", i.GetFunc());
+	raylibModule.SetValue("UploadMesh", WithNote(i,
+		"Upload vertex data into a VAO (if supported) and VBO"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -996,9 +1038,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateMeshBuffer", i.GetFunc());
+	raylibModule.SetValue("UpdateMeshBuffer", WithNote(i,
+		"Update mesh vertex data in GPU for a specific buffer index"));
 
-	// API: Make a mesh from vertex data: flat lists of numbers, lists of vectors/colors (one per vertex), or RawData. vertices is required (3 numbers per vertex); indices (3 per triangle, 0-65535), texcoords (2 per vertex), normals (3 per vertex) and colors (4 per vertex, 0-255) are optional. The mesh is uploaded to the GPU (with dynamic buffers if dynamic is true, for frequent UpdateMeshBuffer calls), ready to draw; UnloadMesh frees it
 	i = Intrinsic::Create("");
 	i.AddParam("vertices");
 	i.AddParam("indices", Value::Null);
@@ -1065,9 +1107,13 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("MakeMesh", i.GetFunc());
+	raylibModule.SetValue("MakeMesh", WithNote(i,
+		"Make a mesh from vertex data: flat lists of numbers, lists of vectors/colors (one per "
+		"vertex), or RawData. vertices is required (3 numbers per vertex); indices (3 per "
+		"triangle, 0-65535), texcoords (2 per vertex), normals (3 per vertex) and colors (4 per "
+		"vertex, 0-255) are optional. The mesh is uploaded to the GPU (with dynamic buffers if "
+		"dynamic is true, for frequent UpdateMeshBuffer calls), ready to draw; UnloadMesh frees it"));
 
-	// API: Get a copy of one of a mesh's vertex data arrays, as a flat list of numbers, by the same index UpdateMeshBuffer takes: 0 vertices, 1 texcoords, 2 normals, 3 colors, 4 tangents, 5 texcoords2, 6 indices, 7 boneIndices, 8 boneWeights. Returns null if the mesh has no such data
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
 	i.AddParam("index");
@@ -1103,7 +1149,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		}
 		return IntrinsicResult(DynamicList(result));
 	});
-	raylibModule.SetValue("GetMeshBuffer", i.GetFunc());
+	raylibModule.SetValue("GetMeshBuffer", WithNote(i,
+		"Get a copy of one of a mesh's vertex data arrays, as a flat list of numbers, by the same "
+		"index UpdateMeshBuffer takes: 0 vertices, 1 texcoords, 2 normals, 3 colors, 4 tangents, 5 "
+		"texcoords2, 6 indices, 7 boneIndices, 8 boneWeights. Returns null if the mesh has no such "
+		"data"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1115,7 +1165,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadMesh", i.GetFunc());
+	raylibModule.SetValue("UnloadMesh", WithNote(i,
+		"Unload mesh from memory (RAM and VRAM)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1128,7 +1179,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawMesh(mesh, material, transform);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawMesh", i.GetFunc());
+	raylibModule.SetValue("DrawMesh", WithNote(i,
+		"Draw a 3d mesh with material and transform"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1153,7 +1205,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		DrawMeshInstanced(mesh, material, transforms.data(), instances);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawMeshInstanced", i.GetFunc());
+	raylibModule.SetValue("DrawMeshInstanced", WithNote(i,
+		"Draw multiple mesh instances with material and different transforms"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1162,7 +1215,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		BoundingBox bounds = GetMeshBoundingBox(mesh);
 		return IntrinsicResult(BoundingBoxToValue(bounds));
 	});
-	raylibModule.SetValue("GetMeshBoundingBox", i.GetFunc());
+	raylibModule.SetValue("GetMeshBoundingBox", WithNote(i,
+		"Compute mesh bounding box limits NOTE: minVertex and maxVertex should be transformed by "
+		"model transform matrix"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1172,7 +1227,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		GenMeshTangents(meshPtr);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("GenMeshTangents", i.GetFunc());
+	raylibModule.SetValue("GenMeshTangents", WithNote(i,
+		"Compute mesh tangents"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1183,7 +1239,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(ExportMesh(mesh, path.c_str()));
 	});
-	raylibModule.SetValue("ExportMesh", i.GetFunc());
+	raylibModule.SetValue("ExportMesh", WithNote(i,
+		"Export mesh data to file"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mesh");
@@ -1194,7 +1251,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(ExportMeshAsCode(mesh, path.c_str()));
 	});
-	raylibModule.SetValue("ExportMeshAsCode", i.GetFunc());
+	raylibModule.SetValue("ExportMeshAsCode", WithNote(i,
+		"Export mesh as code file (.h) defining multiple arrays of vertex attributes"));
 
 	// Mesh generation
 
@@ -1208,7 +1266,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshPoly", i.GetFunc());
+	raylibModule.SetValue("GenMeshPoly", WithNote(i,
+		"Generate polygonal mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(1.0));
@@ -1224,7 +1283,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshPlane", i.GetFunc());
+	raylibModule.SetValue("GenMeshPlane", WithNote(i,
+		"Generate plane mesh (with subdivisions)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(1.0));
@@ -1238,7 +1298,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshCube", i.GetFunc());
+	raylibModule.SetValue("GenMeshCube", WithNote(i,
+		"Generated cuboid mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1252,7 +1313,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshSphere", i.GetFunc());
+	raylibModule.SetValue("GenMeshSphere", WithNote(i,
+		"Generate sphere mesh (standard sphere)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1266,7 +1328,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshHemiSphere", i.GetFunc());
+	raylibModule.SetValue("GenMeshHemiSphere", WithNote(i,
+		"Generate hemisphere mesh (half sphere, no bottom cap)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1280,7 +1343,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshCylinder", i.GetFunc());
+	raylibModule.SetValue("GenMeshCylinder", WithNote(i,
+		"Generate cylinder mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1294,7 +1358,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshCone", i.GetFunc());
+	raylibModule.SetValue("GenMeshCone", WithNote(i,
+		"Generate cone/pyramid mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1310,7 +1375,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshTorus", i.GetFunc());
+	raylibModule.SetValue("GenMeshTorus", WithNote(i,
+		"Generate torus mesh NOTE: The distance between the center of the hole and the center of "
+		"the tube is half size of the radius of the tube (radius*size/2)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("radius", Value(1.0));
@@ -1326,7 +1393,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshKnot", i.GetFunc());
+	raylibModule.SetValue("GenMeshKnot", WithNote(i,
+		"Generate trefoil knot mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("heightmap");
@@ -1338,7 +1406,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshHeightmap", i.GetFunc());
+	raylibModule.SetValue("GenMeshHeightmap", WithNote(i,
+		"Generate a mesh from heightmap NOTE: Vertex data is uploaded to GPU"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("cubicmap");
@@ -1350,7 +1419,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMesh++;
 		return IntrinsicResult(MeshToValue(mesh));
 	});
-	raylibModule.SetValue("GenMeshCubicmap", i.GetFunc());
+	raylibModule.SetValue("GenMeshCubicmap", WithNote(i,
+		"Generate a cubes mesh from pixel data NOTE: Vertex data is uploaded to GPU"));
 
 	// Material management
 
@@ -1372,7 +1442,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		MemFree(materials);
 		return IntrinsicResult(DynamicList(result));
 	});
-	raylibModule.SetValue("LoadMaterials", i.GetFunc());
+	raylibModule.SetValue("LoadMaterials", WithNote(i,
+		"Load materials from model file"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1380,7 +1451,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcMaterial++;
 		return IntrinsicResult(MaterialToValue(material));
 	});
-	raylibModule.SetValue("LoadMaterialDefault", i.GetFunc());
+	raylibModule.SetValue("LoadMaterialDefault", WithNote(i,
+		"Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1388,9 +1460,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		Material material = ValueToMaterial(context.GetArg(0));
 		return IntrinsicResult(IsMaterialValid(material));
 	});
-	raylibModule.SetValue("IsMaterialValid", i.GetFunc());
+	raylibModule.SetValue("IsMaterialValid", WithNote(i,
+		"Check if material is valid (map textures loaded in GPU)"));
 
-	// API: Unload material from memory. Also unloads the shader and every texture map set on it, so don't unload those separately
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1401,9 +1473,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadMaterial", i.GetFunc());
+	raylibModule.SetValue("UnloadMaterial", WithNote(i,
+		"Unload material from memory. Also unloads the shader and every texture map set on it, so "
+		"don't unload those separately"));
 
-	// API: Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded. The material owns the new texture: UnloadMaterial unloads it
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.AddParam("mapType");
@@ -1418,9 +1491,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		TransferOwnership(context.GetArg(2));		// UnloadMaterial unloads it now
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialTexture", i.GetFunc());
+	raylibModule.SetValue("SetMaterialTexture", WithNote(i,
+		"Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) "
+		"NOTE: Previous texture should be manually unloaded. The material owns the new texture: "
+		"UnloadMaterial unloads it"));
 
-	// API: Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of a material. The diffuse color tints whatever is drawn with the material, multiplied with its texture.
 	i = Intrinsic::Create("");
 	i.AddParam("material");
 	i.AddParam("mapType");
@@ -1433,7 +1508,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		materialPtr->maps[mapType].color = ValueToColor(context.GetArg(2));
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialColor", i.GetFunc());
+	raylibModule.SetValue("SetMaterialColor", WithNote(i,
+		"Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of a material. "
+		"The diffuse color tints whatever is drawn with the material, multiplied with its texture."));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1447,7 +1524,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		SyncMaterialShaderMetadata(materialValue, materialPtr->shader);
 		return IntrinsicResult(shaderValue);
 	});
-	raylibModule.SetValue("GetMaterialShader", i.GetFunc());
+	raylibModule.SetValue("GetMaterialShader", WithNote(i,
+		"Get the shader a material uses.  The material owns it: UnloadMaterial unloads it"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1463,7 +1541,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		SyncMaterialShaderMetadata(materialValue, shader);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialShader", i.GetFunc());
+	raylibModule.SetValue("SetMaterialShader", WithNote(i,
+		"Set the shader a material uses.  The material takes ownership of it: UnloadMaterial "
+		"unloads it"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1475,7 +1555,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		String uniformName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocation(materialPtr->shader, uniformName.c_str()));
 	});
-	raylibModule.SetValue("GetMaterialShaderLocation", i.GetFunc());
+	raylibModule.SetValue("GetMaterialShaderLocation", WithNote(i,
+		"Get the location of a uniform in a material's shader, or -1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1487,7 +1568,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		String attribName = context.GetArg(1).ToString();
 		return IntrinsicResult(GetShaderLocationAttrib(materialPtr->shader, attribName.c_str()));
 	});
-	raylibModule.SetValue("GetMaterialShaderLocationAttrib", i.GetFunc());
+	raylibModule.SetValue("GetMaterialShaderLocationAttrib", WithNote(i,
+		"Get the location of a vertex attribute in a material's shader, or -1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1536,7 +1618,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialShaderValue", i.GetFunc());
+	raylibModule.SetValue("SetMaterialShaderValue", WithNote(i,
+		"Set a uniform in a material's shader.  value is a number, a list of components, or a "
+		"RawData; uniformType is a SHADER_UNIFORM_ constant"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1585,7 +1669,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialShaderValueV", i.GetFunc());
+	raylibModule.SetValue("SetMaterialShaderValueV", WithNote(i,
+		"Set a uniform array in a material's shader, from a list (of numbers or of vectors) or a "
+		"RawData.  If count is 0, it is the number of elements in the list, or 1 for a RawData"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1600,7 +1686,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		SetShaderValueMatrix(materialPtr->shader, locIndex, mat);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialShaderValueMatrix", i.GetFunc());
+	raylibModule.SetValue("SetMaterialShaderValueMatrix", WithNote(i,
+		"Set a matrix uniform in a material's shader"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("material");
@@ -1615,7 +1702,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		SetShaderValueTexture(materialPtr->shader, locIndex, texture);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMaterialShaderValueTexture", i.GetFunc());
+	raylibModule.SetValue("SetMaterialShaderValueTexture", WithNote(i,
+		"Set a sampler2D uniform in a material's shader to a texture"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -1630,9 +1718,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		SetModelMeshMaterial(modelPtr, meshId, materialId);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetModelMeshMaterial", i.GetFunc());
+	raylibModule.SetValue("SetModelMeshMaterial", WithNote(i,
+		"Set the material for a mesh"));
 
-	// API: Set the shader of one material of a model. Use this to shade a model with a custom shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the shader and must unload it with UnloadShader.
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.AddParam("materialIndex");
@@ -1655,9 +1743,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		KeepModelMaterialRef(modelValue, "_materialShaders", Value(idx), shaderValue);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetModelMaterialShader", i.GetFunc());
+	raylibModule.SetValue("SetModelMaterialShader", WithNote(i,
+		"Set the shader of one material of a model. Use this to shade a model with a custom "
+		"shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the "
+		"shader and must unload it with UnloadShader."));
 
-	// API: Set the texture of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The script keeps ownership of the texture and must unload it with UnloadTexture.
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.AddParam("materialIndex");
@@ -1684,9 +1774,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 			Value(idx * MAX_MATERIAL_MAPS + mapType), textureValue);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetModelMaterialTexture", i.GetFunc());
+	raylibModule.SetValue("SetModelMaterialTexture", WithNote(i,
+		"Set the texture of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one "
+		"material of a model. The script keeps ownership of the texture and must unload it with "
+		"UnloadTexture."));
 
-	// API: Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The diffuse color tints the model, multiplied with the texture and the DrawModel tint.
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.AddParam("materialIndex");
@@ -1704,9 +1796,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		modelPtr->materials[idx].maps[mapType].color = ValueToColor(context.GetArg(3));
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetModelMaterialColor", i.GetFunc());
+	raylibModule.SetValue("SetModelMaterialColor", WithNote(i,
+		"Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material "
+		"of a model. The diffuse color tints the model, multiplied with the texture and the "
+		"DrawModel tint."));
 
-	// API: Get one of a model's meshes, for DrawMesh, GetRayCollisionMesh, GetMeshBoundingBox, GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: don't unload it separately. Functions that change the Mesh struct itself (GenMeshTangents, UploadMesh) do not affect the model; use them before LoadModelFromMesh
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.AddParam("meshIndex", Value::zero);
@@ -1721,9 +1815,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		MarkBorrowed(meshValue, modelValue);		// UnloadModel unloads it
 		return IntrinsicResult(meshValue);
 	});
-	raylibModule.SetValue("GetModelMesh", i.GetFunc());
+	raylibModule.SetValue("GetModelMesh", WithNote(i,
+		"Get one of a model's meshes, for DrawMesh, GetRayCollisionMesh, GetMeshBoundingBox, "
+		"GetMeshBuffer, UpdateMeshBuffer and the like. The model owns the mesh: don't unload it "
+		"separately. Functions that change the Mesh struct itself (GenMeshTangents, UploadMesh) do "
+		"not affect the model; use them before LoadModelFromMesh"));
 
-	// API: Get a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1731,9 +1828,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		if (modelPtr == nullptr) return IntrinsicResult::Null;
 		return IntrinsicResult(MatrixToValue(modelPtr->transform));
 	});
-	raylibModule.SetValue("GetModelTransform", i.GetFunc());
+	raylibModule.SetValue("GetModelTransform", WithNote(i,
+		"Get a model's local transform matrix, which DrawModel applies before the position, "
+		"rotation and scale it is given"));
 
-	// API: Set a model's local transform matrix, which DrawModel applies before the position, rotation and scale it is given
 	i = Intrinsic::Create("");
 	i.AddParam("model");
 	i.AddParam("transform");
@@ -1743,7 +1841,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		modelPtr->transform = ValueToMatrix(context.GetArg(1));
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetModelTransform", i.GetFunc());
+	raylibModule.SetValue("SetModelTransform", WithNote(i,
+		"Set a model's local transform matrix, which DrawModel applies before the position, "
+		"rotation and scale it is given"));
 
 	// Model animations
 
@@ -1764,7 +1864,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult(DynamicList(result));
 	});
-	raylibModule.SetValue("LoadModelAnimations", i.GetFunc());
+	raylibModule.SetValue("LoadModelAnimations", WithNote(i,
+		"Load model animations from file"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -1777,7 +1878,11 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		UpdateModelAnimation(model, animation, frame);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateModelAnimation", i.GetFunc());
+	raylibModule.SetValue("UpdateModelAnimation", WithNote(i,
+		"Update model animation data (vertex buffers / bone matrices) for a specific pose NOTE 1: "
+		"Request frame could be fractional, using a lerp interpolation between two frames NOTE 2: "
+		"Updated vertex animation data is uploaded to GPU in case of CPU skinning, for GPU "
+		"skinning, bone matrices are uploaded to shader on DrawModelEx()"));
 
 #ifndef PLATFORM_WEB
 	i = Intrinsic::Create("");
@@ -1797,7 +1902,12 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		UpdateModelAnimationEx(model, animationA, frameA, animationB, frameB, blend);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateModelAnimationEx", i.GetFunc());
+	raylibModule.SetValue("UpdateModelAnimationEx", WithNote(i,
+		"Update model animation data (vertex buffers / bone matrices) for a specific pose, defined "
+		"by two different animations at specific frames blended together NOTE 1: Request frames "
+		"could be fractional, using a lerp interpolation between two frames NOTE 2: Updated vertex "
+		"animation data is uploaded to GPU in case of CPU skinning, for GPU skinning, bone "
+		"matrices are uploaded to shader on DrawModelEx()"));
 #endif
 
 	i = Intrinsic::Create("");
@@ -1810,7 +1920,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		rcModelAnimation -= array.count;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadModelAnimations", i.GetFunc());
+	raylibModule.SetValue("UnloadModelAnimations", WithNote(i,
+		"Unload animation array data"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("model");
@@ -1820,9 +1931,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		ModelAnimation animation = ValueToModelAnimation(context.GetArg(1));
 		return IntrinsicResult(IsModelAnimationValid(model, animation));
 	});
-	raylibModule.SetValue("IsModelAnimationValid", i.GetFunc());
+	raylibModule.SetValue("IsModelAnimationValid", WithNote(i,
+		"Check model animation skeleton match NOTE: Only number of bones and parent connections "
+		"are checked"));
 
-	// API: Get an animation's bone poses at one keyframe: a list of {translation, rotation, scale}, one per bone (in the order of the model's bones list). Returns null if the frame is out of range
 	i = Intrinsic::Create("");
 	i.AddParam("animation");
 	i.AddParam("frame", Value::zero);
@@ -1838,7 +1950,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		for (unsigned int b = 0; b < anim.boneCount; b++) result.Add(TransformToValue(pose[b]));
 		return IntrinsicResult(DynamicList(result));
 	});
-	raylibModule.SetValue("GetModelAnimationPose", i.GetFunc());
+	raylibModule.SetValue("GetModelAnimationPose", WithNote(i,
+		"Get an animation's bone poses at one keyframe: a list of {translation, rotation, scale}, "
+		"one per bone (in the order of the model's bones list). Returns null if the frame is out "
+		"of range"));
 
 	// Collision detection
 
@@ -1854,7 +1969,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		float radius2 = context.GetArg(3).FloatValue();
 		return IntrinsicResult(CheckCollisionSpheres(center1, radius1, center2, radius2));
 	});
-	raylibModule.SetValue("CheckCollisionSpheres", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionSpheres", WithNote(i,
+		"Check collision between two spheres"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("box1");
@@ -1864,7 +1980,9 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		BoundingBox box2 = ValueToBoundingBox(context.GetArg(1));
 		return IntrinsicResult(CheckCollisionBoxes(box1, box2));
 	});
-	raylibModule.SetValue("CheckCollisionBoxes", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionBoxes", WithNote(i,
+		"Check collision between two boxes NOTE: Boxes are defined by two points minimum and "
+		"maximum"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("box");
@@ -1876,7 +1994,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		float radius = context.GetArg(2).FloatValue();
 		return IntrinsicResult(CheckCollisionBoxSphere(box, center, radius));
 	});
-	raylibModule.SetValue("CheckCollisionBoxSphere", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionBoxSphere", WithNote(i,
+		"Check collision between box and sphere"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -1889,7 +2008,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		RayCollision result = GetRayCollisionSphere(ray, center, radius);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
-	raylibModule.SetValue("GetRayCollisionSphere", i.GetFunc());
+	raylibModule.SetValue("GetRayCollisionSphere", WithNote(i,
+		"Get collision info between ray and sphere"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -1900,7 +2020,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		RayCollision result = GetRayCollisionBox(ray, box);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
-	raylibModule.SetValue("GetRayCollisionBox", i.GetFunc());
+	raylibModule.SetValue("GetRayCollisionBox", WithNote(i,
+		"Get collision info between ray and box"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -1913,7 +2034,8 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		RayCollision result = GetRayCollisionMesh(ray, mesh, transform);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
-	raylibModule.SetValue("GetRayCollisionMesh", i.GetFunc());
+	raylibModule.SetValue("GetRayCollisionMesh", WithNote(i,
+		"Get collision info between ray and mesh"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -1928,7 +2050,10 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		RayCollision result = GetRayCollisionTriangle(ray, p1, p2, p3);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
-	raylibModule.SetValue("GetRayCollisionTriangle", i.GetFunc());
+	raylibModule.SetValue("GetRayCollisionTriangle", WithNote(i,
+		"Get collision info between ray and triangle NOTE: The points are expected to be in "
+		"counter-clockwise winding NOTE: Based on "
+		"https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("ray");
@@ -1945,5 +2070,7 @@ void AddRModelsMethods(ValueDict& raylibModule) {
 		RayCollision result = GetRayCollisionQuad(ray, p1, p2, p3, p4);
 		return IntrinsicResult(RayCollisionToValue(result));
 	});
-	raylibModule.SetValue("GetRayCollisionQuad", i.GetFunc());
+	raylibModule.SetValue("GetRayCollisionQuad", WithNote(i,
+		"Get collision info between ray and quad NOTE: The points are expected to be in "
+		"counter-clockwise winding"));
 }

@@ -108,7 +108,6 @@ Quadtree* TreeArg(Context context, const char* fn, Value& err) {
 void Fill(ValueDict& m) {
 	Intrinsic f;
 
-	// Create a new quadtree covering the rectangle x, y, width, height; returns the tree
 	f = Intrinsic::Create("");
 	f.AddParam("x", Value(0));
 	f.AddParam("y", Value(0));
@@ -120,9 +119,9 @@ void Fill(ValueDict& m) {
 			context.GetVar("width").DoubleValue(), context.GetVar("height").DoubleValue());
 		return IntrinsicResult(Value::NewHandle(t, &FreeTree));
 	});
-	m.SetValue(String("create"), f.GetFunc());
+	m.SetValue("create", WithNote(f,
+		"Create a new quadtree covering the rectangle x, y, width, height; returns the tree"));
 
-	// Add a point with the given id (any number) to the tree; returns 1 if the point was stored, 0 if outside the tree's bounds
 	f = Intrinsic::Create("");
 	f.AddParam("tree");
 	f.AddParam("id");
@@ -135,9 +134,10 @@ void Fill(ValueDict& m) {
 		Pt p{context.GetVar("id").DoubleValue(), context.GetVar("x").DoubleValue(), context.GetVar("y").DoubleValue()};
 		return IntrinsicResult(Value(t->Insert(p) ? 1 : 0));
 	});
-	m.SetValue(String("insert"), f.GetFunc());
+	m.SetValue("insert", WithNote(f,
+		"Add a point with the given id (any number) to the tree; returns 1 if the point was "
+		"stored, 0 if outside the tree's bounds"));
 
-	// Return a list of the ids of all points inside the rectangle x, y, width, height
 	f = Intrinsic::Create("");
 	f.AddParam("tree");
 	f.AddParam("x");
@@ -153,9 +153,9 @@ void Fill(ValueDict& m) {
 			context.GetVar("width").DoubleValue(), context.GetVar("height").DoubleValue(), out);
 		return IntrinsicResult(DynamicList(out));
 	});
-	m.SetValue(String("query"), f.GetFunc());
+	m.SetValue("query", WithNote(f,
+		"Return a list of the ids of all points inside the rectangle x, y, width, height"));
 
-	// Return the number of points stored in the tree
 	f = Intrinsic::Create("");
 	f.AddParam("tree");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -164,9 +164,9 @@ void Fill(ValueDict& m) {
 		if (t == nullptr) return IntrinsicResult(err);
 		return IntrinsicResult(Value(t->count));
 	});
-	m.SetValue(String("count"), f.GetFunc());
+	m.SetValue("count", WithNote(f,
+		"Return the number of points stored in the tree"));
 
-	// Remove all points from the tree, keeping its bounds
 	f = Intrinsic::Create("");
 	f.AddParam("tree");
 	f.set_Code(INTRINSIC_LAMBDA {
@@ -177,7 +177,8 @@ void Fill(ValueDict& m) {
 		t->Reset(root.x, root.y, root.w, root.h);
 		return IntrinsicResult::Null;
 	});
-	m.SetValue(String("clear"), f.GetFunc());
+	m.SetValue("clear", WithNote(f,
+		"Remove all points from the tree, keeping its bounds"));
 }
 
 bool Init() {

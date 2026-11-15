@@ -8,6 +8,7 @@
 #include "RaylibTypes.h"
 #include "RawData.h"
 #include "miniscript.h"
+#include "macros.h"
 #include <cstdlib>
 #include <cstring>
 
@@ -20,8 +21,6 @@ static IntrinsicResult raiseError(Context context, const char* msg) {
 	return IntrinsicResult::Null;
 }
 
-// Macro to reduce boilerplate
-#define INTRINSIC_LAMBDA [](Context context, IntrinsicResult partialResult) -> IntrinsicResult
 
 // Check if this system is little endian
 static bool IsSystemLittleEndian() {
@@ -371,7 +370,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(Value(data->length));
     });
     // get the size of this RawData object in bytes
-    rawDataClass.SetValue(String("len"), f.GetFunc());
+    rawDataClass.SetValue("len", WithNote(f,
+    	"get the size of this RawData object in bytes"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -380,7 +380,8 @@ const Value& RawDataClass() {
         return ResizeRawData(context, context.GetArg(1).IntValue());
     });
     // resize this RawData object to the given number of bytes
-    rawDataClass.SetValue(String("resize"), f.GetFunc());
+    rawDataClass.SetValue("resize", WithNote(f,
+    	"resize this RawData object to the given number of bytes"));
 
     // rd.len = n
     //
@@ -396,7 +397,8 @@ const Value& RawDataClass() {
         return ResizeRawData(context, v.IntValue());
     });
     // set the size of this RawData object in bytes (same as resize)
-    rawDataClass.SetValue(String("len="), f.GetFunc());
+    rawDataClass.SetValue("len=", WithNote(f,
+    	"set the size of this RawData object in bytes (same as resize)"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -412,7 +414,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetUInt8(offset));
     });
     // get unsigned byte (0-255) at the given byte offset
-    rawDataClass.SetValue(String("byte"), f.GetFunc());
+    rawDataClass.SetValue("byte", WithNote(f,
+    	"get unsigned byte (0-255) at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -431,7 +434,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set unsigned byte at the given byte offset
-    rawDataClass.SetValue(String("setByte"), f.GetFunc());
+    rawDataClass.SetValue("setByte", WithNote(f,
+    	"set unsigned byte at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -447,7 +451,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetInt8(offset));
     });
     // get signed byte (-128 to 127) at the given byte offset
-    rawDataClass.SetValue(String("sbyte"), f.GetFunc());
+    rawDataClass.SetValue("sbyte", WithNote(f,
+    	"get signed byte (-128 to 127) at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -466,7 +471,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set signed byte at the given byte offset
-    rawDataClass.SetValue(String("setSbyte"), f.GetFunc());
+    rawDataClass.SetValue("setSbyte", WithNote(f,
+    	"set signed byte at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -482,7 +488,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetUInt16(offset));
     });
     // get unsigned 16-bit integer (0-65535) at the given byte offset
-    rawDataClass.SetValue(String("ushort"), f.GetFunc());
+    rawDataClass.SetValue("ushort", WithNote(f,
+    	"get unsigned 16-bit integer (0-65535) at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -501,7 +508,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set unsigned 16-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setUshort"), f.GetFunc());
+    rawDataClass.SetValue("setUshort", WithNote(f,
+    	"set unsigned 16-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -517,7 +525,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetInt16(offset));
     });
     // get signed 16-bit integer (-32768 to 32767) at the given byte offset
-    rawDataClass.SetValue(String("short"), f.GetFunc());
+    rawDataClass.SetValue("short", WithNote(f,
+    	"get signed 16-bit integer (-32768 to 32767) at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -536,7 +545,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set signed 16-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setShort"), f.GetFunc());
+    rawDataClass.SetValue("setShort", WithNote(f,
+    	"set signed 16-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -552,7 +562,8 @@ const Value& RawDataClass() {
         return IntrinsicResult((double)data->GetUInt32(offset));
     });
     // get unsigned 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("uint"), f.GetFunc());
+    rawDataClass.SetValue("uint", WithNote(f,
+    	"get unsigned 32-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -571,7 +582,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set unsigned 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setUint"), f.GetFunc());
+    rawDataClass.SetValue("setUint", WithNote(f,
+    	"set unsigned 32-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -587,7 +599,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetInt32(offset));
     });
     // get signed 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("int"), f.GetFunc());
+    rawDataClass.SetValue("int", WithNote(f,
+    	"get signed 32-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -606,7 +619,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set signed 32-bit integer at the given byte offset
-    rawDataClass.SetValue(String("setInt"), f.GetFunc());
+    rawDataClass.SetValue("setInt", WithNote(f,
+    	"set signed 32-bit integer at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -622,7 +636,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetFloat(offset));
     });
     // get 32-bit float at the given byte offset
-    rawDataClass.SetValue(String("float"), f.GetFunc());
+    rawDataClass.SetValue("float", WithNote(f,
+    	"get 32-bit float at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -641,7 +656,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set 32-bit float at the given byte offset
-    rawDataClass.SetValue(String("setFloat"), f.GetFunc());
+    rawDataClass.SetValue("setFloat", WithNote(f,
+    	"set 32-bit float at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -657,7 +673,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetDouble(offset));
     });
     // get 64-bit double at the given byte offset
-    rawDataClass.SetValue(String("double"), f.GetFunc());
+    rawDataClass.SetValue("double", WithNote(f,
+    	"get 64-bit double at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -676,7 +693,8 @@ const Value& RawDataClass() {
         return IntrinsicResult::Null;
     });
     // set 64-bit double at the given byte offset
-    rawDataClass.SetValue(String("setDouble"), f.GetFunc());
+    rawDataClass.SetValue("setDouble", WithNote(f,
+    	"set 64-bit double at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -695,7 +713,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->GetUTF8(offset, byteCount));
     });
     // get UTF-8 string from the given byte offset (bytes=-1 reads to end)
-    rawDataClass.SetValue(String("utf8"), f.GetFunc());
+    rawDataClass.SetValue("utf8", WithNote(f,
+    	"get UTF-8 string from the given byte offset (bytes=-1 reads to end)"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -715,7 +734,8 @@ const Value& RawDataClass() {
         return IntrinsicResult(data->SetUTF8(offset, value));
     });
     // write a UTF-8 string at the given byte offset; returns bytes written
-    rawDataClass.SetValue(String("setUtf8"), f.GetFunc());
+    rawDataClass.SetValue("setUtf8", WithNote(f,
+    	"write a UTF-8 string at the given byte offset; returns bytes written"));
 
     // Register the class under a short name, so str(rd) reports
     // {"__isa": RawData, ...} rather than dumping every method.

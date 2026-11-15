@@ -18,6 +18,7 @@
 
 #include "HttpModule.h"
 #include "miniscript.h"
+#include "macros.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -434,7 +435,8 @@ void AddHttpIntrinsics() {
 	i.AddParam("data");
 	i.AddParam("headers");
 	i.set_Code(intrinsic_http_post);
-	httpMap.SetValue(String("post"), i.GetFunc());
+	httpMap.SetValue("post", WithNote(i,
+		"Send an HTTP POST request; returns the response body as a string"));
 
 	// Wrap and root the module now that it is built (see httpMapValue above).
 	httpMapValue = GCManager::NewMapFromDict(httpMap);

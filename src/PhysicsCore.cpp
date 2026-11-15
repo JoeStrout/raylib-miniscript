@@ -31,6 +31,7 @@
 #include "PhysicsCore.h"
 #include "Matrix.h"
 #include "miniscript.h"
+#include "macros.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -41,7 +42,6 @@
 
 namespace MiniScript {
 
-#define INTRINSIC_LAMBDA [](Context context, IntrinsicResult partialResult) -> IntrinsicResult
 
 //--------------------------------------------------------------------------------
 // Contact matrix layout
@@ -985,7 +985,9 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		if (!UpdateGeometry(shapes, verts, pos, mask, &err)) return IntrinsicResult(err);
 		return IntrinsicResult::Null;
 	});
-	physicsModule.SetValue(String("updateGeometry"), f.GetFunc());
+	physicsModule.SetValue("updateGeometry", WithNote(f,
+		"Transform shapes into world coordinates and compute their bounds, for the bodies in "
+		"bodyMask"));
 
 	// physicsCore.findPairs shapes, invMass, margin, pairs -> count
 	//
@@ -1015,7 +1017,8 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		if (count < 0) return IntrinsicResult(err);
 		return IntrinsicResult(Value(count));
 	});
-	physicsModule.SetValue(String("findPairs"), f.GetFunc());
+	physicsModule.SetValue("findPairs", WithNote(f,
+		"Find the pairs of shapes whose bounding boxes overlap and that may collide"));
 
 	// physicsCore.solveContacts contacts, pos, vel, invMass, dt, iterations,
 	//   biasFactor, slop, restThreshold
@@ -1056,7 +1059,8 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		}
 		return IntrinsicResult::Null;
 	});
-	physicsModule.SetValue(String("solveContacts"), f.GetFunc());
+	physicsModule.SetValue("solveContacts", WithNote(f,
+		"Solve contact impulses for one step, updating vel and the contacts' ColPn/ColPt in place"));
 
 	// physicsCore.collidePairs pairs, shapes, verts, margin, prevContacts, contacts -> touching
 	//
@@ -1094,7 +1098,9 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		if (touching < 0) return IntrinsicResult(err);
 		return IntrinsicResult(Value(touching));
 	});
-	physicsModule.SetValue(String("collidePairs"), f.GetFunc());
+	physicsModule.SetValue("collidePairs", WithNote(f,
+		"Collide shape pairs into a contact matrix (one row per point), warm-started from "
+		"prevContacts"));
 }
 
 } // namespace MiniScript

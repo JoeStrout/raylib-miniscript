@@ -28,20 +28,23 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		if (!wasOpen && IsAudioDeviceReady()) BumpAudioGeneration();
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("InitAudioDevice", i.GetFunc());
+	raylibModule.SetValue("InitAudioDevice", WithNote(i,
+		"Initialize audio device"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		CloseAudioDevice();
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("CloseAudioDevice", i.GetFunc());
+	raylibModule.SetValue("CloseAudioDevice", WithNote(i,
+		"Close the audio device for all contexts"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(IsAudioDeviceReady());
 	});
-	raylibModule.SetValue("IsAudioDeviceReady", i.GetFunc());
+	raylibModule.SetValue("IsAudioDeviceReady", WithNote(i,
+		"Check if device has been initialized successfully"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("volume", Value(1.0));
@@ -50,14 +53,16 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetMasterVolume(volume);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMasterVolume", i.GetFunc());
+	raylibModule.SetValue("SetMasterVolume", WithNote(i,
+		"Set master volume (listener)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		float volume = GetMasterVolume();
 		return IntrinsicResult(volume);
 	});
-	raylibModule.SetValue("GetMasterVolume", i.GetFunc());
+	raylibModule.SetValue("GetMasterVolume", WithNote(i,
+		"Get master volume (listener)"));
 
 	// Wave loading
 
@@ -71,7 +76,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	});
-	raylibModule.SetValue("LoadWave", i.GetFunc());
+	raylibModule.SetValue("LoadWave", WithNote(i,
+		"Load wave data from file"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileType");
@@ -88,7 +94,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	});
-	raylibModule.SetValue("LoadWaveFromMemory", i.GetFunc());
+	raylibModule.SetValue("LoadWaveFromMemory", WithNote(i,
+		"Load wave from memory buffer, fileType refers to extension: i.e. \".wav\" WARNING: File "
+		"extension must be provided in lower-case"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("frameCount");
@@ -169,7 +177,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcWave++;
 		return IntrinsicResult(WaveToValue(wave));
 	});
-	raylibModule.SetValue("CreateWave", i.GetFunc());
+	raylibModule.SetValue("CreateWave", WithNote(i,
+		"Create a Wave from samples: frameCount frames at sampleRate Hz, with sampleSize 8, 16 or "
+		"32 (float) bits and the given number of channels.  samples is a RawData of exactly that "
+		"size, or a list of frameCount * channels values.  Returns null if they don't agree"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -177,7 +188,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Wave wave = ValueToWave(context.GetArg(0));
 		return IntrinsicResult(IsWaveValid(wave));
 	});
-	raylibModule.SetValue("IsWaveValid", i.GetFunc());
+	raylibModule.SetValue("IsWaveValid", WithNote(i,
+		"Check if wave data is valid (data loaded and parameters)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -188,7 +200,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcWave--;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadWave", i.GetFunc());
+	raylibModule.SetValue("UnloadWave", WithNote(i,
+		"Unload wave data"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -209,7 +222,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult(RawDataToValue(data));
 	});
-	raylibModule.SetValue("LoadWaveSamples", i.GetFunc());
+	raylibModule.SetValue("LoadWaveSamples", WithNote(i,
+		"Load samples data from wave as a floats array NOTE 1: Returned sample values are "
+		"normalized to range [-1..1] NOTE 2: Sample data allocated should be freed with "
+		"UnloadWaveSamples()"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("samples");
@@ -234,7 +250,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadWaveSamples", i.GetFunc());
+	raylibModule.SetValue("UnloadWaveSamples", WithNote(i,
+		"Unload samples data loaded with LoadWaveSamples()"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -245,7 +262,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		if (!fs::HostPathForWrite(context.GetArg(1), path)) return IntrinsicResult::Zero;
 		return IntrinsicResult(ExportWave(wave, path.c_str()));
 	});
-	raylibModule.SetValue("ExportWave", i.GetFunc());
+	raylibModule.SetValue("ExportWave", WithNote(i,
+		"Export wave data to file"));
 
 	// Wave manipulation
 
@@ -257,7 +275,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcWave++;
 		return IntrinsicResult(WaveToValue(copy));
 	});
-	raylibModule.SetValue("WaveCopy", i.GetFunc());
+	raylibModule.SetValue("WaveCopy", WithNote(i,
+		"Copy a wave to a new wave"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -274,7 +293,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		UpdateWaveValue(waveValue);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("WaveCrop", i.GetFunc());
+	raylibModule.SetValue("WaveCrop", WithNote(i,
+		"Crop a wave to defined frames range NOTE: Security check in case of out-of-range"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -293,7 +313,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		UpdateWaveValue(waveValue);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("WaveFormat", i.GetFunc());
+	raylibModule.SetValue("WaveFormat", WithNote(i,
+		"Convert wave data to desired format"));
 
 	// Music loading and control
 
@@ -307,7 +328,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcMusic++;
 		return IntrinsicResult(MusicToValue(music));
 	});
-	raylibModule.SetValue("LoadMusicStream", i.GetFunc());
+	raylibModule.SetValue("LoadMusicStream", WithNote(i,
+		"Load music stream from file"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileType");
@@ -319,7 +341,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		// For now, we'll skip implementing this
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("LoadMusicStreamFromMemory", i.GetFunc());
+	raylibModule.SetValue("LoadMusicStreamFromMemory", WithNote(i,
+		"Load music stream from memory buffer, fileType refers to extension: i.e. \".wav\" "
+		"WARNING: File extension must be provided in lower-case"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -327,7 +351,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Music music = ValueToMusic(context.GetArg(0));
 		return IntrinsicResult(IsMusicValid(music));
 	});
-	raylibModule.SetValue("IsMusicValid", i.GetFunc());
+	raylibModule.SetValue("IsMusicValid", WithNote(i,
+		"Check if music stream is valid (context and buffers initialized)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -338,7 +363,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcMusic--;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadMusicStream", i.GetFunc());
+	raylibModule.SetValue("UnloadMusicStream", WithNote(i,
+		"Unload music stream"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -347,7 +373,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PlayMusicStream(music);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PlayMusicStream", i.GetFunc());
+	raylibModule.SetValue("PlayMusicStream", WithNote(i,
+		"Start music playing (open stream) from beginning"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -355,7 +382,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Music music = ValueToMusic(context.GetArg(0));
 		return IntrinsicResult(IsMusicStreamPlaying(music));
 	});
-	raylibModule.SetValue("IsMusicStreamPlaying", i.GetFunc());
+	raylibModule.SetValue("IsMusicStreamPlaying", WithNote(i,
+		"Check if any music is playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -366,7 +394,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		UpdateMusicStream(music);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateMusicStream", i.GetFunc());
+	raylibModule.SetValue("UpdateMusicStream", WithNote(i,
+		"Update (re-fill) music buffers if data already processed"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -375,7 +404,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		StopMusicStream(music);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("StopMusicStream", i.GetFunc());
+	raylibModule.SetValue("StopMusicStream", WithNote(i,
+		"Stop music playing (close stream)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -384,7 +414,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PauseMusicStream(music);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PauseMusicStream", i.GetFunc());
+	raylibModule.SetValue("PauseMusicStream", WithNote(i,
+		"Pause music playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -393,7 +424,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		ResumeMusicStream(music);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ResumeMusicStream", i.GetFunc());
+	raylibModule.SetValue("ResumeMusicStream", WithNote(i,
+		"Resume music playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -404,7 +436,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SeekMusicStream(music, position);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SeekMusicStream", i.GetFunc());
+	raylibModule.SetValue("SeekMusicStream", WithNote(i,
+		"Seek music to a certain position (in seconds)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -415,7 +448,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetMusicVolume(music, volume);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMusicVolume", i.GetFunc());
+	raylibModule.SetValue("SetMusicVolume", WithNote(i,
+		"Set volume for music"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -426,7 +460,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetMusicPitch(music, pitch);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMusicPitch", i.GetFunc());
+	raylibModule.SetValue("SetMusicPitch", WithNote(i,
+		"Set pitch for music"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -437,7 +472,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetMusicPan(music, pan);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetMusicPan", i.GetFunc());
+	raylibModule.SetValue("SetMusicPan", WithNote(i,
+		"Set pan for music"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -446,7 +482,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		float length = GetMusicTimeLength(music);
 		return IntrinsicResult(Value(length));
 	});
-	raylibModule.SetValue("GetMusicTimeLength", i.GetFunc());
+	raylibModule.SetValue("GetMusicTimeLength", WithNote(i,
+		"Get music time length (in seconds)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("music");
@@ -455,7 +492,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		float timePlayed = GetMusicTimePlayed(music);
 		return IntrinsicResult(Value(timePlayed));
 	});
-	raylibModule.SetValue("GetMusicTimePlayed", i.GetFunc());
+	raylibModule.SetValue("GetMusicTimePlayed", WithNote(i,
+		"Get current music time played (in seconds)"));
 
 	// Sound loading and control
 
@@ -469,7 +507,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcSound++;
 		return IntrinsicResult(SoundToValue(sound));
 	});
-	raylibModule.SetValue("LoadSound", i.GetFunc());
+	raylibModule.SetValue("LoadSound", WithNote(i,
+		"Load sound from file NOTE: The entire file is loaded to memory to be played (no-streaming)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("wave");
@@ -479,7 +518,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcSound++;
 		return IntrinsicResult(SoundToValue(sound));
 	});
-	raylibModule.SetValue("LoadSoundFromWave", i.GetFunc());
+	raylibModule.SetValue("LoadSoundFromWave", WithNote(i,
+		"Load sound from wave data NOTE: Wave data must be unallocated manually"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("source");
@@ -494,7 +534,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		result.GetDict().SetValue(CACHED_KEY("_source"), context.GetArg(0));
 		return IntrinsicResult(result);
 	});
-	raylibModule.SetValue("LoadSoundAlias", i.GetFunc());
+	raylibModule.SetValue("LoadSoundAlias", WithNote(i,
+		"Load sound alias, clone sound from existing sound data, clone does not own wave data "
+		"NOTE: Wave data must be unallocated manually and will be shared across all clones"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -502,7 +544,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Sound sound = ValueToSound(context.GetArg(0));
 		return IntrinsicResult(IsSoundValid(sound));
 	});
-	raylibModule.SetValue("IsSoundValid", i.GetFunc());
+	raylibModule.SetValue("IsSoundValid", WithNote(i,
+		"Check if sound is valid (data loaded and buffers initialized)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -513,9 +556,9 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcSound--;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadSound", i.GetFunc());
+	raylibModule.SetValue("UnloadSound", WithNote(i,
+		"Unload sound"));
 
-	// API: Unload a sound alias (does not deallocate sample data)
 	i = Intrinsic::Create("");
 	i.AddParam("alias");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -525,7 +568,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcSound--;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadSoundAlias", i.GetFunc());
+	raylibModule.SetValue("UnloadSoundAlias", WithNote(i,
+		"Unload a sound alias (does not deallocate sample data)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -534,7 +578,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PlaySound(sound);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PlaySound", i.GetFunc());
+	raylibModule.SetValue("PlaySound", WithNote(i,
+		"Play a sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -543,7 +588,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		StopSound(sound);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("StopSound", i.GetFunc());
+	raylibModule.SetValue("StopSound", WithNote(i,
+		"Stop reproducing a sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -552,7 +598,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PauseSound(sound);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PauseSound", i.GetFunc());
+	raylibModule.SetValue("PauseSound", WithNote(i,
+		"Pause a sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -561,7 +608,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		ResumeSound(sound);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ResumeSound", i.GetFunc());
+	raylibModule.SetValue("ResumeSound", WithNote(i,
+		"Resume a paused sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -569,7 +617,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		Sound sound = ValueToSound(context.GetArg(0));
 		return IntrinsicResult(IsSoundPlaying(sound));
 	});
-	raylibModule.SetValue("IsSoundPlaying", i.GetFunc());
+	raylibModule.SetValue("IsSoundPlaying", WithNote(i,
+		"Check if sound is playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -593,7 +642,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateSound", i.GetFunc());
+	raylibModule.SetValue("UpdateSound", WithNote(i,
+		"Update sound buffer with new data PARAMS: [data], format must match "
+		"sound.stream.sampleSize, default 32 bit float - stereo PARAMS: [frameCount] must not "
+		"exceed sound.frameCount"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -604,7 +656,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetSoundVolume(sound, volume);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetSoundVolume", i.GetFunc());
+	raylibModule.SetValue("SetSoundVolume", WithNote(i,
+		"Set volume for a sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -615,7 +668,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetSoundPitch(sound, pitch);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetSoundPitch", i.GetFunc());
+	raylibModule.SetValue("SetSoundPitch", WithNote(i,
+		"Set pitch for a sound"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sound");
@@ -626,7 +680,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetSoundPan(sound, pan);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetSoundPan", i.GetFunc());
+	raylibModule.SetValue("SetSoundPan", WithNote(i,
+		"Set pan for a sound"));
 
 	// AudioStream management
 
@@ -639,7 +694,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcAudioStream++;
 		return IntrinsicResult(AudioStreamToValue(stream));
 	});
-	raylibModule.SetValue("LoadAudioStream", i.GetFunc());
+	raylibModule.SetValue("LoadAudioStream", WithNote(i,
+		"Load audio stream (to stream audio pcm data)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -647,7 +703,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamValid(stream));
 	});
-	raylibModule.SetValue("IsAudioStreamValid", i.GetFunc());
+	raylibModule.SetValue("IsAudioStreamValid", WithNote(i,
+		"Check if an audio stream is valid (buffers initialized)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -658,7 +715,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		rcAudioStream--;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UnloadAudioStream", i.GetFunc());
+	raylibModule.SetValue("UnloadAudioStream", WithNote(i,
+		"Unload audio stream and free memory"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -686,7 +744,10 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("UpdateAudioStream", i.GetFunc());
+	raylibModule.SetValue("UpdateAudioStream", WithNote(i,
+		"Update audio stream buffers with data NOTE 1: Only updates one buffer of the stream "
+		"source: dequeue -> update -> queue NOTE 2: To dequeue a buffer it needs to be processed: "
+		"IsAudioStreamProcessed()"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -694,7 +755,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamProcessed(stream));
 	});
-	raylibModule.SetValue("IsAudioStreamProcessed", i.GetFunc());
+	raylibModule.SetValue("IsAudioStreamProcessed", WithNote(i,
+		"Check if any audio stream buffers requires refill"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -703,7 +765,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PlayAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PlayAudioStream", i.GetFunc());
+	raylibModule.SetValue("PlayAudioStream", WithNote(i,
+		"Play audio stream"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -712,7 +775,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		PauseAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("PauseAudioStream", i.GetFunc());
+	raylibModule.SetValue("PauseAudioStream", WithNote(i,
+		"Play audio stream"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -721,7 +785,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		ResumeAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("ResumeAudioStream", i.GetFunc());
+	raylibModule.SetValue("ResumeAudioStream", WithNote(i,
+		"Resume audio stream playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -729,7 +794,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		AudioStream stream = ValueToAudioStream(context.GetArg(0));
 		return IntrinsicResult(IsAudioStreamPlaying(stream));
 	});
-	raylibModule.SetValue("IsAudioStreamPlaying", i.GetFunc());
+	raylibModule.SetValue("IsAudioStreamPlaying", WithNote(i,
+		"Check if audio stream is playing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -738,7 +804,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		StopAudioStream(stream);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("StopAudioStream", i.GetFunc());
+	raylibModule.SetValue("StopAudioStream", WithNote(i,
+		"Stop audio stream"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -749,7 +816,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetAudioStreamVolume(stream, volume);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetAudioStreamVolume", i.GetFunc());
+	raylibModule.SetValue("SetAudioStreamVolume", WithNote(i,
+		"Set volume for audio stream (1.0 is max level)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -760,7 +828,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetAudioStreamPitch(stream, pitch);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetAudioStreamPitch", i.GetFunc());
+	raylibModule.SetValue("SetAudioStreamPitch", WithNote(i,
+		"Set pitch for audio stream (1.0 is base level)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("stream");
@@ -771,7 +840,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetAudioStreamPan(stream, pan);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetAudioStreamPan", i.GetFunc());
+	raylibModule.SetValue("SetAudioStreamPan", WithNote(i,
+		"Set pan for audio stream"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("size", Value(4096));
@@ -780,5 +850,6 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 		SetAudioStreamBufferSizeDefault(size);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetAudioStreamBufferSizeDefault", i.GetFunc());
+	raylibModule.SetValue("SetAudioStreamBufferSizeDefault", WithNote(i,
+		"Default size for new audio streams"));
 }

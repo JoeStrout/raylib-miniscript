@@ -59,8 +59,8 @@
 |Vector3Negate |**v**=[0, 0, 0] |Negate provided vector (invert direction) |
 |Vector3Divide |**v1**=[0, 0, 0], **v2**=[1, 1, 1] |Divide vector by vector |
 |Vector3Normalize |**v**=[0, 0, 0] |Normalize provided vector |
-|Vector3Project |**v1**=[0, 0, 0], **v2**=[0, 1, 0] | |
-|Vector3Reject |**v1**=[0, 0, 0], **v2**=[0, 1, 0] | |
+|Vector3Project |**v1**=[0, 0, 0], **v2**=[0, 1, 0] |Calculate the projection of v1 onto v2 |
+|Vector3Reject |**v1**=[0, 0, 0], **v2**=[0, 1, 0] |Calculate the rejection of v1 from v2: the part of v1 perpendicular to v2 |
 |Vector3OrthoNormalize |**v1**=[1, 0, 0], **v2**=[0, 1, 0] |Orthonormalize provided vectors Makes vectors normalized and orthogonal to each other Gram-Schmidt function implementation |
 |Vector3Transform |**v**=[0, 0, 0], **mat**=MatrixIdentity |Transforms a Vector3 by a given Matrix |
 |Vector3RotateByQuaternion |**v**=[0, 0, 0], **q**=QuaternionIdentity |Transform a vector by quaternion rotation |
@@ -184,7 +184,7 @@
 |DrawTriangleLinesEx |**v1**, **v2**, **v3**, **thick**=1.0, **color**=WHITE |Draw a triangle using lines with thickness NOTE: Vertex must be provided in counter-clockwise order |
 |DrawPoly |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **color**=WHITE |Draw a polygon of n sides |
 |DrawPolyLines |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **color**=WHITE |Draw a polygon outline of n sides |
-|DrawPolyLinesEx |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **thick**=1, **color**=WHITE | |
+|DrawPolyLinesEx |**center**=[100, 100], **sides**=6, **radius**=32, **rotation**=0, **thick**=1, **color**=WHITE |Draw the outline of a regular polygon of n sides, with line thickness |
 |CheckCollisionRecs |**rec1**, **rec2** |Check collision between two rectangles |
 |CheckCollisionCircles |**center1**, **radius1**, **center2**, **radius2** |Check collision between two circles |
 |CheckCollisionCircleRec |**center**, **radius**, **rec** |Check collision between circle and rectangle NOTE: Reviewed version to take into account corner limit case |
@@ -296,14 +296,14 @@
 |UnloadMaterial |**material** |Unload material from memory. Also unloads the shader and every texture map set on it, so don't unload those separately |
 |SetMaterialTexture |**material**, **mapType**, **texture** |Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) NOTE: Previous texture should be manually unloaded. The material owns the new texture: UnloadMaterial unloads it |
 |SetMaterialColor |**material**, **mapType**, **color**=WHITE |Set the color of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of a material. The diffuse color tints whatever is drawn with the material, multiplied with its texture. |
-|GetMaterialShader |**material** | |
-|SetMaterialShader |**material**, **shader** | |
-|GetMaterialShaderLocation |**material**, **uniformName** | |
-|GetMaterialShaderLocationAttrib |**material**, **attribName** | |
-|SetMaterialShaderValue |**material**, **locIndex**, **value**, **uniformType**=SHADER_UNIFORM_FLOAT | |
-|SetMaterialShaderValueV |**material**, **locIndex**, **value**, **uniformType**=SHADER_UNIFORM_FLOAT, **count**=0 | |
-|SetMaterialShaderValueMatrix |**material**, **locIndex**, **mat** | |
-|SetMaterialShaderValueTexture |**material**, **locIndex**, **texture** | |
+|GetMaterialShader |**material** |Get the shader a material uses.  The material owns it: UnloadMaterial unloads it |
+|SetMaterialShader |**material**, **shader** |Set the shader a material uses.  The material takes ownership of it: UnloadMaterial unloads it |
+|GetMaterialShaderLocation |**material**, **uniformName** |Get the location of a uniform in a material's shader, or -1 |
+|GetMaterialShaderLocationAttrib |**material**, **attribName** |Get the location of a vertex attribute in a material's shader, or -1 |
+|SetMaterialShaderValue |**material**, **locIndex**, **value**, **uniformType**=SHADER_UNIFORM_FLOAT |Set a uniform in a material's shader.  value is a number, a list of components, or a RawData; uniformType is a SHADER_UNIFORM_ constant |
+|SetMaterialShaderValueV |**material**, **locIndex**, **value**, **uniformType**=SHADER_UNIFORM_FLOAT, **count**=0 |Set a uniform array in a material's shader, from a list (of numbers or of vectors) or a RawData.  If count is 0, it is the number of elements in the list, or 1 for a RawData |
+|SetMaterialShaderValueMatrix |**material**, **locIndex**, **mat** |Set a matrix uniform in a material's shader |
+|SetMaterialShaderValueTexture |**material**, **locIndex**, **texture** |Set a sampler2D uniform in a material's shader to a texture |
 |SetModelMeshMaterial |**model**, **meshId**, **materialId** |Set the material for a mesh |
 |SetModelMaterialShader |**model**, **materialIndex**, **shader** |Set the shader of one material of a model. Use this to shade a model with a custom shader; BeginShaderMode does not affect DrawModel. The script keeps ownership of the shader and must unload it with UnloadShader. |
 |SetModelMaterialTexture |**model**, **materialIndex**, **mapType**, **texture** |Set the texture of one map (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...) of one material of a model. The script keeps ownership of the texture and must unload it with UnloadTexture. |
@@ -415,7 +415,7 @@
 |LoadImageFromScreen | |Load image from screen buffer (screenshot) |
 |LoadImageFromTexture |**texture** |Load image from GPU texture data NOTE: Compressed texture formats not supported |
 |ExportImage |**image**, **fileName** |Export image data to file NOTE: File format depends on fileName extension |
-|ExportImageToMemory |**image**, **fileType** | |
+|ExportImageToMemory |**image**, **fileType** |Export an image to a RawData in the file format named by fileType (e.g. ".png"), or null on failure |
 |ExportImageAsCode |**image**, **fileName** |Export image as code file (.h) defining an array of bytes |
 |LoadImagePalette |**image**, **colorCount** |Load colors palette from image as a Color array (RGBA - 32bit) NOTE: Memory allocated should be freed using UnloadImagePalette() |
 |LoadImageRaw |**fileName**, **width**, **height**, **format**, **headerSize** |Load an image from RAW file data |
@@ -477,18 +477,18 @@
 |rlSetClipPlanes |**nearPlane**, **farPlane** |Set clip planes distances |
 |rlGetCullDistanceNear | |Get cull plane distance near |
 |rlGetCullDistanceFar | |Get cull plane distance far |
-|rlGetActiveFramebuffer | |Get the currently active render texture (fbo); 0 for the default framebuffer |
-|rlEnableBackfaceCulling | | |
-|rlDisableBackfaceCulling | | |
-|rlEnableDepthTest | | |
-|rlDisableDepthTest | | |
-|rlEnableDepthMask | | |
-|rlDisableDepthMask | | |
+|rlGetActiveFramebuffer | |Get the id of the framebuffer (fbo) currently bound for drawing, such as a render texture's; 0 for the default framebuffer (the screen) |
+|rlEnableBackfaceCulling | |Enable backface culling |
+|rlDisableBackfaceCulling | |Disable backface culling |
+|rlEnableDepthTest | |Enable depth testing |
+|rlDisableDepthTest | |Disable depth testing |
+|rlEnableDepthMask | |Enable writing to the depth buffer |
+|rlDisableDepthMask | |Disable writing to the depth buffer |
 |rlEnableWireMode | |Enable wire mode |
 |rlDisableWireMode | |Disable wire mode |
 |rlEnableSmoothLines | |Enable line aliasing |
 |rlDisableSmoothLines | |Disable line aliasing |
-|rlSetLineWidth |**width**=1 | |
+|rlSetLineWidth |**width**=1 |Set the width of drawn lines |
 |rlGetLineWidth | |Get the line drawing width |
 |rlDrawRenderBatchActive | |Update and draw internal render batch |
 |rlGetMatrixModelview | |Get internal modelview matrix |
@@ -512,13 +512,13 @@
 |rlColor4f |**x**=1, **y**=1, **z**=1, **w**=1 |Define one vertex (color) |
 |rlSetTexture |**id**=0 |Set current texture to use |
 |rlCheckRenderBatchLimit |**vCount** |Check internal buffer overflow for a given number of vertex and force a rlRenderBatch draw call if required |
-|rlEnableColorBlend | | |
-|rlDisableColorBlend | | |
-|rlColorMask |**r**=1, **g**=1, **b**=1, **a**=1 | |
+|rlEnableColorBlend | |Enable color blending |
+|rlDisableColorBlend | |Disable color blending |
+|rlColorMask |**r**=1, **g**=1, **b**=1, **a**=1 |Choose which color channels drawing writes to (true to write r, g, b and a) |
 |rlSetCullFace |**mode**=RL_CULL_FACE_BACK |Set face culling mode |
-|rlEnableScissorTest | | |
-|rlDisableScissorTest | | |
-|rlScissor |**x**, **y**, **width**, **height** | |
+|rlEnableScissorTest | |Enable the scissor test |
+|rlDisableScissorTest | |Disable the scissor test |
+|rlScissor |**x**, **y**, **width**, **height** |Set the scissor rectangle, in framebuffer pixels from the bottom left (used while the scissor test is enabled) |
 |rlEnablePointMode | |Enable point mode |
 |rlDisablePointMode | |Disable point mode |
 |rlEnableStereoRender | |Enable stereo rendering |
@@ -535,10 +535,10 @@
 |rlGetFramebufferWidth | |Get default framebuffer width |
 |rlSetFramebufferHeight |**height** |Set current framebuffer height |
 |rlGetFramebufferHeight | |Get default framebuffer height |
-|rlGetTextureIdDefault | | |
-|rlGetShaderIdDefault | | |
+|rlGetTextureIdDefault | |Get the id of rlgl's default texture (1x1 white) |
+|rlGetShaderIdDefault | |Get the id of rlgl's default shader |
 |rlGetShaderLocsDefault | |Get default shader locs |
-|rlGetPixelFormatName |**format** | |
+|rlGetPixelFormatName |**format** |Get the name of a PIXELFORMAT_ constant (e.g. "R8G8B8A8") |
 |rlActiveTextureSlot |**slot**=0 |Select and active a texture slot |
 |rlEnableTexture |**id** |Enable texture |
 |rlDisableTexture | |Disable texture |
@@ -565,9 +565,9 @@
 |rlDisableVertexBufferElement | |Disable vertex buffer element (VBO element) |
 |rlEnableVertexAttribute |**index** |Enable vertex attribute index |
 |rlDisableVertexAttribute |**index** |Disable vertex attribute index |
-|rlLoadVertexArray | | |
-|rlLoadVertexBuffer |**buffer**, **size**=0, **dynamic**=0 |size <= 0 means the whole RawData. |
-|rlLoadVertexBufferElement |**buffer**, **size**=0, **dynamic**=0 | |
+|rlLoadVertexArray | |Create a vertex array object (VAO), if supported; returns its id, or 0 |
+|rlLoadVertexBuffer |**buffer**, **size**=0, **dynamic**=0 |Create a vertex buffer object (VBO) from a RawData and return its id.  buffer may be null to allocate size bytes without filling them; size <= 0 uses the whole RawData.  dynamic hints that the data will be updated often |
+|rlLoadVertexBufferElement |**buffer**, **size**=0, **dynamic**=0 |Load an element (index) buffer from a RawData; size, if not 0, uses only that many bytes.  Returns its id |
 |rlUpdateVertexBuffer |**bufferId**, **data**, **dataSize**=0, **offset**=0 |Update vertex buffer with new data NOTE: dataSize and offset must be provided in bytes |
 |rlUpdateVertexBufferElements |**id**, **data**, **dataSize**=0, **offset**=0 |Update vertex buffer elements with new data NOTE: dataSize and offset must be provided in bytes |
 |rlUnloadVertexArray |**vaoId** |Unload vertex array object (VAO) |
@@ -579,22 +579,22 @@
 |rlDrawVertexArrayElements |**offset**=0, **count**, **buffer**=0 |Draw vertex array elements (buffer must be 0) |
 |rlDrawVertexArrayInstanced |**offset**=0, **count**, **instances**=1 |Draw vertex array instanced |
 |rlDrawVertexArrayElementsInstanced |**offset**=0, **count**, **buffer**=0, **instances**=1 |Draw vertex array elements instanced (buffer must be 0) |
-|rlLoadTexture |**data**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |data may be null for an empty texture |
-|rlLoadTextureDepth |**width**, **height**, **useRenderBuffer**=0 | |
-|rlLoadTextureCubemap |**data**, **size**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |or null for an empty cubemap |
+|rlLoadTexture |**data**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |Create a width x height texture in the given pixel format from data (a RawData holding each mipmap level in turn, or null for an empty texture); returns its id, or 0 on failure |
+|rlLoadTextureDepth |**width**, **height**, **useRenderBuffer**=0 |Create a depth texture (or, if useRenderBuffer, a depth renderbuffer) to attach to a framebuffer; returns its id |
+|rlLoadTextureCubemap |**data**, **size**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, **mipmapCount**=1 |Create a cubemap texture with size x size faces; data is a RawData holding, for each mipmap level, all 6 faces (+X, -X, +Y, -Y, +Z, -Z), or null for an empty cubemap.  Returns its id, or 0 on failure |
 |rlUpdateTexture |**id**, **offsetX**, **offsetY**, **width**, **height**, **format**, **data** |Update already loaded texture in GPU with new data WARNING: Not possible to know safely if internal texture format is the expected one... |
 |rlGetGlTextureFormats |**format** |Get OpenGL internal formats and data type from raylib PixelFormat |
 |rlUnloadTexture |**id** |Unload texture from GPU memory |
 |rlGenTextureMipmaps |**id**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 |Generate mipmap data for selected texture NOTE: Only supports GPU mipmap generation |
 |rlReadTexturePixels |**id**, **width**, **height**, **format**=RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 |Read texture pixel data |
-|rlReadScreenPixels |**width**, **height** |Returns RGBA (R8G8B8A8) pixels, top row first |
-|rlLoadFramebuffer | | |
+|rlReadScreenPixels |**width**, **height** |Read a width x height region from the bottom left of the current framebuffer (normally the whole screen) as a RawData of RGBA bytes, top row first; null if width or height < 1 |
+|rlLoadFramebuffer | |Create an empty framebuffer object; returns its id |
 |rlFramebufferAttach |**fboId**, **texId**, **attachType**=RL_ATTACHMENT_COLOR_CHANNEL0, **texType**=RL_ATTACHMENT_TEXTURE2D, **mipLevel**=0 |Attach color buffer texture to a framebuffer object (unloads previous attachment) NOTE: Attach type: 0-Color, 1-Depth renderbuffer, 2-Depth texture |
 |rlFramebufferComplete |**id** |Verify render texture is complete |
 |rlUnloadFramebuffer |**id** |Unload framebuffer from GPU memory NOTE: All attached textures/cubemaps/renderbuffers are also deleted |
-|rlLoadShader |**code**, **type**=RL_FRAGMENT_SHADER | |
-|rlLoadShaderProgram |**vsCode**=String(), **fsCode**=String() |Either code may be empty (or null) to use rlgl's default shader for that stage |
-|rlLoadShaderProgramEx |**vsId**, **fsId** | |
+|rlLoadShader |**code**, **type**=RL_FRAGMENT_SHADER |Compile one shader stage from source (type: RL_VERTEX_SHADER, RL_FRAGMENT_SHADER or RL_COMPUTE_SHADER); returns its id.  On web, a desktop GLSL #version line is adapted for WebGL |
+|rlLoadShaderProgram |**vsCode**="", **fsCode**="" |Compile and link a shader program from vertex and fragment shader source; either may be empty (or null) to use rlgl's default shader for that stage.  Returns the program id, or 0 on failure.  On web, a desktop GLSL #version line is adapted for WebGL |
+|rlLoadShaderProgramEx |**vsId**, **fsId** |Link a shader program from already-compiled vertex and fragment shader ids; returns its id |
 |rlUnloadShader |**id** |Delete shader |
 |rlUnloadShaderProgram |**id** |Unload shader program |
 |rlGetLocationUniform |**id**, **uniformName** |Get shader location uniform NOTE: First parameter refers to shader program id |
@@ -614,7 +614,7 @@
 |LoadFontFromImage |**image**, **key**=Color{255, 0, 255, 255}, **firstChar**=32 |Load an Image font file (XNA style) |
 |IsFontValid |**font** |Check if font is valid (font data loaded) WARNING: GPU texture not checked |
 |UnloadFont |**font** |Unload Font from GPU memory (VRAM) |
-|MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 |This is needed for manual font construction, e.g. SDF fonts |
+|MakeFont |**baseSize**, **glyphs**, **recs**, **texture**, **glyphPadding**=0 |Build a Font from its parts, e.g. for an SDF font.  glyphs is a list of maps (value, offsetX, offsetY, advanceX, image), recs a matching list of each glyph's rectangle in texture.  The font takes over texture, so UnloadFont unloads it; glyph images are copied.  Returns null if the lists are empty or differ in length, or the font is not valid |
 |DrawFPS |**posX**=0, **posY**=0 |Draw current FPS NOTE: Uses default font |
 |DrawText |**text**, **posX**=0, **posY**=0, **fontSize**=20, **color**=BLACK |Draw text (using default font) NOTE: fontSize work like in any drawing program but if fontSize is lower than font-base-size, then font-base-size is used NOTE: chars spacing is proportional to fontSize |
 |DrawTextEx |**font**, **text**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw text using Font NOTE: chars spacing is NOT proportional to fontSize |
@@ -632,9 +632,9 @@
 |GetCodepoint |**text**, **codepointSize**=null |Get next codepoint in a UTF-8 encoded text, scanning until '\0' is found When an invalid UTF-8 byte is encountered, exit as soon as possible and a '?'(0x3f) codepoint is returned Total number of bytes processed are returned as a parameter NOTE: The standard says U+FFFD should be returned in case of errors but that character is not supported by the default font in raylib |
 |GetCodepointNext |**text**, **codepointSize**=null |Get next codepoint in a byte sequence and bytes processed |
 |GetCodepointPrevious |**text**, **codepointSize**=null |Get previous codepoint in a byte sequence and bytes processed |
-|CodepointToUTF8 |**codepoint** | |
+|CodepointToUTF8 |**codepoint** |Get the character for a Unicode codepoint, as a string |
 |TextIsEqual |**text1**, **text2** |Check if two text strings are equal REQUIRES: strcmp() |
-|TextLength |**text** | |
+|TextLength |**text** |Get the length of a string in bytes (of UTF-8), not characters |
 |TextCopy |**dst**, **src** |Copy one string to another, returns bytes copied NOTE: Alternative implementation to strcpy(dst, src) from C standard library |
 |LoadFontFromMemory |**fileType**, **fileData**, **fontSize**, **codepoints**=null, **codepointCount**=0 |Load font from memory buffer, fileType refers to extension: i.e. ".ttf" |
 |LoadFontData |**fileData**, **fontSize**, **codepoints**=null, **codepointCount**=0, **type**=0 |Load font data for further use NOTE: Requires TTF font memory data and can generate SDF data |
@@ -645,7 +645,7 @@
 |UnloadUTF8 |**text** |Unload UTF-8 text encoded from codepoints array |
 |DrawTextCodepoints |**font**, **codepoints**, **position**=[0, 0], **fontSize**=20, **spacing**=0, **tint**=BLACK |Draw multiple characters (codepoints) |
 |GenImageFontAtlas |**glyphs**, **glyphRecs**, **fontSize**, **padding**, **packMethod** |Generate image font atlas using chars info NOTE: Packing method: 0-Default, 1-Skyline |
-|TextFormat |**text**, **args**=[] | |
+|TextFormat |**text**, **args**=[] |Format text, replacing each %s, %d (or %i) and %f with the next value from args, and %% with % |
 |TextFindIndex |**text**, **search** |Find first text occurrence within a string REQUIRES: strstr() |
 |GetTextBetween |**text**, **begin**, **end** |Get text between two strings |
 |TextReplace |**text**, **search**, **replacement** |Replace text string REQUIRES: strstr(), memcpy() NOTE: Limited text replace functionality, using static string |
@@ -653,10 +653,10 @@
 |TextReplaceBetween |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) removes "begin"[ ]"end" text |
 |TextReplaceBetweenAlloc |**text**, **begin**, **end**, **replacement** |Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == NULL) remove "begin"[ ]"end" text WARNING: Returned string must be freed by user |
 |TextInsert |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward WARNING: Allocated memory must be manually freed |
-|TextSubtext |**text**, **position**=0, **length**=0 | |
-|TextRemoveSpaces |**text** | |
+|TextSubtext |**text**, **position**=0, **length**=0 |Get part of a string: length bytes from byte position (bytes of UTF-8, not characters) |
+|TextRemoveSpaces |**text** |Remove all the spaces from a string |
 |TextInsertAlloc |**text**, **insert**, **position** |Insert text in a specific position, moves all text forward WARNING: Allocated memory must be manually freed |
-|TextSplit |**text**, **delimiter** | |
+|TextSplit |**text**, **delimiter** |Split text at each occurrence of delimiter (its first character only) into a list of at most 128 strings; null if delimiter is empty |
 |TextJoin |**textList**, **delimiter**="" |Join text strings with delimiter REQUIRES: memset(), memcpy() |
 |TextAppend |**text**, **append** |Append text at specific position and move cursor WARNING: It's up to the user to make sure appended text does not overflow the buffer! |
 |TextToUpper |**text** |Get upper case version of provided string WARNING: Limited functionality, only basic characters set TODO: Support UTF-8 diacritics (á, ñ, ü...) to upper-case, check codepoints |
@@ -666,7 +666,7 @@
 |TextToCamel |**text** |Get Camel case notation version of provided string WARNING: Limited functionality, only basic characters set |
 |TextToInteger |**text** |Get integer value from text NOTE: This function replaces atoi() [stdlib.h] |
 |TextToFloat |**text** |Get float value from text NOTE: This function replaces atof() [stdlib.h] WARNING: Only '.' character is understood as decimal point |
-|LoadTextLines |**text** | |
+|LoadTextLines |**text** |Split text into a list of lines, at each line feed |
 |UnloadTextLines |**lines** |Unload text lines |
 
 ## RCore
@@ -697,8 +697,8 @@
 |CameraRoll |**camera**, **angle** |Rotates the camera around its forward vector Roll is "turning your head sideways to the left or right" Note: angle must be provided in radians |
 |GetCameraViewMatrix |**camera** |Returns the camera view matrix |
 |GetCameraProjectionMatrix |**camera**, **aspect**=0 |Returns the camera projection matrix |
-|LoadShader |**vsFileName**=String(), **fsFileName**=String() |Load shader from files and bind default locations NOTE: If shader filename is NULL, using default vertex/fragment shaders |
-|LoadShaderFromMemory |**vsCode**=String(), **fsCode**=String() |Load shader from code strings and bind default locations |
+|LoadShader |**vsFileName**="", **fsFileName**="" |Load shader from files and bind default locations NOTE: If shader filename is NULL, using default vertex/fragment shaders |
+|LoadShaderFromMemory |**vsCode**="", **fsCode**="" |Load shader from code strings and bind default locations |
 |IsShaderValid |**shader** |Check if shader is valid (loaded on GPU) |
 |BeginShaderMode |**shader** |Begin custom shader mode |
 |EndShaderMode | |End custom shader mode (returns to default shader) |
@@ -722,10 +722,10 @@
 |IsKeyUp |**key** |Check if key is NOT being pressed (key not held down) |
 |GetKeyPressed | |Get the last key pressed |
 |GetCharPressed | |Get the last char pressed |
-|GetKeyName |**key** | |
+|GetKeyName |**key** |Get the character a key types on the current keyboard layout (e.g. "q" for KEY_A on an AZERTY keyboard), or "" if none |
 |SetExitKey |**key** |Set a custom key to exit program NOTE: default exitKey is set to ESCAPE |
 |IsGamepadAvailable |**gamepad**=0 |Check if gamepad is available |
-|GetGamepadName |**gamepad**=0 | |
+|GetGamepadName |**gamepad**=0 |Get the internal name of a gamepad |
 |IsGamepadButtonPressed |**gamepad**=0, **button** |Check if gamepad button has been pressed once |
 |IsGamepadButtonDown |**gamepad**=0, **button** |Check if gamepad button is being pressed |
 |IsGamepadButtonReleased |**gamepad**=0, **button** |Check if gamepad button has NOT been pressed once |
@@ -788,7 +788,7 @@
 |GetMonitorPhysicalWidth |**monitor**=0 |Get selected monitor physical width in millimetres |
 |GetMonitorPhysicalHeight |**monitor**=0 |Get selected monitor physical height in millimetres |
 |GetMonitorRefreshRate |**monitor**=0 |Get selected monitor refresh rate |
-|GetMonitorName |**monitor**=0 | |
+|GetMonitorName |**monitor**=0 |Get the human-readable name of a monitor ("" on web) |
 |GetWindowPosition | |Get window position XY on monitor |
 |GetWindowScaleDPI | |Get window scale DPI factor for current monitor |
 |IsWindowFocused | |Check if window has the focus |
@@ -825,9 +825,9 @@
 |EndVrStereoMode | |End VR drawing process (and desktop mirror) |
 |LoadVrStereoConfig |**device** |Load VR stereo config for VR simulator device parameters |
 |UnloadVrStereoConfig |**config** |Unload VR stereo config properties |
-|OpenURL |**url** |Open URL with default system browser (if available) WARNING: This function is only safe to use if you control the URL given, a user could craft a malicious string to perform and undesired action NOTE: Some safety checks have been added to mitigate security issues |
+|OpenURL |**url** |Open a URL in the default browser.  Refused (does nothing) once sandboxed. |
 |SetClipboardText |**text** |Set clipboard text content |
-|GetClipboardText | | |
+|GetClipboardText | |Get the clipboard's text content |
 |EnableEventWaiting | |Enable waiting for events on EndDrawing(), no automatic event polling |
 |DisableEventWaiting | |Disable waiting for events on EndDrawing(), automatic events polling |
 |GetClipboardImage | |Get clipboard image |
@@ -839,7 +839,7 @@
 |SwapScreenBuffer | |Swap back buffer with front buffer (screen drawing) |
 |PollInputEvents | |Register all input events |
 |LoadFileText |**fileName** |Load text data from file, returns a '\0' terminated string NOTE: text chars array should be freed manually |
-|LoadFileData |**fileName** | |
+|LoadFileData |**fileName** |Load a file's contents as a RawData, or null if it can't be read |
 |UnloadFileData |**data** |Unload file data allocated by LoadFileData() |
 |SaveFileData |**fileName**, **data**, **dataSize**=0 |Save data to file from buffer |
 |ExportDataAsCode |**data**, **dataSize**, **fileName** |Export data to code (.h), returns true on success |
@@ -859,13 +859,13 @@
 |DirectoryExists |**dirPath** |Check if directory path exists |
 |GetFileLength |**fileName** |Get file length in bytes NOTE: GetFileSize() conflicts with windows.h |
 |GetFileModTime |**fileName** |Get file modification time (last write time) |
-|GetFileExtension |**fileName** | |
-|GetFileName |**filePath** | |
-|GetFileNameWithoutExt |**filePath** | |
-|GetDirectoryPath |**filePath** | |
-|GetPrevDirectoryPath |**dirPath** | |
-|GetWorkingDirectory | | |
-|GetApplicationDirectory | | |
+|GetFileExtension |**fileName** |Get the extension of a file name, including the dot (e.g. ".png"), or "" if it has none |
+|GetFileName |**filePath** |Get the file name at the end of a path |
+|GetFileNameWithoutExt |**filePath** |Get the file name at the end of a path, without its last extension |
+|GetDirectoryPath |**filePath** |Get the directory part of a file path |
+|GetPrevDirectoryPath |**dirPath** |Get the parent of a directory path |
+|GetWorkingDirectory | |Get the current working directory ("" once sandboxed, and on web) |
+|GetApplicationDirectory | |Get the directory of the running application ("" once sandboxed, and on web) |
 |MakeDirectory |**dirPath** |Create directories (including full path requested), returns 0 on success |
 |ChangeDirectory |**dirPath** |Change working directory, returns 0 on success (nonzero on failure) |
 |IsPathFile |**path** |Check if provided path point to a file |
@@ -879,16 +879,16 @@
 |IsFileDropped | |Check if file has been dropped into window |
 |LoadDroppedFiles | |Load dropped filepaths |
 |UnloadDroppedFiles |**files** |Unload dropped filepaths |
-|GetDirectoryFileCount |**dirPath** | |
-|GetDirectoryFileCountEx |**basePath**, **filter**, **scanSubdirs**=0 | |
-|CompressData |**data**, **dataSize**=0 | |
-|DecompressData |**compData**, **compDataSize**=0 | |
-|DecodeDataBase64 |**text** | |
-|ComputeCRC32 |**data**, **dataSize**=0 | |
-|ComputeMD5 |**data**, **dataSize**=0 | |
-|ComputeSHA1 |**data**, **dataSize**=0 | |
-|ComputeSHA256 |**data**, **dataSize**=0 | |
-|LoadAutomationEventList |**fileName**=String() |Load automation events list from file, NULL for empty list, capacity = MAX_AUTOMATION_EVENTS |
+|GetDirectoryFileCount |**dirPath** |Get the number of files in a directory (0 on web) |
+|GetDirectoryFileCountEx |**basePath**, **filter**, **scanSubdirs**=0 |Count the files in a directory with the given extensions (e.g. ".png;.jpg"; include "DIR" to count directories too), optionally searching subdirectories.  Returns 0 once sandboxed, and on web |
+|CompressData |**data**, **dataSize**=0 |Compress data with DEFLATE: a RawData, a string, or a list of byte values; dataSize, if given, uses only that many bytes.  Returns a RawData, or null |
+|DecompressData |**compData**, **compDataSize**=0 |Decompress DEFLATE data (as from CompressData): a RawData, a string, or a list of byte values; compDataSize, if given, uses only that many bytes.  Returns a RawData, or null |
+|DecodeDataBase64 |**text** |Decode a Base64 string into a RawData, or null |
+|ComputeCRC32 |**data**, **dataSize**=0 |Compute the CRC32 checksum of data: a RawData, a string, or a list of byte values; dataSize, if given, uses only that many bytes |
+|ComputeMD5 |**data**, **dataSize**=0 |Compute the MD5 hash of data (as for ComputeCRC32), as a list of four 32-bit integers |
+|ComputeSHA1 |**data**, **dataSize**=0 |Compute the SHA-1 hash of data (as for ComputeCRC32), as a list of five 32-bit integers |
+|ComputeSHA256 |**data**, **dataSize**=0 |Compute the SHA-256 hash of data (as for ComputeCRC32), as a list of eight 32-bit integers |
+|LoadAutomationEventList |**fileName**="" |Load automation events list from file, NULL for empty list, capacity = MAX_AUTOMATION_EVENTS |
 |UnloadAutomationEventList |**list** |Unload automation events list from file |
 |ExportAutomationEventList |**list**, **fileName** |Export automation events list as text file |
 |SetAutomationEventList |**list**=null |Setup automation event list to record to |
@@ -900,7 +900,7 @@
 |GetRandomValue |**min**, **max** |Get a random value between min and max included |
 |LoadRandomSequence |**count**, **min**, **max** |Load random values sequence, no values repeated, min and max included |
 |UnloadRandomSequence |**sequence**=null |Unload random values sequence |
-|SetTraceLogLevel |**logLevel** |Logging and tracing |
+|SetTraceLogLevel |**logLevel** |Set the lowest level of raylib log message to print: LOG_ALL, LOG_TRACE, LOG_DEBUG, LOG_INFO (the default), LOG_WARNING, LOG_ERROR, LOG_FATAL or LOG_NONE |
 |SetTraceLogCallback |**callback**=null |Set custom trace log |
 |TraceLog |**logLevel**, **text** |Show trace log messages (LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG) |
 
@@ -915,7 +915,7 @@
 |GetMasterVolume | |Get master volume (listener) |
 |LoadWave |**fileName** |Load wave data from file |
 |LoadWaveFromMemory |**fileType**, **fileData**, **dataSize** |Load wave from memory buffer, fileType refers to extension: i.e. ".wav" WARNING: File extension must be provided in lower-case |
-|CreateWave |**frameCount**, **sampleRate**, **sampleSize**, **channels**, **samples** | |
+|CreateWave |**frameCount**, **sampleRate**, **sampleSize**, **channels**, **samples** |Create a Wave from samples: frameCount frames at sampleRate Hz, with sampleSize 8, 16 or 32 (float) bits and the given number of channels.  samples is a RawData of exactly that size, or a list of frameCount * channels values.  Returns null if they don't agree |
 |IsWaveValid |**wave** |Check if wave data is valid (data loaded and parameters) |
 |UnloadWave |**wave** |Unload wave data |
 |LoadWaveSamples |**wave** |Load samples data from wave as a floats array NOTE 1: Returned sample values are normalized to range [-1..1] NOTE 2: Sample data allocated should be freed with UnloadWaveSamples() |
@@ -981,7 +981,8 @@
 |run |**path**="" |Load and run a MiniScript file in the current interpreter context |
 |autoUnload |**resource** |Flag a raylib resource to be unloaded automatically when no longer referenced; returns the resource |
 |resourceCounts | |Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.) |
-|hostMemory | |see HostBytesInUse above. |
+|hostMemory | |Bytes currently allocated from the host (malloc) heap, or null if this platform cannot report it.  Meaningful only as a delta between readings. |
+|Interp | |Get the Interp class, for running code in a child interpreter |
 
 ## file module
 
@@ -1002,7 +1003,7 @@
 |delete |**path** |Delete a file or empty directory |
 |open |**path**, **mode**="r+" |Open a file; returns a FileHandle, or null on failure |
 |readLines |**path** |Read all lines from a text file, returning a list of strings |
-|writeLines |**path**, **lines** |Write a list of strings (or a single string) to a text file |
+|writeLines |**path**, **lines** |Write a list of strings (or one string) to a text file, a line each.  Returns null on success, or an error. |
 |loadRaw |**path** |Load a binary file, returning a RawData object |
 |saveRaw |**path**, **data** |Save a RawData object to a binary file |
 |enterSandbox | |Enter sandbox mode (one-way; there is no way back) |
@@ -1131,6 +1132,30 @@
 |findPairs |**shapes**, **invMass**, **margin**=0, **pairs** |Find the pairs of shapes whose bounding boxes overlap and that may collide |
 |solveContacts |**contacts**, **pos**, **vel**, **invMass**, **dt**, **iterations**=10, **biasFactor**=0.2, **slop**=0.5, **restThreshold**=30 |Solve contact impulses for one step, updating vel and the contacts' ColPn/ColPt in place |
 |collidePairs |**pairs**, **shapes**, **verts**, **margin**=0, **prevContacts**, **contacts** |Collide shape pairs into a contact matrix (one row per point), warm-started from prevContacts |
+
+## Interp
+
+|Name | Parameters | Purpose |
+|-----|------------|---------|
+|create | |create a new child interpreter, with empty globals |
+|dispose | |release this interpreter and its VM |
+|setGlobal |**name**="", **value** |set one global in the child |
+|getGlobal |**name**="" |read one global back out of the child |
+|setGlobals |**map** |bulk-seed the child's globals from a map (typically the caller's `globals`); returns the number of names copied |
+|load |**source**="", **sourceName**="" |load and compile a program into the child, with empty globals; check `error` for a compile error, and runUntilDone to run it |
+|loadKeepingGlobals |**source**="" |as load, but the child keeps the globals it already has |
+|replLine |**line**="", **seconds**=0.03 |feed one REPL line to the child, and run it for up to `seconds`; if it is not finished by then, keep calling runUntilDone |
+|needMoreInput | |true when the last replLine left a block open |
+|runUntilDone |**seconds**=0.03 |run the child for up to `seconds`; returns true if it finished |
+|done | |true when the child has nothing left to run |
+|running | |the inverse of done |
+|stop | |interrupt the child (this is what ctrl-C is) |
+|exitRequested | |true if the child called `exit` |
+|exitCode | |the result code the child passed to `exit`, or 0 |
+|error | |the child's last error as a string, or null |
+|stackTrace | |list of strings, captured where the error was raised |
+|lastResult | |value of the last bare expression a replLine evaluated, for REPL echo |
+|takeOutput | |drain and clear whatever the child printed to stdout |
 
 ## Plugins
 

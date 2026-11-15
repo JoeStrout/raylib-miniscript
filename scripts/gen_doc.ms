@@ -3,17 +3,16 @@
 // This script generates API_DOC.md by crawling the source files.  Run it from
 // the repo root:  ./build/raylib-miniscript scripts/gen_doc.ms
 //
-// Where each entry's "Purpose" text comes from, in order of preference:
-//   1. "// API: text" line(s) directly above the Intrinsic::Create of a binding
-//      (used verbatim; several in a row are joined with spaces).  Put the doc
-//      text here when the generated one isn't right -- never edit API_DOC.md
-//      by hand, the next run would undo it.
-//   2. an entry in noteOverrides, below
-//   3. the note on the function of the same name in the Raylib sources
-//   4. the (last line of the) "// ..." comment above the Intrinsic::Create
+// Each entry's "Purpose" text is the binding's description: the note in its
+// WithNote(...) call (SetNote(...) for a global), which is also what `info`
+// shows.  Change the description there -- never edit API_DOC.md by
+// hand, the next run would undo it.
 
 import "stringUtil"
 
+//----------------------------------------------------------------------
+// Reading the bindings
+//----------------------------------------------------------------------
 
 // MiniScript 2 renamed several of these; keep the old spellings too so this
 // table still works if an older binding turns up.
@@ -23,6 +22,7 @@ magicValues = {
 	"Value::zero": "0",
 	"Value::one": "1",
 	"Value::emptyString": """""",
+	"String()": """""",
 	"Value::make_list(0)": "[]",
 	"QuaternionToValue(QuaternionIdentity())": "QuaternionIdentity",
 	"MatrixToValue(MatrixIdentity())": "MatrixIdentity" }
@@ -40,55 +40,174 @@ valToText = function(cppVal)
 	return cppVal
 end function
 
-isValidType = function(type)
-	if not type then return false
-	if not ("A" <= type[0] <= "Z") and not ("a" <= type[0] <= "z") then return false
-	if type.contains(" ") then return false
-	return true
+// A parameter as API_DOC.md shows it, if line is an AddParam call; else null.
+// Intrinsic was a pointer under MiniScript 1 and is a value under MiniScript
+// 2, so accept "i->AddParam" as well as "i.AddParam", or an older plugin
+// silently documents no parameters.
+parseParam = function(line)
+	m = line.match("{var}.AddParam(""{param}"", {defval});")
+	if not m then m = line.match("{var}->AddParam(""{param}"", {defval});")
+	if m then return "**" + m.param + "**=" + valToText(m.defval)
+	m = line.match("{var}.AddParam(""{param}"");")
+	if not m then m = line.match("{var}->AddParam(""{param}"");")
+	if m then return "**" + m.param + "**"
+	return null
 end function
 
-functionNotes = {}  // key: API name; value: notes from Raylib source
+// Parse adjacent C++ string literals ("ab" "cd") starting at s[i], skipping
+// space between them.  Returns [text, index after the last one], or null if
+// s[i] does not start a literal.
+parseLiterals = function(s, i)
+	result = []
+	got = false
+	while true
+		while i < s.len and (s[i] == " " or s[i] == char(9))
+			i += 1
+		end while
+		if i >= s.len or s[i] != """" then break
+		got = true
+		i += 1
+		while i < s.len and s[i] != """"
+			if s[i] == "\" and i + 1 < s.len then
+				i += 1
+				c = s[i]
+				if c == "n" then c = char(10)
+				if c == "t" then c = char(9)
+				result.push c
+			else
+				result.push s[i]
+			end if
+			i += 1
+		end while
+		i += 1		// past the closing quote
+	end while
+	if not got then return null
+	return [result.join(""), i]
+end function
 
-// Notes to use instead of what the Raylib source says, where its comment is
-// stale, missing, or doesn't describe our wrapper's behavior.
-noteOverrides = {
-	"ChangeDirectory": "Change working directory, returns 0 on success (nonzero on failure)",
-	"IsPathDirectory": "Check if provided path points to an existing directory",
-	"LoadRenderTextureEx": "Load texture for rendering (framebuffer), with specific pixel format",
-	"DrawCircleLinesEx": "Draw circle outline with line thickness",
-	"ImageDrawImagePro": "Draw a part of an image defined by a rectangle into destination rectangle, with scaling, within an image NOTE: origin and rotation are currently ignored by raylib" }
+// Parse `<moduleVar>.SetValue("name", WithNote(<var>, "note..."));`, a whole
+// statement on one line.  Returns {api, note}, or null.
+parseWithNote = function(stmt, moduleVar)
+	head = moduleVar + ".SetValue("""
+	if not stmt.startsWith(head) then return null
+	q = stmt.indexOf("""", head.len - 1)
+	if q == null then return null
+	api = stmt[head.len:q]
+	rest = stmt[q+1:]
+	if not rest.startsWith(", WithNote(") then return null
+	comma = rest.indexOf(",", 10)
+	if comma == null then return null
+	lit = parseLiterals(rest, comma + 1)
+	if lit == null or rest[lit[1]:].trim != "));" then return null
+	return {"api": api, "note": lit[0]}
+end function
 
-// Process the given .c file (Raylib source), finding function notes and 
-// stuffing them into the global functionNotes map.
-processRaylibFile = function(path)
-	print "Scanning: " + path
-	found = 0
-	notes = []
-	for line in file.readLines(path)
-		if line.startsWith("// ") then
-			notes.push line[3:]
+// Parse `SetNote(<var>, "note...");`, a whole statement on one line.
+// Returns {var, note}, or null.
+parseSetNote = function(stmt)
+	if not stmt.startsWith("SetNote(") then return null
+	comma = stmt.indexOf(",")
+	if comma == null then return null
+	lit = parseLiterals(stmt, comma + 1)
+	if lit == null or stmt[lit[1]:].trim != ");" then return null
+	return {"var": stmt[8:comma].trim, "note": lit[0]}
+end function
+
+// The statement starting at src[i], joined onto one line, and the index after
+// it: a WithNote or SetNote call puts its note on lines of its own.
+joinStatement = function(src, i)
+	line = src[i].trim
+	i += 1
+	while not line.endsWith(";") and i < src.len
+		line = line + " " + src[i].trim
+		i += 1
+	end while
+	return [line, i]
+end function
+
+// Scan a .cpp binding file for the intrinsics it registers in moduleVar
+// (e.g. "raylibModule", "fileModule").  Returns a list of {api, params, note}
+// maps, in source order; note is "" for one registered without WithNote.
+scanBindingFile = function(path, moduleVar="raylibModule")
+	entries = []
+	src = file.readLines(path)
+	params = []
+	i = 0
+	while i < src.len
+		line = src[i].trim
+		if line.contains("= Intrinsic::Create(") then
+			params = []
+			i += 1
 			continue
 		end if
-		if line == "" or line.startsWith("//---") then
-			notes = []
+		p = parseParam(line)
+		if p != null then
+			if p.indexOf("**self**") != 0 then params.push p
+			i += 1
+			continue
 		end if
-		if line.startsWith("RMAPI ") then line = line[6:]
-		m = ("^" + line + "$").match("^{type} {name}({params})$")
+		if not line.startsWith(moduleVar + ".SetValue(") then
+			i += 1
+			continue
+		end if
+		stmt = joinStatement(src, i)
+		line = stmt[0]
+		i = stmt[1]
+		m = parseWithNote(line, moduleVar)
 		if m then
-			if not isValidType(m.type) or m.name.contains(" ") then
-				notes = []
+			entries.push {"api": m.api, "params": params, "note": m.note}
+		else
+			m = line.match(moduleVar + ".SetValue(""{api}"", {var}.GetFunc());")
+			if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}.GetFunc());")
+			if not m then m = line.match(moduleVar + ".SetValue(""{api}"", {var}->GetFunc());")
+			if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}->GetFunc());")
+			if m then entries.push {"api": m.api, "params": params, "note": ""}
+		end if
+		params = []
+	end while
+	return entries
+end function
+
+// Scan a .cpp file for intrinsics created by name (globals, like `exit`):
+// `Intrinsic xxx = Intrinsic::Create("name")`, each with a SetNote(xxx, ...)
+// after its set_Code.  Returns a list of {api, params, note} maps.
+scanGlobalIntrinsicsFile = function(path)
+	entries = []
+	src = file.readLines(path)
+	cur = null
+	i = 0
+	while i < src.len
+		line = src[i].trim
+		if line.startsWith("SetNote(") then
+			stmt = joinStatement(src, i)
+			i = stmt[1]
+			sn = parseSetNote(stmt[0])
+			if sn and cur and sn.var == cur.var then cur.note = sn.note
+			continue
+		end if
+		i += 1
+		if cur then
+			p = parseParam(line)
+			if p != null then
+				if p.indexOf("**self**") != 0 then cur.params.push p
 				continue
 			end if
-			if not notes then continue
-			if m.name[0] == "*" then m.name = m.name[1:]
-			functionNotes[m.name] = notes.join(" ")
-			//print " - " + m.name + ": " + functionNotes[m.name]
-			notes = []
-			found += 1
-		end if			
-	end for
-	print "   " + found + " APIs"
+		end if
+		m = line.match("Intrinsic::Create(""{name}"");")
+		if m and m.name != "" then
+			eq = line.indexOf(" = ")
+			var = ""
+			if eq != null then var = line[:eq].split(" ")[-1]
+			cur = {"api": m.name, "var": var, "params": [], "note": ""}
+			entries.push cur
+		end if
+	end while
+	return entries
 end function
+
+//----------------------------------------------------------------------
+// Writing the doc
+//----------------------------------------------------------------------
 
 // Process the given .cpp file, adding a table to the output for all APIs found.
 // moduleVar: the C++ variable name used in SetValue calls (e.g. "raylibModule", "fileModule")
@@ -96,194 +215,46 @@ end function
 // If heading is "", it is derived from the filename.
 processBindingFile = function(path, moduleVar="raylibModule", heading="")
 	print "Processing: " + path + " (" + moduleVar + ")"
-	apiCount = 0
 	if heading == "" then heading = file.name(path) - ".cpp"
-
-	params = []
-	pendingNote = ""  // inline comment accumulated just before a Create line
-	createNote = ""   // pendingNote as it stood at the Create line
-	apiNote = ""      // text of "// API: " lines just before a Create line
-	createApiNote = ""// apiNote as it stood at the Create line
-	for line in file.readLines(path)
-		line = line.trim
-
-		// "// API: text" lines are the documentation for the intrinsic that
-		// follows, verbatim: they replace the Raylib note and any other comment.
-		// Use them where the generated text isn't enough (ownership rules,
-		// restrictions on arguments).  Several in a row are joined with spaces.
-		if line.startsWith("// API: ") then
-			if apiNote != "" then apiNote = apiNote + " "
-			apiNote = apiNote + line[8:]
-			continue
-		end if
-
-		// Accumulate inline doc comments
-		if line.startsWith("// ") then
-			pendingNote = line[3:]
-			continue
-		end if
-
-		// Blank lines reset the pending note; comments set it; all other lines
-		// leave it intact so it survives across Create/AddParam/code=/lambda lines.
-		if line == "" then
-			pendingNote = ""
-			apiNote = ""
-			continue
-		end if
-
-		// Snapshot the note here: an inline lambda body can hold comments of
-		// its own, which would otherwise replace it before we reach SetValue.
-		if line.contains("= Intrinsic::Create(") then
-			params = []
-			createNote = pendingNote
-			createApiNote = apiNote
-			apiNote = ""
-			continue
-		end if
-
-		// Intrinsic was a pointer under MiniScript 1 and is a value under
-		// MiniScript 2, so the bindings say "i.AddParam" where they used to say
-		// "i->AddParam".  Accept both, or this scanner silently finds nothing.
-		m = line.match("{var}->AddParam(""{param}"", {defval});")
-		if not m then m = line.match("{var}.AddParam(""{param}"", {defval});")
-		if m then
-			if m.param != "self" then
-				params.push "**" + m.param + "**=" + valToText(m.defval)
-			end if
-			continue
-		end if
-
-		m = line.match("{var}->AddParam(""{param}"");")
-		if not m then m = line.match("{var}.AddParam(""{param}"");")
-		if m then
-			if m.param != "self" then
-				params.push "**" + m.param + "**"
-			end if
-			continue
-		end if
-
-		// Match: moduleVar.SetValue("api", x.GetFunc()) or moduleVar.SetValue(String("api"), x.GetFunc())
-		m = line.match(moduleVar + ".SetValue(""{api}"", {var}->GetFunc());")
-		if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}->GetFunc());")
-		if not m then m = line.match(moduleVar + ".SetValue(""{api}"", {var}.GetFunc());")
-		if not m then m = line.match(moduleVar + ".SetValue(String(""{api}""), {var}.GetFunc());")
-		if m then
-			if apiCount == 0 then
-				outLines.push ""
-				outLines.push "## " + heading
-				outLines.push ""
-				outLines.push "|Name | Parameters | Purpose |"
-				outLines.push "|-----|------------|---------|"
-			end if
-			apiCount += 1
-
-			if createApiNote != "" then
-				note = createApiNote
-			else if noteOverrides.hasIndex(m.api) then
-				note = noteOverrides[m.api]
-			else if functionNotes.hasIndex(m.api) then
-				note = functionNotes[m.api]
-			else if createNote != "" then
-				note = createNote
-			else if pendingNote != "" then
-				note = pendingNote
-			else
-				print "   NO NOTE FOUND FOR: " + m.api
-				note = ""
-			end if
-			outLines.push "|" + m.api + " |" + params.join(", ") + " |" + note + " |"
-			params = []
-			pendingNote = ""
-			createNote = ""
-			createApiNote = ""
-		end if
+	entries = scanBindingFile(path, moduleVar)
+	for e in entries
+		if e.note == "" then print "   NO NOTE FOUND FOR: " + e.api
 	end for
-	print "   " + apiCount + " APIs"
-	return apiCount
+	if entries then
+		outLines.push ""
+		outLines.push "## " + heading
+		outLines.push ""
+		outLines.push "|Name | Parameters | Purpose |"
+		outLines.push "|-----|------------|---------|"
+	end if
+	for e in entries
+		outLines.push "|" + e.api + " |" + e.params.join(", ") + " |" + e.note + " |"
+	end for
+	print "   " + entries.len + " APIs"
+	return entries.len
 end function
 
-// Process a file with global named intrinsics (e.g. MoreIntrinsics.cpp).
-// Detects Intrinsic::Create("name") with non-empty name, using the preceding
-// comment line as documentation.
-processGlobalIntrinsicsFile = function(path, heading="Global Intrinsics")
-	print "Processing: " + path + " (global intrinsics)"
-	apiCount = 0
-
-	params = []
-	pendingNote = ""
-	currentName = ""
-	for line in file.readLines(path)
-		line = line.trim
-
-		if line.startsWith("// ") then
-			pendingNote = line[3:]
-			continue
-		end if
-
-		if line == "" then
-			pendingNote = ""
-			continue
-		end if
-
-		m = line.match("i->AddParam(""{param}"", {defval});")
-		if not m then m = line.match("{var}->AddParam(""{param}"", {defval});")
-		if not m then m = line.match("{var}.AddParam(""{param}"", {defval});")
-		if m then
-			if m.param != "self" then
-				params.push "**" + m.param + "**=" + valToText(m.defval)
-			end if
-			continue
-		end if
-
-		m = line.match("i->AddParam(""{param}"");")
-		if not m then m = line.match("{var}->AddParam(""{param}"");")
-		if not m then m = line.match("{var}.AddParam(""{param}"");")
-		if m then
-			if m.param != "self" then
-				params.push "**" + m.param + "**"
-			end if
-			continue
-		end if
-
-		// Named create: Intrinsic *xxxFunc = Intrinsic::Create("name");
-		// or: Intrinsic::Create("name")  with any leading variable assignment
-		m = line.match("Intrinsic::Create(""{name}"");")
-		if m and m.name != "" then
-			// Emit previous entry if any
-			if currentName != "" then
-				if apiCount == 0 then
-					outLines.push ""
-					outLines.push "## " + heading
-					outLines.push ""
-					outLines.push "|Name | Parameters | Purpose |"
-					outLines.push "|-----|------------|---------|"
-				end if
-				apiCount += 1
-				outLines.push "|" + currentName + " |" + params.join(", ") + " |" + currentNote + " |"
-			end if
-			currentName = m.name
-			currentNote = pendingNote
-			params = []
-			pendingNote = ""
-			continue
-		end if
+// Process files with global named intrinsics (e.g. MoreIntrinsics.cpp),
+// into one table: Intrinsic::Create("name") with a non-empty name.
+processGlobalIntrinsicsFiles = function(paths, heading="Global Intrinsics")
+	entries = []
+	for path in paths
+		print "Processing: " + path + " (global intrinsics)"
+		entries += scanGlobalIntrinsicsFile(path)
 	end for
-
-	// Emit final entry
-	if currentName != "" then
-		if apiCount == 0 then
-			outLines.push ""
-			outLines.push "## " + heading
-			outLines.push ""
-			outLines.push "|Name | Parameters | Purpose |"
-			outLines.push "|-----|------------|---------|"
-		end if
-		apiCount += 1
-		outLines.push "|" + currentName + " |" + params.join(", ") + " |" + currentNote + " |"
+	if entries then
+		outLines.push ""
+		outLines.push "## " + heading
+		outLines.push ""
+		outLines.push "|Name | Parameters | Purpose |"
+		outLines.push "|-----|------------|---------|"
 	end if
-
-	print "   " + apiCount + " APIs"
-	return apiCount
+	for e in entries
+		if e.note == "" then print "   NO NOTE FOUND FOR: " + e.api
+		outLines.push "|" + e.api + " |" + e.params.join(", ") + " |" + e.note + " |"
+	end for
+	print "   " + entries.len + " APIs"
+	return entries.len
 end function
 
 // Markers fencing the generated part of a plugin's API.md.  Anything the plugin
@@ -369,13 +340,6 @@ processPlugins = function(pluginsDir, inTree=true)
 end function
 
 // Begin by verifying that we can access the files we need.
-raylibSrc = file.child("raylib", "src")
-raylibSrcInfo = file.info(raylibSrc)
-if not raylibSrcInfo or not raylibSrcInfo.isDirectory then
-	print "Unable to read " + raylibSrc
-	exit
-end if
-
 bindingSrc = "src"
 bindingSrcInfo = file.info(bindingSrc)
 if not bindingSrcInfo or not bindingSrcInfo.isDirectory then
@@ -385,17 +349,6 @@ end if
 
 // Prepare the output buffer (outLines).
 outLines = []
-
-// Scan the Raylib files for function notes.
-platformFolder = file.child(raylibSrc, "platforms")
-for child in file.children(platformFolder)
-	if child[0] != "r" or child[-2:] != ".c" then continue
-	processRaylibFile file.child(platformFolder, child)
-end for
-for child in file.children(raylibSrc)
-	if child[0] != "r" or (child[-2:] != ".c" and child[-2:] != ".h") then continue
-	processRaylibFile file.child(raylibSrc, child)
-end for
 
 
 // Now, process each file of the form R*.cpp in our src directory
@@ -407,13 +360,15 @@ for child in file.children(bindingSrc)
 end for
 
 // Process non-raylib intrinsic files
-totalAPIs += processGlobalIntrinsicsFile(file.child(bindingSrc, "MoreIntrinsics.cpp"), "Global Intrinsics")
+totalAPIs += processGlobalIntrinsicsFiles([file.child(bindingSrc, "MoreIntrinsics.cpp"),
+  file.child(bindingSrc, "InterpModule.cpp")], "Global Intrinsics")
 totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileModule", "file module")
 totalAPIs += processBindingFile(file.child(bindingSrc, "FileModule.cpp"), "fileHandleClass", "FileHandle")
 totalAPIs += processBindingFile(file.child(bindingSrc, "HttpModule.cpp"), "httpMap", "http module")
 totalAPIs += processBindingFile(file.child(bindingSrc, "RawData.cpp"), "rawDataClass", "RawData")
 totalAPIs += processBindingFile(file.child(bindingSrc, "MatrixClass.cpp"), "matrixClass", "Matrix")
 totalAPIs += processBindingFile(file.child(bindingSrc, "PhysicsCore.cpp"), "physicsModule", "physicsCore")
+totalAPIs += processBindingFile(file.child(bindingSrc, "InterpModule.cpp"), "interpClass", "Interp")
 
 // And the plugins (compiled in from plugins/*; each adds its own module),
 // with the examples (built only on request)

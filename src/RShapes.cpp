@@ -29,7 +29,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawPixel(posX, posY, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPixel", i.GetFunc());
+	raylibModule.SetValue("DrawPixel", WithNote(i,
+		"Draw a pixel"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
@@ -40,7 +41,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawPixelV(position, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPixelV", i.GetFunc());
+	raylibModule.SetValue("DrawPixelV", WithNote(i,
+		"Draw a pixel (Vector version)"));
 
 	// Line drawing
 
@@ -59,7 +61,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawLine(startPosX, startPosY, endPosX, endPosY, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLine", i.GetFunc());
+	raylibModule.SetValue("DrawLine", WithNote(i,
+		"Draw a line (using gl lines)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos", Vector2ToValue(Vector2{0, 0}));
@@ -72,7 +75,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawLineV(startPos, endPos, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLineV", i.GetFunc());
+	raylibModule.SetValue("DrawLineV", WithNote(i,
+		"Draw a line (using gl lines)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos", Vector2ToValue(Vector2{0, 0}));
@@ -87,7 +91,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawLineEx(startPos, endPos, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLineEx", i.GetFunc());
+	raylibModule.SetValue("DrawLineEx", WithNote(i,
+		"Draw a line defining thickness"));
 
 	// Circle drawing
 
@@ -104,7 +109,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircle(centerX, centerY, radius, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircle", i.GetFunc());
+	raylibModule.SetValue("DrawCircle", WithNote(i,
+		"Draw a color-filled circle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
@@ -117,7 +123,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleV(center, radius, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleV", i.GetFunc());
+	raylibModule.SetValue("DrawCircleV", WithNote(i,
+		"Draw a color-filled circle (Vector version) NOTE: On OpenGL 3.3 and ES2 using QUADS to "
+		"avoid drawing order issues"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerX", Value(100));
@@ -132,7 +140,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleLines(centerX, centerY, radius, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleLines", i.GetFunc());
+	raylibModule.SetValue("DrawCircleLines", WithNote(i,
+		"Draw circle outline"));
 
 	// Ellipse drawing
 
@@ -151,7 +160,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawEllipse(centerX, centerY, radiusH, radiusV, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawEllipse", i.GetFunc());
+	raylibModule.SetValue("DrawEllipse", WithNote(i,
+		"Draw ellipse"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("centerX", Value(100));
@@ -168,7 +178,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawEllipseLines(centerX, centerY, radiusH, radiusV, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawEllipseLines", i.GetFunc());
+	raylibModule.SetValue("DrawEllipseLines", WithNote(i,
+		"Draw ellipse outline"));
 
 	// Ring drawing
 
@@ -191,7 +202,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRing", i.GetFunc());
+	raylibModule.SetValue("DrawRing", WithNote(i,
+		"Draw ring"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
@@ -212,7 +224,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRingLines(center, innerRadius, outerRadius, startAngle, endAngle, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRingLines", i.GetFunc());
+	raylibModule.SetValue("DrawRingLines", WithNote(i,
+		"Draw ring outline"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
@@ -235,7 +248,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRingLinesEx(center, innerRadius, outerRadius, startAngle, endAngle, segments, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRingLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawRingLinesEx", WithNote(i,
+		"Draw ring outline with line thickness"));
 
 	// Rectangle drawing
 
@@ -254,7 +268,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangle(x, y, width, height, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangle", i.GetFunc());
+	raylibModule.SetValue("DrawRectangle", WithNote(i,
+		"Draw a color-filled rectangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position", Vector2ToValue(Vector2{0, 0}));
@@ -267,7 +282,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleV(position, size, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleV", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleV", WithNote(i,
+		"Draw a color-filled rectangle (Vector version) NOTE: On OpenGL 3.3 and ES2 using QUADS to "
+		"avoid drawing order issues"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -278,7 +295,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleRec(rec, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleRec", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleRec", WithNote(i,
+		"Draw a color-filled rectangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -293,7 +311,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectanglePro(rec, origin, rotation, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectanglePro", i.GetFunc());
+	raylibModule.SetValue("DrawRectanglePro", WithNote(i,
+		"Draw a color-filled rectangle with pro parameters"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -310,7 +329,10 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleLines(x, y, width, height, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleLines", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleLines", WithNote(i,
+		"Draw rectangle outline WARNING: All Draw*Lines() functions use RL_LINES for drawing, it "
+		"implies flushing the current batch and changing draw mode to RL_LINES but it solves "
+		"another issue: https://github.com/raysan5/raylib/issues/3884"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -323,7 +345,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleLinesEx(rec, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleLinesEx", WithNote(i,
+		"Draw rectangle outline with line thickness"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -338,7 +361,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleRounded(rec, roundness, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleRounded", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleRounded", WithNote(i,
+		"Draw rectangle with rounded edges"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -353,7 +377,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleRoundedLines(rec, roundness, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleRoundedLines", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleRoundedLines", WithNote(i,
+		"Draw rectangle with rounded edges"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("posX", Value::zero);
@@ -372,7 +397,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleGradientV(posX, posY, width, height, color1, color2);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleGradientV", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleGradientV", WithNote(i,
+		"Draw a vertical-gradient-filled rectangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("posX", Value::zero);
@@ -391,7 +417,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleGradientH(posX, posY, width, height, color1, color2);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleGradientH", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleGradientH", WithNote(i,
+		"Draw a horizontal-gradient-filled rectangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec");
@@ -408,7 +435,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleGradientEx(rec, col1, col2, col3, col4);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleGradientEx", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleGradientEx", WithNote(i,
+		"Draw a gradient-filled rectangle with custom vertex colors, counter-clockwise color order"));
 
 	// Triangle drawing
 
@@ -432,7 +460,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		}
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangle", i.GetFunc());
+	raylibModule.SetValue("DrawTriangle", WithNote(i,
+		"Draw a triangle NOTE: Vertex must be provided in counter-clockwise order"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1");
@@ -451,7 +480,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawTriangleGradient(v1, v2, v3, c1, c2, c3);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleGradient", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleGradient", WithNote(i,
+		"Draw triangle with interpolated colors (vertex in counter-clockwise order!)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1");
@@ -466,7 +496,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawTriangleLines(v1, v2, v3, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleLines", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleLines", WithNote(i,
+		"Draw a triangle using lines NOTE: Vertex must be provided in counter-clockwise order"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1");
@@ -483,7 +514,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawTriangleLinesEx(v1, v2, v3, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleLinesEx", WithNote(i,
+		"Draw a triangle using lines with thickness NOTE: Vertex must be provided in "
+		"counter-clockwise order"));
 
 	// Polygon drawing
 
@@ -502,7 +535,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawPoly(center, sides, radius, rotation, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPoly", i.GetFunc());
+	raylibModule.SetValue("DrawPoly", WithNote(i,
+		"Draw a polygon of n sides"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
@@ -519,7 +553,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawPolyLines(center, sides, radius, rotation, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPolyLines", i.GetFunc());
+	raylibModule.SetValue("DrawPolyLines", WithNote(i,
+		"Draw a polygon outline of n sides"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center", Vector2ToValue(Vector2{100, 100}));
@@ -538,7 +573,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawPolyLinesEx(center, sides, radius, rotation, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawPolyLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawPolyLinesEx", WithNote(i,
+		"Draw the outline of a regular polygon of n sides, with line thickness"));
 
 	// Collision detection
 
@@ -550,7 +586,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Rectangle rec2 = ValueToRectangle(context.GetArg(1));
 		return IntrinsicResult(CheckCollisionRecs(rec1, rec2));
 	});
-	raylibModule.SetValue("CheckCollisionRecs", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionRecs", WithNote(i,
+		"Check collision between two rectangles"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center1");
@@ -564,7 +601,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float radius2 = context.GetArg(3).FloatValue();
 		return IntrinsicResult(CheckCollisionCircles(center1, radius1, center2, radius2));
 	});
-	raylibModule.SetValue("CheckCollisionCircles", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionCircles", WithNote(i,
+		"Check collision between two circles"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -576,7 +614,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Rectangle rec = ValueToRectangle(context.GetArg(2));
 		return IntrinsicResult(CheckCollisionCircleRec(center, radius, rec));
 	});
-	raylibModule.SetValue("CheckCollisionCircleRec", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionCircleRec", WithNote(i,
+		"Check collision between circle and rectangle NOTE: Reviewed version to take into account "
+		"corner limit case"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("point");
@@ -586,7 +626,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Rectangle rec = ValueToRectangle(context.GetArg(1));
 		return IntrinsicResult(CheckCollisionPointRec(point, rec));
 	});
-	raylibModule.SetValue("CheckCollisionPointRec", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionPointRec", WithNote(i,
+		"Check if point is inside rectangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("point");
@@ -598,7 +639,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		float radius = context.GetArg(2).FloatValue();
 		return IntrinsicResult(CheckCollisionPointCircle(point, center, radius));
 	});
-	raylibModule.SetValue("CheckCollisionPointCircle", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionPointCircle", WithNote(i,
+		"Check if point is inside circle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("point");
@@ -612,7 +654,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Vector2 p3 = ValueToVector2(context.GetArg(3));
 		return IntrinsicResult(CheckCollisionPointTriangle(point, p1, p2, p3));
 	});
-	raylibModule.SetValue("CheckCollisionPointTriangle", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionPointTriangle", WithNote(i,
+		"Check if point is inside a triangle defined by three points (p1, p2, p3)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("rec1");
@@ -623,7 +666,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Rectangle result = GetCollisionRec(rec1, rec2);
 		return IntrinsicResult(RectangleToValue(result));
 	});
-	raylibModule.SetValue("GetCollisionRec", i.GetFunc());
+	raylibModule.SetValue("GetCollisionRec", WithNote(i,
+		"Get collision rectangle for two rectangles collision"));
 
 	// Additional collision detection
 
@@ -639,7 +683,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		Vector2 p2 = ValueToVector2(context.GetArg(3));
 		return IntrinsicResult(CheckCollisionCircleLine(center, radius, p1, p2));
 	});
-	raylibModule.SetValue("CheckCollisionCircleLine", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionCircleLine", WithNote(i,
+		"Check if circle collides with a line created between two points [p1] and [p2]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos1");
@@ -656,7 +701,10 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		if (!result) return IntrinsicResult::Null;
 		return IntrinsicResult(Vector2ToValue(collisionPoint));
 	});
-	raylibModule.SetValue("CheckCollisionLines", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionLines", WithNote(i,
+		"Check the collision between two lines defined by two points each, returns collision point "
+		"by reference REF: "
+		"https://en.wikipedia.org/wiki/Line–line_intersection#Given_two_points_on_each_line_segment"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("point");
@@ -670,7 +718,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		int threshold = context.GetArg(3).IntValue();
 		return IntrinsicResult(CheckCollisionPointLine(point, p1, p2, threshold));
 	});
-	raylibModule.SetValue("CheckCollisionPointLine", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionPointLine", WithNote(i,
+		"Check if point belongs to line created between two points [p1] and [p2] with defined "
+		"margin in pixels [threshold]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("point");
@@ -690,7 +740,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult(result);
 	});
-	raylibModule.SetValue("CheckCollisionPointPoly", i.GetFunc());
+	raylibModule.SetValue("CheckCollisionPointPoly", WithNote(i,
+		"Check if point is within a polygon described by array of vertices NOTE: Based on "
+		"http://jeffreythompson.org/collision-detection/poly-point.php"));
 
 	// Additional circle drawing
 
@@ -709,7 +761,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleGradient(CLITERAL(Vector2){centerX, centerY}, radius, colorInner, colorOuter);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleGradient", i.GetFunc());
+	raylibModule.SetValue("DrawCircleGradient", WithNote(i,
+		"Draw a gradient-filled circle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -722,7 +775,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleLinesV(center, radius, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleLinesV", i.GetFunc());
+	raylibModule.SetValue("DrawCircleLinesV", WithNote(i,
+		"Draw circle outline (Vector version)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -737,7 +791,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleLinesEx(center, radius, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawCircleLinesEx", WithNote(i,
+		"Draw circle outline with line thickness"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -756,7 +811,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleSector(center, radius, startAngle, endAngle, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleSector", i.GetFunc());
+	raylibModule.SetValue("DrawCircleSector", WithNote(i,
+		"Draw a piece of a circle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -775,7 +831,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleSectorLines(center, radius, startAngle, endAngle, segments, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleSectorLines", i.GetFunc());
+	raylibModule.SetValue("DrawCircleSectorLines", WithNote(i,
+		"Draw a piece of a circle outlines"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -796,7 +853,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawCircleSectorLinesEx(center, radius, startAngle, endAngle, segments, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawCircleSectorLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawCircleSectorLinesEx", WithNote(i,
+		"Draw a piece of a circle outlines with thickness"));
 
 	// Additional ellipse drawing
 
@@ -813,7 +871,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawEllipseV(center, radiusH, radiusV, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawEllipseV", i.GetFunc());
+	raylibModule.SetValue("DrawEllipseV", WithNote(i,
+		"Draw ellipse (Vector version)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -828,7 +887,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawEllipseLinesV(center, radiusH, radiusV, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawEllipseLinesV", i.GetFunc());
+	raylibModule.SetValue("DrawEllipseLinesV", WithNote(i,
+		"Draw ellipse outline"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("center");
@@ -845,7 +905,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawEllipseLinesEx(center, radiusH, radiusV, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawEllipseLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawEllipseLinesEx", WithNote(i,
+		"Draw ellipse outline with thickness"));
 
 	// Additional line drawing
 
@@ -862,7 +923,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawLineBezier(startPos, endPos, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLineBezier", i.GetFunc());
+	raylibModule.SetValue("DrawLineBezier", WithNote(i,
+		"Draw line using cubic-bezier spline, in-out interpolation, no control points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("startPos");
@@ -879,7 +941,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawLineDashed(startPos, endPos, dashSize, spaceSize, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLineDashed", i.GetFunc());
+	raylibModule.SetValue("DrawLineDashed", WithNote(i,
+		"Draw a dashed line"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -899,7 +962,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawLineStrip", i.GetFunc());
+	raylibModule.SetValue("DrawLineStrip", WithNote(i,
+		"Draw lines sequence (using gl lines)"));
 
 	// Additional rectangle drawing
 
@@ -918,7 +982,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawRectangleRoundedLinesEx(rec, roundness, segments, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawRectangleRoundedLinesEx", i.GetFunc());
+	raylibModule.SetValue("DrawRectangleRoundedLinesEx", WithNote(i,
+		"Draw rectangle with rounded edges outline with line thickness"));
 
 	// Spline drawing
 
@@ -942,7 +1007,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineLinear", i.GetFunc());
+	raylibModule.SetValue("DrawSplineLinear", WithNote(i,
+		"Draw spline: linear, minimum 2 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -964,7 +1030,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineBasis", i.GetFunc());
+	raylibModule.SetValue("DrawSplineBasis", WithNote(i,
+		"Draw spline: B-Spline, minimum 4 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -986,7 +1053,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineCatmullRom", i.GetFunc());
+	raylibModule.SetValue("DrawSplineCatmullRom", WithNote(i,
+		"Draw spline: Catmull-Rom, minimum 4 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -1008,7 +1076,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineBezierQuadratic", i.GetFunc());
+	raylibModule.SetValue("DrawSplineBezierQuadratic", WithNote(i,
+		"Draw spline: Quadratic Bezier, minimum 3 points (1 control point): [p1, c2, p3, c4...]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -1030,7 +1099,9 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineBezierCubic", i.GetFunc());
+	raylibModule.SetValue("DrawSplineBezierCubic", WithNote(i,
+		"Draw spline: Cubic Bezier, minimum 4 points (2 control points): [p1, c2, c3, p4, c5, "
+		"c6...]"));
 
 	// Spline segment drawing
 
@@ -1047,7 +1118,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawSplineSegmentLinear(p1, p2, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineSegmentLinear", i.GetFunc());
+	raylibModule.SetValue("DrawSplineSegmentLinear", WithNote(i,
+		"Draw spline segment: Linear, 2 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1066,7 +1138,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawSplineSegmentBasis(p1, p2, p3, p4, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineSegmentBasis", i.GetFunc());
+	raylibModule.SetValue("DrawSplineSegmentBasis", WithNote(i,
+		"Draw spline segment: B-Spline, 4 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1085,7 +1158,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawSplineSegmentCatmullRom(p1, p2, p3, p4, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineSegmentCatmullRom", i.GetFunc());
+	raylibModule.SetValue("DrawSplineSegmentCatmullRom", WithNote(i,
+		"Draw spline segment: Catmull-Rom, 4 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1102,7 +1176,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawSplineSegmentBezierQuadratic(p1, p2, p3, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineSegmentBezierQuadratic", i.GetFunc());
+	raylibModule.SetValue("DrawSplineSegmentBezierQuadratic", WithNote(i,
+		"Draw spline segment: Quadratic Bezier, 2 points, 1 control point"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1121,7 +1196,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		DrawSplineSegmentBezierCubic(p1, p2, p3, p4, thick, color);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawSplineSegmentBezierCubic", i.GetFunc());
+	raylibModule.SetValue("DrawSplineSegmentBezierCubic", WithNote(i,
+		"Draw spline segment: Cubic Bezier, 2 points, 2 control points"));
 
 	// Spline point evaluation functions
 
@@ -1139,7 +1215,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointLinear", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointLinear", WithNote(i,
+		"Get spline point for a given t [0.0f .. 1.0f], Linear"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1159,7 +1236,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointBasis", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointBasis", WithNote(i,
+		"Get spline point for a given t [0.0f .. 1.0f], B-Spline"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1179,7 +1257,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointCatmullRom", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointCatmullRom", WithNote(i,
+		"Get spline point for a given t [0.0f .. 1.0f], Catmull-Rom"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1197,7 +1276,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointBezierQuadratic", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointBezierQuadratic", WithNote(i,
+		"Get spline point for a given t [0.0f .. 1.0f], Quadratic Bezier"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p1");
@@ -1217,7 +1297,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		resultMap.SetValue(CACHED_KEY("y"), Value(result.y));
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
-	raylibModule.SetValue("GetSplinePointBezierCubic", i.GetFunc());
+	raylibModule.SetValue("GetSplinePointBezierCubic", WithNote(i,
+		"Get spline point for a given t [0.0f .. 1.0f], Cubic Bezier"));
 
 	// Additional triangle drawing
 
@@ -1239,7 +1320,10 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleFan", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleFan", WithNote(i,
+		"Draw a triangle fan defined by points NOTE: First vertex provided is the center, shared "
+		"by all triangles By default, following vertex should be provided in counter-clockwise "
+		"order"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("points");
@@ -1259,7 +1343,8 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		delete[] points;
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("DrawTriangleStrip", i.GetFunc());
+	raylibModule.SetValue("DrawTriangleStrip", WithNote(i,
+		"Draw a triangle strip defined by points NOTE: Every new vertex connects with previous two"));
 
 	// Texture setup
 
@@ -1272,19 +1357,24 @@ void AddRShapesMethods(ValueDict& raylibModule) {
 		SetShapesTexture(texture, rec);
 		return IntrinsicResult::Null;
 	});
-	raylibModule.SetValue("SetShapesTexture", i.GetFunc());
+	raylibModule.SetValue("SetShapesTexture", WithNote(i,
+		"Set texture and rectangle to be used on shapes drawing NOTE: It can be useful when using "
+		"basic shapes and one single font, defining a font char white rectangle would allow "
+		"drawing everything in a single draw call"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Texture2D texture = GetShapesTexture();
 		return IntrinsicResult(TextureToValue(texture));
 	});
-	raylibModule.SetValue("GetShapesTexture", i.GetFunc());
+	raylibModule.SetValue("GetShapesTexture", WithNote(i,
+		"Get texture that is used for shapes drawing"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Rectangle rect = GetShapesTextureRectangle();
 		return IntrinsicResult(RectangleToValue(rect));
 	});
-	raylibModule.SetValue("GetShapesTextureRectangle", i.GetFunc());
+	raylibModule.SetValue("GetShapesTextureRectangle", WithNote(i,
+		"Get texture source rectangle that is used for shapes drawing"));
 }

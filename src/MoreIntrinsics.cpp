@@ -10,6 +10,7 @@
 #include "RaylibTypes.h"
 #include "raylib.h"
 #include "miniscript.h"
+#include "macros.h"
 #include "loadfile.h"
 #include <map>
 #include <set>
@@ -809,24 +810,35 @@ void AddMoreIntrinsics() {
 	Intrinsic importFunc = Intrinsic::Create("import");
 	importFunc.AddParam("libname", "");
 	importFunc.set_Code(&intrinsic_import);
+	SetNote(importFunc,
+		"Import a MiniScript library by name, searching MS_IMPORT_PATH; stores the module under "
+		"that name and returns it");
 
 	// Exit the program with the given result code
 	Intrinsic exitFunc = Intrinsic::Create("exit");
 	exitFunc.AddParam("resultCode");
 	exitFunc.set_Code(&intrinsic_exit);
+	SetNote(exitFunc,
+		"Exit the program with the given result code");
 
 	// Get a map of all environment variables
 	Intrinsic envFunc = Intrinsic::Create("env");
 	envFunc.set_Code(&intrinsic_env);
+	SetNote(envFunc,
+		"Get a map of all environment variables");
 
 	// Get the script path and the command-line arguments following it
 	Intrinsic shellArgsFunc = Intrinsic::Create("shellArgs");
 	shellArgsFunc.set_Code(&intrinsic_shellArgs);
+	SetNote(shellArgsFunc,
+		"Get the script path and the command-line arguments following it");
 
 	// Load and run a MiniScript file in the current interpreter context
 	Intrinsic runFunc = Intrinsic::Create("run");
 	runFunc.AddParam("path", "");
 	runFunc.set_Code(&intrinsic_run);
+	SetNote(runFunc,
+		"Load and run a MiniScript file in the current interpreter context");
 
 #ifdef PLATFORM_WEB
 	// On web, set default path variables (on desktop, these are set in main.cpp)
@@ -864,6 +876,9 @@ void AddMoreIntrinsics() {
 		box->autoUnload = true;
 		return IntrinsicResult(resource);
 	});
+	SetNote(autoUnloadFunc,
+		"Flag a raylib resource to be unloaded automatically when no longer referenced; returns "
+		"the resource");
 
 	// Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)
 	Intrinsic rcFunc = Intrinsic::Create("resourceCounts");
@@ -890,6 +905,8 @@ void AddMoreIntrinsics() {
 		map.SetValue(CACHED_KEY("total"), Value(total));
 		return IntrinsicResult(DynamicMap(map));
 	});
+	SetNote(rcFunc,
+		"Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)");
 
 	// Bytes currently allocated from the host (malloc) heap, or null if this
 	// platform cannot report it.  Meaningful only as a delta between readings;
@@ -900,6 +917,9 @@ void AddMoreIntrinsics() {
 		if (bytes < 0) return IntrinsicResult::Null;
 		return IntrinsicResult(Value((double)bytes));
 	});
+	SetNote(hmFunc,
+		"Bytes currently allocated from the host (malloc) heap, or null if this platform "
+		"cannot report it.  Meaningful only as a delta between readings.");
 
 	// Set the default import search path (variables are expanded at import time),
 	// unless the user already set MS_IMPORT_PATH in the environment.

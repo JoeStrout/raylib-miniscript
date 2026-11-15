@@ -13,6 +13,7 @@
 
 #include "MatrixInternal.h"
 #include "PRNG.g.h"
+#include "macros.h"
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -23,7 +24,6 @@ namespace MiniScript {
 
 using namespace MatrixInternal;
 
-#define INTRINSIC_LAMBDA [](Context context, IntrinsicResult partialResult) -> IntrinsicResult
 
 //--------------------------------------------------------------------------------
 // Argument helpers
@@ -501,7 +501,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(MatrixToValue(m));
 	});
-	matrixClass.SetValue(String("ofSize"), f.GetFunc());
+	matrixClass.SetValue("ofSize", WithNote(f,
+		"Create a new matrix of the given size, filled with a number or by calling a function"));
 
 	// Matrix.identity(size) -> new size x size Matrix, ones on the main diagonal
 	// Create a new square identity matrix
@@ -526,7 +527,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(MatrixToValue(m));
 	});
-	matrixClass.SetValue(String("identity"), f.GetFunc());
+	matrixClass.SetValue("identity", WithNote(f,
+		"Create a new square identity matrix"));
 
 	// Matrix.fromList(sourceList)
 	//   1D list of numbers -> 1 x n row vector
@@ -562,7 +564,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(MatrixToValue(m));
 	});
-	matrixClass.SetValue(String("fromList"), f.GetFunc());
+	matrixClass.SetValue("fromList", WithNote(f,
+		"Create a new matrix from a 1D or 2D list of numbers"));
 
 	// Matrix.fromRawData(rd, dtype="auto", startPos=0, rows=null, columns=null)
 	//   -> new Matrix
@@ -647,7 +650,8 @@ const Value& MatrixClass() {
 		if (end < 0) { delete m; return IntrinsicResult(err); }
 		return IntrinsicResult(MatrixToValue(m));
 	});
-	matrixClass.SetValue(String("fromRawData"), f.GetFunc());
+	matrixClass.SetValue("fromRawData", WithNote(f,
+		"Create a new matrix from data in a RawData buffer"));
 
 	// m.toFlatList -> a plain list of every element, row by row.
 	// Index it as r*columns + c.  There is no 2D form here on purpose: a flat
@@ -665,7 +669,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) out.Add(Value(m->data[i]));
 		return IntrinsicResult(DynamicList(out));
 	});
-	matrixClass.SetValue(String("toFlatList"), f.GetFunc());
+	matrixClass.SetValue("toFlatList", WithNote(f,
+		"Get all elements as one flat list, row by row"));
 
 	// m.getElem(row, column) -> number
 	// Get the element at the given row and column
@@ -681,7 +686,8 @@ const Value& MatrixClass() {
 		if (!ResolveRowCol(context, m, &row, &col, &err)) return IntrinsicResult(err);
 		return IntrinsicResult(Value(m->data[(long)row * m->columns + col]));
 	});
-	matrixClass.SetValue(String("getElem"), f.GetFunc());
+	matrixClass.SetValue("getElem", WithNote(f,
+		"Get the element at the given row and column"));
 
 	// m.setElem(row, column, value) -> self
 	// Set the element at the given row and column
@@ -703,7 +709,8 @@ const Value& MatrixClass() {
 		m->data[(long)row * m->columns + col] = v.DoubleValue();
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("setElem"), f.GetFunc());
+	matrixClass.SetValue("setElem", WithNote(f,
+		"Set the element at the given row and column"));
 
 	// m.getRow(row) -> plain list of numbers
 	//
@@ -726,7 +733,8 @@ const Value& MatrixClass() {
 		for (int c = 0; c < m->columns; c++) out.Add(Value(p[c]));
 		return IntrinsicResult(DynamicList(out));
 	});
-	matrixClass.SetValue(String("getRow"), f.GetFunc());
+	matrixClass.SetValue("getRow", WithNote(f,
+		"Get one row as a list of numbers"));
 
 	// m.setRow(row, values) -> self
 	// Set one row from a list of numbers, or set every element in it to one number
@@ -748,7 +756,8 @@ const Value& MatrixClass() {
 		for (int c = 0; c < m->columns; c++) p[c] = values.At(c);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("setRow"), f.GetFunc());
+	matrixClass.SetValue("setRow", WithNote(f,
+		"Set one row from a list of numbers, or set every element in it to one number"));
 
 	// m.getColumn(column) -> plain list of numbers
 	//
@@ -770,7 +779,8 @@ const Value& MatrixClass() {
 		for (int r = 0; r < m->rows; r++) out.Add(Value(m->data[(long)r * m->columns + col]));
 		return IntrinsicResult(DynamicList(out));
 	});
-	matrixClass.SetValue(String("getColumn"), f.GetFunc());
+	matrixClass.SetValue("getColumn", WithNote(f,
+		"Get one column as a list of numbers"));
 
 	// m.setColumn(column, values) -> self
 	// Set one column from a list of numbers, or set every element in it to one number
@@ -789,7 +799,8 @@ const Value& MatrixClass() {
 		for (int r = 0; r < m->rows; r++) m->data[(long)r * m->columns + col] = values.At(r);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("setColumn"), f.GetFunc());
+	matrixClass.SetValue("setColumn", WithNote(f,
+		"Set one column from a list of numbers, or set every element in it to one number"));
 
 	// m.getSub(row=0, col=0, rows=null, columns=null, out=null) -> new Matrix, or out
 	//
@@ -875,7 +886,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(MatrixToValue(out));
 	});
-	matrixClass.SetValue(String("getSub"), f.GetFunc());
+	matrixClass.SetValue("getSub", WithNote(f,
+		"Copy a rectangular block out into a new matrix (or into out)"));
 
 	// m.setSub(row, col, m2) -> self
 	//
@@ -933,7 +945,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("setSub"), f.GetFunc());
+	matrixClass.SetValue("setSub", WithNote(f,
+		"Copy another matrix into this one at the given row and column"));
 
 	// m.reshape(rows, columns) -> self
 	//
@@ -1010,7 +1023,8 @@ const Value& MatrixClass() {
 		SyncShape(self, m);
 		return IntrinsicResult(self);
 	});
-	matrixClass.SetValue(String("reshape"), f.GetFunc());
+	matrixClass.SetValue("reshape", WithNote(f,
+		"Change the shape without moving any elements (this is not a transpose)"));
 
 	// m.resize(rows, columns) -> self
 	//
@@ -1044,7 +1058,8 @@ const Value& MatrixClass() {
 		SyncShape(self, m);
 		return IntrinsicResult(self);
 	});
-	matrixClass.SetValue(String("resize"), f.GetFunc());
+	matrixClass.SetValue("resize", WithNote(f,
+		"Change the shape, keeping the top-left block and zero-filling any new elements"));
 
 	// m.reserve(rows) -> self
 	//
@@ -1076,7 +1091,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("reserve"), f.GetFunc());
+	matrixClass.SetValue("reserve", WithNote(f,
+		"Pre-allocate room for the given number of rows, without changing the matrix"));
 
 	// m.trim -> self
 	//
@@ -1110,7 +1126,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("trim"), f.GetFunc());
+	matrixClass.SetValue("trim", WithNote(f,
+		"Release any memory reserved beyond the current size"));
 
 	// m.removeRow(index) -> self
 	//
@@ -1143,7 +1160,8 @@ const Value& MatrixClass() {
 		SyncShape(self, m);
 		return IntrinsicResult(self);
 	});
-	matrixClass.SetValue(String("removeRow"), f.GetFunc());
+	matrixClass.SetValue("removeRow", WithNote(f,
+		"Remove a row, moving the rows below it up"));
 
 	// m.removeRowFast(index) -> self
 	//
@@ -1174,7 +1192,8 @@ const Value& MatrixClass() {
 		SyncShape(self, m);
 		return IntrinsicResult(self);
 	});
-	matrixClass.SetValue(String("removeRowFast"), f.GetFunc());
+	matrixClass.SetValue("removeRowFast", WithNote(f,
+		"Remove a row by moving the last row into its place (changes the row order)"));
 
 	// m.equals(m2, tolerance=1e-9) -> true/false
 	//
@@ -1239,7 +1258,8 @@ const Value& MatrixClass() {
 		return IntrinsicResult(ErrorTypes::RuntimeError(
 			"Matrix.equals: expected a Matrix or a list"));
 	});
-	matrixClass.SetValue(String("equals"), f.GetFunc());
+	matrixClass.SetValue("equals", WithNote(f,
+		"Get whether this matrix matches another matrix or list, within a tolerance"));
 
 	// A.gemm(B, addend=null, out=null, transA=false, transB=false, alpha=1, beta=1)
 	//
@@ -1298,7 +1318,8 @@ const Value& MatrixClass() {
 		SyncShape(vOut, out);
 		return IntrinsicResult(vOut);
 	});
-	matrixClass.SetValue(String("gemm"), f.GetFunc());
+	matrixClass.SetValue("gemm", WithNote(f,
+		"General matrix multiply-add: alpha * A * B + beta * addend, with optional transposes"));
 
 	// ---- Elementwise, in place ----
 	//
@@ -1328,7 +1349,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("elemMultiplyBy"), f.GetFunc());
+	matrixClass.SetValue("elemMultiplyBy", WithNote(f,
+		"Multiply each element in place by a number, or elementwise by a matrix or list"));
 
 	// m.elemDivideBy(x) -> self
 	//
@@ -1353,7 +1375,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("elemDivideBy"), f.GetFunc());
+	matrixClass.SetValue("elemDivideBy", WithNote(f,
+		"Divide each element in place by a number, or elementwise by a matrix or list"));
 
 	// m.pow(k) -> self   (k may broadcast, as numpy's ** does)
 	// Raise each element to a power, in place
@@ -1374,7 +1397,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("pow"), f.GetFunc());
+	matrixClass.SetValue("pow", WithNote(f,
+		"Raise each element to a power, in place"));
 
 	// m.abs -> self
 	// Replace each element with its absolute value
@@ -1388,7 +1412,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) if (m->data[i] < 0) m->data[i] = -m->data[i];
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("abs"), f.GetFunc());
+	matrixClass.SetValue("abs", WithNote(f,
+		"Replace each element with its absolute value"));
 
 	// m.sqrt -> self   (negative input gives NaN, as in numpy)
 	// Replace each element with its square root
@@ -1402,7 +1427,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) m->data[i] = std::sqrt(m->data[i]);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("sqrt"), f.GetFunc());
+	matrixClass.SetValue("sqrt", WithNote(f,
+		"Replace each element with its square root"));
 
 	// m.round(places=0) -> self
 	//
@@ -1426,7 +1452,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) m->data[i] = std::round(m->data[i] * factor) / factor;
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("round"), f.GetFunc());
+	matrixClass.SetValue("round", WithNote(f,
+		"Round each element to the given number of decimal places"));
 
 	// m.clamp(lo, hi) -> self
 	//
@@ -1461,7 +1488,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("clamp"), f.GetFunc());
+	matrixClass.SetValue("clamp", WithNote(f,
+		"Limit each element to the range lo to hi (either may be null)"));
 
 	// ---- Bulk transforms ----
 
@@ -1486,7 +1514,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) m->data[i] = x;
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("fill"), f.GetFunc());
+	matrixClass.SetValue("fill", WithNote(f,
+		"Set every element to the given value"));
 
 	// m.randomize(mean=0, sd=1) -> self
 	//
@@ -1526,7 +1555,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("randomize"), f.GetFunc());
+	matrixClass.SetValue("randomize", WithNote(f,
+		"Fill with normally distributed random numbers of the given mean and standard deviation"));
 
 	// m.apply(func) -> self          func(value) -> value
 	// m.apply1(func, arg1) -> self   func(value, arg1) -> value
@@ -1551,7 +1581,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("apply"), f.GetFunc());
+	matrixClass.SetValue("apply", WithNote(f,
+		"Replace each element with the result of func(value)"));
 
 	// Replace each element with the result of func(value, arg1)
 	f = Intrinsic::Create("");
@@ -1569,7 +1600,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("apply1"), f.GetFunc());
+	matrixClass.SetValue("apply1", WithNote(f,
+		"Replace each element with the result of func(value, arg1)"));
 
 	// m.sum(axis=null) / sumOfSquares / max / min / argmax / argmin
 	//
@@ -1584,42 +1616,48 @@ const Value& MatrixClass() {
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceSum, "sum"); });
-	matrixClass.SetValue(String("sum"), f.GetFunc());
+	matrixClass.SetValue("sum", WithNote(f,
+		"Get the sum of all elements, or of each column (axis 0) or row (axis 1)"));
 
 	// Get the sum of the squared elements, overall or per column (axis 0) or row (axis 1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceSumSq, "sumOfSquares"); });
-	matrixClass.SetValue(String("sumOfSquares"), f.GetFunc());
+	matrixClass.SetValue("sumOfSquares", WithNote(f,
+		"Get the sum of the squared elements, overall or per column (axis 0) or row (axis 1)"));
 
 	// Get the largest element, overall or per column (axis 0) or row (axis 1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceMax, "max"); });
-	matrixClass.SetValue(String("max"), f.GetFunc());
+	matrixClass.SetValue("max", WithNote(f,
+		"Get the largest element, overall or per column (axis 0) or row (axis 1)"));
 
 	// Get the smallest element, overall or per column (axis 0) or row (axis 1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceMin, "min"); });
-	matrixClass.SetValue(String("min"), f.GetFunc());
+	matrixClass.SetValue("min", WithNote(f,
+		"Get the smallest element, overall or per column (axis 0) or row (axis 1)"));
 
 	// Get the index of the largest element, overall or per column (axis 0) or row (axis 1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMax, "argmax"); });
-	matrixClass.SetValue(String("argmax"), f.GetFunc());
+	matrixClass.SetValue("argmax", WithNote(f,
+		"Get the index of the largest element, overall or per column (axis 0) or row (axis 1)"));
 
 	// Get the index of the smallest element, overall or per column (axis 0) or row (axis 1)
 	f = Intrinsic::Create("");
 	f.AddParam("self");
 	f.AddParam("axis");
 	f.set_Code(INTRINSIC_LAMBDA { return DoReduce(context, kReduceArgMin, "argmin"); });
-	matrixClass.SetValue(String("argmin"), f.GetFunc());
+	matrixClass.SetValue("argmin", WithNote(f,
+		"Get the index of the smallest element, overall or per column (axis 0) or row (axis 1)"));
 
 	// ---- Linear algebra ----
 
@@ -1635,7 +1673,8 @@ const Value& MatrixClass() {
 		if (!Determinant(m, &det, &err)) return IntrinsicResult(err);
 		return IntrinsicResult(Value(det));
 	});
-	matrixClass.SetValue(String("determinant"), f.GetFunc());
+	matrixClass.SetValue("determinant", WithNote(f,
+		"Get the determinant of a square matrix"));
 
 	// m.inverse -> new Matrix, or an error value if singular.
 	// Get the inverse of a square matrix as a new matrix
@@ -1649,7 +1688,8 @@ const Value& MatrixClass() {
 		if (inv == nullptr) return IntrinsicResult(err);
 		return IntrinsicResult(MatrixToValue(inv));
 	});
-	matrixClass.SetValue(String("inverse"), f.GetFunc());
+	matrixClass.SetValue("inverse", WithNote(f,
+		"Get the inverse of a square matrix as a new matrix"));
 
 	// m.solve(b) -> new Matrix X with m*X = b.  LU with partial pivoting.
 	// Solve self * X = b for X, returning X as a new matrix
@@ -1664,7 +1704,8 @@ const Value& MatrixClass() {
 		if (x == nullptr) return IntrinsicResult(err);
 		return IntrinsicResult(MatrixToValue(x));
 	});
-	matrixClass.SetValue(String("solve"), f.GetFunc());
+	matrixClass.SetValue("solve", WithNote(f,
+		"Solve self * X = b for X, returning X as a new matrix"));
 
 	// m.swapRows(row1, row2) -> self.  Negative indices count from the end.
 	// Swap two rows in place
@@ -1688,7 +1729,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("swapRows"), f.GetFunc());
+	matrixClass.SetValue("swapRows", WithNote(f,
+		"Swap two rows in place"));
 
 	// m.swapColumns(column1, column2) -> self.  Negative indices count from the end.
 	// Swap two columns in place
@@ -1711,7 +1753,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("swapColumns"), f.GetFunc());
+	matrixClass.SetValue("swapColumns", WithNote(f,
+		"Swap two columns in place"));
 
 	// ---- Per-row vector ops ----
 
@@ -1730,7 +1773,8 @@ const Value& MatrixClass() {
 		if (result == nullptr) return IntrinsicResult(err);
 		return IntrinsicResult(MatrixToValue(result));
 	});
-	matrixClass.SetValue(String("rowCross"), f.GetFunc());
+	matrixClass.SetValue("rowCross", WithNote(f,
+		"Get the cross product of each row with the matching row of m2 (both 3 columns wide)"));
 
 	// ---- Convolution ----
 
@@ -1767,7 +1811,8 @@ const Value& MatrixClass() {
 		SyncShape(vOut, out);
 		return IntrinsicResult(vOut);
 	});
-	matrixClass.SetValue(String("convolve"), f.GetFunc());
+	matrixClass.SetValue("convolve", WithNote(f,
+		"Apply a kernel (correlation) at every position where it fits, into a same-sized matrix"));
 
 	// ---- Neural network primitives ----
 	//
@@ -1788,7 +1833,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) m->data[i] = StableSigmoid(m->data[i]);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("sigmoid"), f.GetFunc());
+	matrixClass.SetValue("sigmoid", WithNote(f,
+		"Apply the sigmoid function to each element, in place"));
 
 	// m.tanh -> self
 	// Apply the tanh function to each element, in place
@@ -1802,7 +1848,8 @@ const Value& MatrixClass() {
 		for (long i = 0; i < n; i++) m->data[i] = std::tanh(m->data[i]);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("tanh"), f.GetFunc());
+	matrixClass.SetValue("tanh", WithNote(f,
+		"Apply the tanh function to each element, in place"));
 
 	// m.softmax(axis=1) -> self.  1 = across rows (the usual: samples in rows),
 	// 0 = down columns, null = over the whole matrix.
@@ -1820,7 +1867,8 @@ const Value& MatrixClass() {
 		SoftmaxInPlace(m, axis);
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("softmax"), f.GetFunc());
+	matrixClass.SetValue("softmax", WithNote(f,
+		"Apply softmax in place, across each row by default"));
 
 	// m.greaterThan(x) -> self, each element replaced by 1 or 0.
 	//
@@ -1846,7 +1894,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(context.GetVar("self"));
 	});
-	matrixClass.SetValue(String("greaterThan"), f.GetFunc());
+	matrixClass.SetValue("greaterThan", WithNote(f,
+		"Replace each element with 1 if it is greater than x, or 0 otherwise"));
 
 	// m.softmaxCrossEntropy(targets, outProbs=null) -> new n x 1 Matrix
 	//
@@ -1868,7 +1917,8 @@ const Value& MatrixClass() {
 		if (!vOutProbs.IsNull()) SyncShape(vOutProbs, ValueToMatrix(vOutProbs));
 		return IntrinsicResult(MatrixToValue(losses));
 	});
-	matrixClass.SetValue(String("softmaxCrossEntropy"), f.GetFunc());
+	matrixClass.SetValue("softmaxCrossEntropy", WithNote(f,
+		"Get the per-sample softmax cross-entropy loss of these logits against targets"));
 
 	// m.toRawData(rd, dtype="float64", startPos=0, includeHeader=true)
 	//   -> the position just past what was written
@@ -1900,7 +1950,8 @@ const Value& MatrixClass() {
 		if (end < 0) return IntrinsicResult(err);
 		return IntrinsicResult(Value(end));
 	});
-	matrixClass.SetValue(String("toRawData"), f.GetFunc());
+	matrixClass.SetValue("toRawData", WithNote(f,
+		"Write the matrix into a RawData buffer, returning the position after what was written"));
 
 	// m.readRawData(rd, dtype="auto", startPos=0)
 	//   -> the position just past what was read
@@ -1935,7 +1986,9 @@ const Value& MatrixClass() {
 		SyncShape(context.GetVar("self"), m);
 		return IntrinsicResult(Value(end));
 	});
-	matrixClass.SetValue(String("readRawData"), f.GetFunc());
+	matrixClass.SetValue("readRawData", WithNote(f,
+		"Read data from a RawData buffer into this matrix, returning the position after what was "
+		"read"));
 
 	// m.format(fieldWidth=10, precision=null, columnSep="", rowSep=null) -> string
 	//
@@ -2006,7 +2059,8 @@ const Value& MatrixClass() {
 		}
 		return IntrinsicResult(String(out.c_str()));
 	});
-	matrixClass.SetValue(String("format"), f.GetFunc());
+	matrixClass.SetValue("format", WithNote(f,
+		"Get the matrix as a human-readable table string"));
 
 	// m.size -> [rows, columns]
 	//
@@ -2029,7 +2083,8 @@ const Value& MatrixClass() {
 		dims.Add(Value(m->columns));
 		return IntrinsicResult(DynamicList(dims));
 	});
-	matrixClass.SetValue(String("size"), f.GetFunc());
+	matrixClass.SetValue("size", WithNote(f,
+		"Get the shape of the matrix as [rows, columns]"));
 
 	// m.size = [rows, columns], m.rows = n, m.columns = n
 	//
@@ -2061,7 +2116,8 @@ const Value& MatrixClass() {
 		SyncShape(context.GetVar("self"), m);
 		return IntrinsicResult::Null;
 	});
-	matrixClass.SetValue(String("size="), f.GetFunc());
+	matrixClass.SetValue("size=", WithNote(f,
+		"Set the shape, keeping the top-left block and zero-filling any new elements"));
 
 	// Set the number of rows, keeping the top-left block and zero-filling any new elements
 	f = Intrinsic::Create("");
@@ -2077,7 +2133,8 @@ const Value& MatrixClass() {
 		SyncShape(context.GetVar("self"), m);
 		return IntrinsicResult::Null;
 	});
-	matrixClass.SetValue(String("rows="), f.GetFunc());
+	matrixClass.SetValue("rows=", WithNote(f,
+		"Set the number of rows, keeping the top-left block and zero-filling any new elements"));
 
 	// Set the number of columns, keeping the top-left block and zero-filling any new elements
 	f = Intrinsic::Create("");
@@ -2093,7 +2150,8 @@ const Value& MatrixClass() {
 		SyncShape(context.GetVar("self"), m);
 		return IntrinsicResult::Null;
 	});
-	matrixClass.SetValue(String("columns="), f.GetFunc());
+	matrixClass.SetValue("columns=", WithNote(f,
+		"Set the number of columns, keeping the top-left block and zero-filling any new elements"));
 
 	// m.capacity -> current element capacity (read-only report)
 	// Get how many elements the matrix can hold without reallocating
@@ -2105,7 +2163,8 @@ const Value& MatrixClass() {
 		if (m == nullptr) return IntrinsicResult(err);
 		return IntrinsicResult(Value((double)m->capacityElems));
 	});
-	matrixClass.SetValue(String("capacity"), f.GetFunc());
+	matrixClass.SetValue("capacity", WithNote(f,
+		"Get how many elements the matrix can hold without reallocating"));
 
 	// Capacity is always a whole number of rows (reserve takes rows, and every
 	// resize path keeps it that way), so there is no sensible element count to

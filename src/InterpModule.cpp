@@ -18,10 +18,9 @@
 
 #include "InterpModule.h"
 #include "miniscript.h"
+#include "macros.h"
 
 namespace MiniScript {
-
-#define INTRINSIC_LAMBDA [](Context context, IntrinsicResult partialResult) -> IntrinsicResult
 
 static const Value& kHandle() { static Value v("_handle"); return v; }
 
@@ -270,7 +269,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(DynamicMap(inst));
 	});
 	// create a new child interpreter, with empty globals
-	interpClass.SetValue(String("create"), f.GetFunc());
+	interpClass.SetValue("create", WithNote(f,
+		"create a new child interpreter, with empty globals"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -289,7 +289,8 @@ const Value& InterpClass() {
 		return IntrinsicResult::Null;
 	});
 	// release this interpreter and its VM
-	interpClass.SetValue(String("dispose"), f.GetFunc());
+	interpClass.SetValue("dispose", WithNote(f,
+		"release this interpreter and its VM"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -302,7 +303,8 @@ const Value& InterpClass() {
 		return IntrinsicResult::Null;
 	});
 	// set one global in the child
-	interpClass.SetValue(String("setGlobal"), f.GetFunc());
+	interpClass.SetValue("setGlobal", WithNote(f,
+		"set one global in the child"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -313,7 +315,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.GetGlobalValue(context.GetArg(1).ToString()));
 	});
 	// read one global back out of the child
-	interpClass.SetValue(String("getGlobal"), f.GetFunc());
+	interpClass.SetValue("getGlobal", WithNote(f,
+		"read one global back out of the child"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -328,7 +331,9 @@ const Value& InterpClass() {
 	});
 	// bulk-seed the child's globals from a map (typically the caller's `globals`);
 	// returns the number of names copied
-	interpClass.SetValue(String("setGlobals"), f.GetFunc());
+	interpClass.SetValue("setGlobals", WithNote(f,
+		"bulk-seed the child's globals from a map (typically the caller's `globals`); returns "
+		"the number of names copied"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -343,7 +348,9 @@ const Value& InterpClass() {
 	});
 	// load and compile a program into the child, with empty globals; check
 	// `error` for a compile error, and runUntilDone to run it
-	interpClass.SetValue(String("load"), f.GetFunc());
+	interpClass.SetValue("load", WithNote(f,
+		"load and compile a program into the child, with empty globals; check `error` for a "
+		"compile error, and runUntilDone to run it"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -355,7 +362,8 @@ const Value& InterpClass() {
 		return IntrinsicResult::Null;
 	});
 	// as load, but the child keeps the globals it already has
-	interpClass.SetValue(String("loadKeepingGlobals"), f.GetFunc());
+	interpClass.SetValue("loadKeepingGlobals", WithNote(f,
+		"as load, but the child keeps the globals it already has"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -370,7 +378,9 @@ const Value& InterpClass() {
 	});
 	// feed one REPL line to the child, and run it for up to `seconds`; if it is
 	// not finished by then, keep calling runUntilDone
-	interpClass.SetValue(String("replLine"), f.GetFunc());
+	interpClass.SetValue("replLine", WithNote(f,
+		"feed one REPL line to the child, and run it for up to `seconds`; if it is not "
+		"finished by then, keep calling runUntilDone"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -380,7 +390,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.NeedMoreInput() ? Value::one : Value::zero);
 	});
 	// true when the last replLine left a block open
-	interpClass.SetValue(String("needMoreInput"), f.GetFunc());
+	interpClass.SetValue("needMoreInput", WithNote(f,
+		"true when the last replLine left a block open"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -396,7 +407,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.Done() ? Value::one : Value::zero);
 	});
 	// run the child for up to `seconds`; returns true if it finished
-	interpClass.SetValue(String("runUntilDone"), f.GetFunc());
+	interpClass.SetValue("runUntilDone", WithNote(f,
+		"run the child for up to `seconds`; returns true if it finished"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -409,7 +421,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.Done() ? Value::one : Value::zero);
 	});
 	// true when the child has nothing left to run
-	interpClass.SetValue(String("done"), f.GetFunc());
+	interpClass.SetValue("done", WithNote(f,
+		"true when the child has nothing left to run"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -419,7 +432,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.Running() ? Value::one : Value::zero);
 	});
 	// the inverse of done
-	interpClass.SetValue(String("running"), f.GetFunc());
+	interpClass.SetValue("running", WithNote(f,
+		"the inverse of done"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -430,7 +444,8 @@ const Value& InterpClass() {
 		return IntrinsicResult::Null;
 	});
 	// interrupt the child (this is what ctrl-C is)
-	interpClass.SetValue(String("stop"), f.GetFunc());
+	interpClass.SetValue("stop", WithNote(f,
+		"interrupt the child (this is what ctrl-C is)"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -444,7 +459,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.ExitRequested() ? Value::one : Value::zero);
 	});
 	// true if the child called `exit`
-	interpClass.SetValue(String("exitRequested"), f.GetFunc());
+	interpClass.SetValue("exitRequested", WithNote(f,
+		"true if the child called `exit`"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -454,7 +470,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(Value(h->interp.ExitCode()));
 	});
 	// the result code the child passed to `exit`, or 0
-	interpClass.SetValue(String("exitCode"), f.GetFunc());
+	interpClass.SetValue("exitCode", WithNote(f,
+		"the result code the child passed to `exit`, or 0"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -466,7 +483,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(Value(ErrorTypes::DescribeError(err)));
 	});
 	// the child's last error as a string, or null
-	interpClass.SetValue(String("error"), f.GetFunc());
+	interpClass.SetValue("error", WithNote(f,
+		"the child's last error as a string, or null"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -480,7 +498,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(err.Stack());
 	});
 	// list of strings, captured where the error was raised
-	interpClass.SetValue(String("stackTrace"), f.GetFunc());
+	interpClass.SetValue("stackTrace", WithNote(f,
+		"list of strings, captured where the error was raised"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -490,7 +509,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(h->interp.lastImplicitResult());
 	});
 	// value of the last bare expression a replLine evaluated, for REPL echo
-	interpClass.SetValue(String("lastResult"), f.GetFunc());
+	interpClass.SetValue("lastResult", WithNote(f,
+		"value of the last bare expression a replLine evaluated, for REPL echo"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -503,7 +523,8 @@ const Value& InterpClass() {
 		return IntrinsicResult(Value(out));
 	});
 	// drain and clear whatever the child printed to stdout
-	interpClass.SetValue(String("takeOutput"), f.GetFunc());
+	interpClass.SetValue("takeOutput", WithNote(f,
+		"drain and clear whatever the child printed to stdout"));
 
 	classValue = GCManager::NewMapFromDict(interpClass);   // shares interpClass's storage
 	GCManager::AddRoot(classValue);
@@ -520,6 +541,8 @@ void AddInterpIntrinsics() {
 			-> MiniScript::IntrinsicResult {
 		return MiniScript::IntrinsicResult(MiniScript::InterpClass());
 	});
+	SetNote(f,
+		"Get the Interp class, for running code in a child interpreter");
 }
 
 //--------------------------------------------------------------------------------
