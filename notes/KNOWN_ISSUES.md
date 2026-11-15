@@ -32,12 +32,6 @@ raylib walks backward into memory before the string.  The result is meaningless
 and the read is out of bounds.  It probably needs an index or offset parameter
 (or to point at the end of the string).
 
-## ImageKernelConvolution doesn't check kernelSize
-
-`ImageKernelConvolution` (src/RTextures.cpp) passes the script's `kernelSize`
-to raylib without checking it against the kernel list's length, so a larger
-`kernelSize` reads past the end of the array.
-
 ## GetGamepadName doesn't guard against NULL
 
 `GetGamepadName` (src/RCore.cpp) builds its result directly from raylib's

@@ -14,8 +14,15 @@
 #include "macros.h"
 #include "Profiler.h"
 #include <iostream>
+#include <vector>
+#include <stdio.h>
 
 using namespace MiniScript;
+
+static IntrinsicResult RaiseError(Context context, const char* msg) {
+	context.vm.RaiseRuntimeError(msg);
+	return IntrinsicResult::Null;
+}
 
 void AddRTexturesMethods(ValueDict& raylibModule) {
 	Intrinsic i;
@@ -1604,24 +1611,58 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("image");
 	i.AddParam("kernel");
-	i.AddParam("kernelSize");
+	i.AddParam("kernelSize", Value::Null);
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image* image = ValueToImagePtr(context.GetArg(0));
 		if (!image) return IntrinsicResult::Null;
-		ValueList kernelList = context.GetArg(1).GetList();
-		int kernelSize = context.GetArg(2).IntValue();
-		// Convert kernel list to float array
-		float* kernel = new float[kernelList.Count()];
-		for (int i = 0; i < kernelList.Count(); i++) {
-			kernel[i] = kernelList[i].FloatValue();
+
+		// The kernel is a flat list of numbers, row by row, or a list of rows
+		// (each a list as long as the number of rows).  Either way raylib gets
+		// one flat array, and its size comes from the list: kernelSize, which
+		// C needs because an array doesn't know its length, is only a check.
+		Value kernelVal = context.GetArg(1);
+		if (kernelVal.Type() != ValueType::List) {
+			return RaiseError(context, "ImageKernelConvolution: kernel must be a list");
 		}
-		ImageKernelConvolution(image, kernel, kernelSize);
-		delete[] kernel;
+		ValueList rows = kernelVal.GetList();
+		long rowCount = rows.Count();
+		bool nested = rowCount > 0 && rows[0].Type() == ValueType::List;
+		std::vector<float> kernel;
+		kernel.reserve(nested ? rowCount * rowCount : rowCount);
+		for (long r = 0; r < rowCount; r++) {
+			Value item = rows[r];
+			if ((item.Type() == ValueType::List) != nested) {
+				return RaiseError(context, "ImageKernelConvolution: kernel must be all numbers or all lists");
+			}
+			if (!nested) {
+				kernel.push_back(item.FloatValue());
+				continue;
+			}
+			ValueList row = item.GetList();
+			if (row.Count() != rowCount) {
+				return RaiseError(context, "ImageKernelConvolution: a kernel given as rows must be "
+					"square: each row as long as the number of rows");
+			}
+			for (long c = 0; c < rowCount; c++) kernel.push_back(row[c].FloatValue());
+		}
+
+		Value sizeVal = context.GetArg(2);
+		if (!sizeVal.IsNull() && sizeVal.IntValue() != (long)kernel.size()) {
+			char msg[160];
+			snprintf(msg, sizeof(msg), "ImageKernelConvolution: kernelSize (%ld) does not match "
+				"the number of kernel values (%ld)", (long)sizeVal.IntValue(), (long)kernel.size());
+			return RaiseError(context, msg);
+		}
+		if (kernel.empty()) return IntrinsicResult::Null;
+
+		ImageKernelConvolution(image, kernel.data(), (int)kernel.size());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageKernelConvolution", WithNote(i,
-		"Apply custom square convolution kernel to image. kernel is a list of numbers, row by row; "
-		"kernelSize is the total number of values (e.g. 9 for a 3x3 kernel)"));
+		"Apply a custom square convolution kernel to image (in place).  kernel is either a list "
+		"of numbers, row by row (e.g. 9 values for a 3x3 kernel), or a list of rows, like "
+		"[[1,1,1], [1,0,1], [1,1,1]].  kernelSize is optional; if given, it must equal the total "
+		"number of values"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
