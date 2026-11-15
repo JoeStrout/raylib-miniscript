@@ -13,6 +13,7 @@
 #include "miniscript.h"
 #include "macros.h"
 #include "Profiler.h"
+#include <vector>
 
 using namespace MiniScript;
 
@@ -729,14 +730,19 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	i.AddParam("data");
 	i.set_Code(INTRINSIC_LAMBDA {
 		AudioStream stream = ValueToAudioStream(context.GetArg(0));
+		if (stream.channels == 0) return IntrinsicResult::Null;	// not a loaded stream
 		ValueList data = context.GetArg(1).GetList();
+		long sampleCount = data.Count();
+		// raylib counts frames, each holding one sample per channel; any
+		// trailing samples that don't make a whole frame are ignored.
+		int frameCount = (int)(sampleCount / stream.channels);
 
 #define PROCESS_DATA(TYPE, VALUE) \
-		TYPE *buffer = new TYPE[data.Count()]; \
-		for (long i=0;i<data.Count();++i) { \
+		std::vector<TYPE> buffer(sampleCount); \
+		for (long i=0;i<sampleCount;++i) { \
 			buffer[i] = static_cast<TYPE>(data[i].VALUE()); \
 		}; \
-		UpdateAudioStream(stream, buffer, data.Count());
+		UpdateAudioStream(stream, buffer.data(), frameCount);
 
 		if (stream.sampleSize==8) {
 			PROCESS_DATA(unsigned char, IntValue)
@@ -752,7 +758,8 @@ void AddRAudioMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("UpdateAudioStream", WithNote(i,
 		"Update audio stream buffers with data, a list of sample values (ints for 8- or 16-bit "
-		"streams, floats otherwise).  Only one buffer of the stream is updated, and only once it "
+		"streams, floats otherwise), with the channels interleaved for a stereo stream (left, "
+		"right, left, ...).  Only one buffer of the stream is updated, and only once it "
 		"has been processed: check IsAudioStreamProcessed first"));
 
 	i = Intrinsic::Create("");

@@ -11,20 +11,6 @@ or, for the ones that need a window, `tests/known_issues_window.ms`
 The entries below were found during the 2026-11-15 review of the API notes
 (`WithNote`).  All are confirmed by failing tests.
 
-## UpdateAudioStream leaks and miscounts frames
-
-`UpdateAudioStream` (src/RAudio.cpp): the `new TYPE[]` buffer in the
-`PROCESS_DATA` macro is never freed, so every call leaks.  It also passes
-`data.Count()` as `frameCount`, which is wrong for streams with more than one
-channel.  It should be the sample count divided by `stream.channels`.
-
-## GenImageFontAtlas mixes allocators and leaks
-
-`GenImageFontAtlas` (src/RText.cpp): raylib overwrites `*glyphRecs` with its own
-`RL_MALLOC` array, so the `new[]` input array leaks.  The returned `updatedRecs`
-is then freed with `delete[]` instead of `RL_FREE`.  The input rectangles are
-never read; raylib only writes them.
-
 ## GetCodepointPrevious reads before the string
 
 `GetCodepointPrevious` (src/RText.cpp) passes the start of `text.c_str()`, so

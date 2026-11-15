@@ -14,6 +14,7 @@
 #include "unicodeUtil.h"
 #include "macros.h"
 #include <string>
+#include <vector>
 
 using namespace MiniScript;
 
@@ -754,10 +755,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		int glyphCount = glyphsList.Count();
 		if (glyphCount == 0 || glyphCount != recsList.Count()) return IntrinsicResult::Null;
 
-		// Convert lists to arrays
-		GlyphInfo* glyphs = new GlyphInfo[glyphCount];
-		Rectangle* recs = new Rectangle[glyphCount];
-
+		std::vector<GlyphInfo> glyphs(glyphCount);
 		for (int i = 0; i < glyphCount; i++) {
 			ValueDict glyphDict = glyphsList[i].GetDict();
 			glyphs[i].value = glyphDict.Lookup(CACHED_KEY("value"), Value::zero).IntValue();
@@ -765,25 +763,20 @@ void AddRTextMethods(ValueDict& raylibModule) {
 			glyphs[i].offsetY = glyphDict.Lookup(CACHED_KEY("offsetY"), Value::zero).IntValue();
 			glyphs[i].advanceX = glyphDict.Lookup(CACHED_KEY("advanceX"), Value::zero).IntValue();
 			glyphs[i].image = ValueToImage(glyphDict.Lookup(CACHED_KEY("image"), Value::Null));
-
-			recs[i] = ValueToRectangle(recsList[i]);
 		}
 
-		// GenImageFontAtlas modifies the recs array, so we need to pass a pointer
-		Rectangle** recsPtr = new Rectangle*;
-		*recsPtr = recs;
+		// raylib never reads glyphRecs: it allocates the rectangle array itself
+		// (with RL_MALLOC) and hands it back through this pointer.
+		Rectangle* recs = nullptr;
+		Image atlas = GenImageFontAtlas(glyphs.data(), &recs, glyphCount, fontSize, padding, packMethod);
 
-		Image atlas = GenImageFontAtlas(glyphs, recsPtr, glyphCount, fontSize, padding, packMethod);
-
-		// Write the updated recs back into the MiniScript list
-		Rectangle* updatedRecs = *recsPtr;
-		for (int i = 0; i < glyphCount; i++) {
-			recsList[i] = RectangleToValue(updatedRecs[i]);
+		// Write the rectangles back into the MiniScript list
+		if (recs != nullptr) {
+			for (int i = 0; i < glyphCount; i++) {
+				recsList[i] = RectangleToValue(recs[i]);
+			}
+			RL_FREE(recs);
 		}
-
-		delete[] glyphs;
-		delete[] updatedRecs;
-		delete recsPtr;
 
 		rcImage++;
 		return IntrinsicResult(ImageToValue(atlas));
