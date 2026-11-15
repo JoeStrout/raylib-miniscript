@@ -819,7 +819,7 @@ void AddMoreIntrinsics() {
 	exitFunc.AddParam("resultCode");
 	exitFunc.set_Code(&intrinsic_exit);
 	SetNote(exitFunc,
-		"Exit the program with the given result code");
+		"Exit the program with the given result code (default 0)");
 
 	// Get a map of all environment variables
 	Intrinsic envFunc = Intrinsic::Create("env");
@@ -831,14 +831,14 @@ void AddMoreIntrinsics() {
 	Intrinsic shellArgsFunc = Intrinsic::Create("shellArgs");
 	shellArgsFunc.set_Code(&intrinsic_shellArgs);
 	SetNote(shellArgsFunc,
-		"Get the script path and the command-line arguments following it");
+		"Get a list of the script path and the command-line arguments following it");
 
 	// Load and run a MiniScript file in the current interpreter context
 	Intrinsic runFunc = Intrinsic::Create("run");
 	runFunc.AddParam("path", "");
 	runFunc.set_Code(&intrinsic_run);
 	SetNote(runFunc,
-		"Load and run a MiniScript file in the current interpreter context");
+		"Load and run a MiniScript file, replacing the current program but keeping its globals");
 
 #ifdef PLATFORM_WEB
 	// On web, set default path variables (on desktop, these are set in main.cpp)
@@ -906,7 +906,8 @@ void AddMoreIntrinsics() {
 		return IntrinsicResult(DynamicMap(map));
 	});
 	SetNote(rcFunc,
-		"Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.)");
+		"Get a map of currently loaded resource counts by type (Image, Texture, Font, etc.), "
+		"plus a total");
 
 	// Bytes currently allocated from the host (malloc) heap, or null if this
 	// platform cannot report it.  Meaningful only as a delta between readings;
@@ -918,8 +919,9 @@ void AddMoreIntrinsics() {
 		return IntrinsicResult(Value((double)bytes));
 	});
 	SetNote(hmFunc,
-		"Bytes currently allocated from the host (malloc) heap, or null if this platform "
-		"cannot report it.  Meaningful only as a delta between readings.");
+		"Bytes of memory currently allocated by the host program (including raylib, outside "
+		"the MiniScript GC), or null if this platform cannot report it.  Meaningful only as "
+		"a difference between readings.");
 
 	// Set the default import search path (variables are expanded at import time),
 	// unless the user already set MS_IMPORT_PATH in the environment.

@@ -381,7 +381,8 @@ const Value& RawDataClass() {
     });
     // resize this RawData object to the given number of bytes
     rawDataClass.SetValue("resize", WithNote(f,
-    	"resize this RawData object to the given number of bytes"));
+    	"resize this RawData object to the given number of bytes (default 32); "
+    	"new bytes are zero"));
 
     // rd.len = n
     //
@@ -563,7 +564,7 @@ const Value& RawDataClass() {
     });
     // get unsigned 32-bit integer at the given byte offset
     rawDataClass.SetValue("uint", WithNote(f,
-    	"get unsigned 32-bit integer at the given byte offset"));
+    	"get unsigned 32-bit integer (0-4294967295) at the given byte offset"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -714,7 +715,8 @@ const Value& RawDataClass() {
     });
     // get UTF-8 string from the given byte offset (bytes=-1 reads to end)
     rawDataClass.SetValue("utf8", WithNote(f,
-    	"get UTF-8 string from the given byte offset (bytes=-1 reads to end)"));
+    	"get UTF-8 string from the given byte offset (bytes=-1 reads to end); "
+    	"stops early at a zero byte"));
 
     f = Intrinsic::Create("");
     f.AddParam("self");
@@ -735,7 +737,8 @@ const Value& RawDataClass() {
     });
     // write a UTF-8 string at the given byte offset; returns bytes written
     rawDataClass.SetValue("setUtf8", WithNote(f,
-    	"write a UTF-8 string at the given byte offset; returns bytes written"));
+    	"write a UTF-8 string at the given byte offset, truncated to fit; "
+    	"returns bytes written"));
 
     // Register the class under a short name, so str(rd) reports
     // {"__isa": RawData, ...} rather than dumping every method.

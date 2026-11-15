@@ -852,7 +852,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ClearBackground", WithNote(i,
-		"Clear background (framebuffer) to color"));
+		"Clear background (framebuffer) to color (default BLACK)"));
 
 	// 3D camera and projection functions
 
@@ -865,7 +865,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginMode3D", WithNote(i,
-		"Initializes 3D mode with custom camera (3D)"));
+		"Begin 3D mode with a custom camera (Camera3D map)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -874,7 +874,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EndMode3D", WithNote(i,
-		"End 3D mode and returns to default 2D orthographic mode"));
+		"End 3D mode and return to default 2D orthographic mode"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -886,7 +886,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RayToValue(ray));
 	});
 	raylibModule.SetValue("GetScreenToWorldRay", WithNote(i,
-		"Get a ray trace from screen position (i.e mouse)"));
+		"Get a ray trace from a screen position (e.g. mouse)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -904,8 +904,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RayToValue(ray));
 	});
 	raylibModule.SetValue("GetScreenToWorldRayEx", WithNote(i,
-		"Get a ray trace from the screen position (i.e mouse) within a specific section of the "
-		"screen"));
+		"Get a ray trace from a screen position (e.g. mouse) within a viewport of the given width "
+		"and height (0 means the screen width/height)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -917,7 +917,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(result));
 	});
 	raylibModule.SetValue("GetWorldToScreen", WithNote(i,
-		"Get screen space position from a 3d world space position"));
+		"Get screen space position from a 3D world space position"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -935,7 +935,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(result));
 	});
 	raylibModule.SetValue("GetWorldToScreenEx", WithNote(i,
-		"Get sized screen space position for a 3d world space position (useful for texture drawing)"));
+		"Get screen space position for a 3D world space position, within a viewport of the given "
+		"width and height (0 means the screen width/height); useful for texture drawing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -958,8 +959,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateCamera", WithNote(i,
-		"Update camera position for selected mode Camera mode: CAMERA_FREE, CAMERA_FIRST_PERSON, "
-		"CAMERA_THIRD_PERSON, CAMERA_ORBITAL or CUSTOM"));
+		"Update camera position for the selected mode: CAMERA_FREE, CAMERA_FIRST_PERSON, "
+		"CAMERA_THIRD_PERSON, CAMERA_ORBITAL or CAMERA_CUSTOM (default). Updates the camera map "
+		"in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -977,7 +979,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateCameraPro", WithNote(i,
-		"Update camera movement, movement/rotation values should be provided by user"));
+		"Update camera by the given movement and rotation (Vector3s) and zoom, all provided by the "
+		"caller. Updates the camera map in place"));
 
 	// rcamera: camera vectors, movement and rotation.  Functions that modify
 	// the camera update the given camera map in place.
@@ -989,7 +992,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(GetCameraForward(&camera)));
 	});
 	raylibModule.SetValue("GetCameraForward", WithNote(i,
-		"Returns the cameras forward vector (normalized)"));
+		"Returns the camera's forward vector (normalized)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -998,8 +1001,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(GetCameraUp(&camera)));
 	});
 	raylibModule.SetValue("GetCameraUp", WithNote(i,
-		"Returns the cameras up vector (normalized) Note: The up vector might not be perpendicular "
-		"to the forward vector"));
+		"Returns the camera's up vector (normalized). Note: the up vector might not be "
+		"perpendicular to the forward vector"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1008,7 +1011,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(GetCameraRight(&camera)));
 	});
 	raylibModule.SetValue("GetCameraRight", WithNote(i,
-		"Returns the cameras right vector (normalized)"));
+		"Returns the camera's right vector (normalized)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1024,7 +1027,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraMoveForward", WithNote(i,
-		"Moves the camera in its forward direction"));
+		"Moves the camera in its forward direction (in the world plane if moveInWorldPlane is "
+		"true). Updates the camera map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1038,7 +1042,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraMoveUp", WithNote(i,
-		"Moves the camera in its up direction"));
+		"Moves the camera in its up direction. Updates the camera map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1054,7 +1058,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraMoveRight", WithNote(i,
-		"Moves the camera target in its current right direction"));
+		"Moves the camera in its current right direction (in the world plane if moveInWorldPlane "
+		"is true). Updates the camera map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1068,7 +1073,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraMoveToTarget", WithNote(i,
-		"Moves the camera position closer/farther to/from the camera target"));
+		"Moves the camera position closer to/farther from the camera target. Updates the camera "
+		"map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1084,9 +1090,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraYaw", WithNote(i,
-		"Rotates the camera around its up vector Yaw is \"looking left and right\" If "
-		"rotateAroundTarget is false, the camera rotates around its position Note: angle must be "
-		"provided in radians"));
+		"Rotates the camera around its up vector. Yaw is \"looking left and right\". If "
+		"rotateAroundTarget is false, the camera rotates around its position. Angle is in "
+		"radians. Updates the camera map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1106,10 +1112,11 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraPitch", WithNote(i,
-		"Rotates the camera around its right vector, pitch is \"looking up and down\"  - lockView "
-		"prevents camera overrotation (aka \"somersaults\")  - rotateAroundTarget defines if "
-		"rotation is around target or around its position  - rotateUp rotates the up direction as "
-		"well (typically only useful in CAMERA_FREE) NOTE: [angle] must be provided in radians"));
+		"Rotates the camera around its right vector; pitch is \"looking up and down\". lockView "
+		"prevents camera overrotation (aka \"somersaults\"); rotateAroundTarget defines if "
+		"rotation is around target or around its position; rotateUp rotates the up direction as "
+		"well (typically only useful in CAMERA_FREE). Angle is in radians. Updates the camera map "
+		"in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1123,8 +1130,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("CameraRoll", WithNote(i,
-		"Rotates the camera around its forward vector Roll is \"turning your head sideways to the "
-		"left or right\" Note: angle must be provided in radians"));
+		"Rotates the camera around its forward vector. Roll is \"turning your head sideways to the "
+		"left or right\". Angle is in radians. Updates the camera map in place"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("camera");
@@ -1146,7 +1153,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(GetCameraProjectionMatrix(&camera, aspect)));
 	});
 	raylibModule.SetValue("GetCameraProjectionMatrix", WithNote(i,
-		"Returns the camera projection matrix"));
+		"Returns the camera projection matrix for the given aspect ratio (0 means the screen's "
+		"aspect ratio)"));
 
 	// Shader functions
 
@@ -1189,8 +1197,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ShaderToValue(shader));
 	});
 	raylibModule.SetValue("LoadShader", WithNote(i,
-		"Load shader from files and bind default locations NOTE: If shader filename is NULL, using "
-		"default vertex/fragment shaders"));
+		"Load shader from files and bind default locations. If a filename is empty, the default "
+		"vertex/fragment shader is used. Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("vsCode", String());
@@ -1206,7 +1214,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ShaderToValue(shader));
 	});
 	raylibModule.SetValue("LoadShaderFromMemory", WithNote(i,
-		"Load shader from code strings and bind default locations"));
+		"Load shader from code strings and bind default locations. If a code string is empty, "
+		"the default vertex/fragment shader is used. Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
@@ -1363,7 +1372,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetShaderValue", WithNote(i,
-		"Set shader uniform value"));
+		"Set shader uniform value. value may be a number, a list of numbers, a vector/color map, "
+		"or RawData; uniformType is a SHADER_UNIFORM_* constant (default SHADER_UNIFORM_FLOAT)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
@@ -1411,7 +1421,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetShaderValueV", WithNote(i,
-		"Set shader uniform value vector"));
+		"Set shader uniform array value: value is a list of numbers, a list of vectors/colors, or "
+		"RawData. count is the number of elements (0 means infer from the list)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("shader");
@@ -1452,14 +1463,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetTime());
 	});
 	raylibModule.SetValue("GetTime", WithNote(i,
-		"Get elapsed time measure in seconds since InitTimer()"));
+		"Get elapsed time in seconds since InitWindow()"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetFPS());
 	});
 	raylibModule.SetValue("GetFPS", WithNote(i,
-		"Get current FPS NOTE: Calculating an average framerate"));
+		"Get current FPS (averaged over recent frames)"));
 
 	// Input-related functions: keyboard
 
@@ -1477,7 +1488,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsKeyPressedRepeat(context.GetArg(0).IntValue()));
 	});
 	raylibModule.SetValue("IsKeyPressedRepeat", WithNote(i,
-		"Check if key has been pressed again"));
+		"Check if key has been pressed again (key repeat while held down)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
@@ -1508,14 +1519,16 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetKeyPressed());
 	});
 	raylibModule.SetValue("GetKeyPressed", WithNote(i,
-		"Get the last key pressed"));
+		"Get key pressed (keycode); call it multiple times for keys queued. Returns 0 when the "
+		"queue is empty"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetCharPressed());
 	});
 	raylibModule.SetValue("GetCharPressed", WithNote(i,
-		"Get the last char pressed"));
+		"Get char pressed (Unicode codepoint); call it multiple times for chars queued. Returns 0 "
+		"when the queue is empty"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("key");
@@ -1535,7 +1548,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetExitKey", WithNote(i,
-		"Set a custom key to exit program NOTE: default exitKey is set to ESCAPE"));
+		"Set a custom key to exit program (default is KEY_ESCAPE; KEY_NULL disables it)"));
 
 	// Input-related functions: gamepad
 
@@ -1586,7 +1599,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("IsGamepadButtonReleased", WithNote(i,
-		"Check if gamepad button has NOT been pressed once"));
+		"Check if gamepad button has been released once"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
@@ -1604,8 +1617,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetGamepadButtonPressed());
 	});
 	raylibModule.SetValue("GetGamepadButtonPressed", WithNote(i,
-		"Get the last gamepad button pressed NOTE: Returns last gamepad button down, down->up "
-		"change not considered"));
+		"Get the last gamepad button pressed. Note: returns the last button that went down; "
+		"releases are not considered"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
@@ -1624,7 +1637,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 			context.GetArg(1).IntValue()));
 	});
 	raylibModule.SetValue("GetGamepadAxisMovement", WithNote(i,
-		"Get axis movement vector for a gamepad"));
+		"Get movement value (-1 to 1) for a gamepad axis"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mappings");
@@ -1632,7 +1645,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(SetGamepadMappings(context.GetArg(0).ToString().c_str()));
 	});
 	raylibModule.SetValue("SetGamepadMappings", WithNote(i,
-		"Set internal gamepad mappings"));
+		"Set internal gamepad mappings from a string in SDL_GameControllerDB format"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
@@ -1648,7 +1661,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetGamepadVibration", WithNote(i,
-		"Set gamepad vibration"));
+		"Set gamepad vibration: motor strengths (0 to 1) for the given duration in seconds"));
 
 	// Input-related functions: mouse
 
@@ -1707,7 +1720,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(posMap));
 	});
 	raylibModule.SetValue("GetMousePosition", WithNote(i,
-		"Get mouse position XY"));
+		"Get mouse position as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1718,14 +1731,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(deltaMap));
 	});
 	raylibModule.SetValue("GetMouseDelta", WithNote(i,
-		"Get mouse delta between frames"));
+		"Get mouse delta between frames, as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetMouseWheelMove());
 	});
 	raylibModule.SetValue("GetMouseWheelMove", WithNote(i,
-		"Get mouse wheel movement Y"));
+		"Get mouse wheel movement for X or Y, whichever is larger"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("cursor");
@@ -1734,7 +1747,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetMouseCursor", WithNote(i,
-		"Set mouse cursor"));
+		"Set mouse cursor shape (a MOUSE_CURSOR_* constant)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1796,8 +1809,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowIcon", WithNote(i,
-		"Set icon for window NOTE 1: Image must be in RGBA format, 8bit per channel NOTE 2: Image "
-		"is scaled by the OS for all required sizes"));
+		"Set icon for window. Image must be in RGBA format, 8 bits per channel; it is scaled by "
+		"the OS for all required sizes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("images");
@@ -1828,9 +1841,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowIcons", WithNote(i,
-		"Set icon for window, multiple images NOTE 1: Images must be in RGBA format, 8bit per "
-		"channel NOTE 2: The multiple images are used depending on provided sizes Standard Windows "
-		"icon sizes: 256, 128, 96, 64, 48, 32, 24, 16"));
+		"Set icon for window from a list of images (count limits how many are used; 0 means "
+		"all). Images must be in RGBA format, 8 bits per channel; the OS picks among them by size. "
+		"Standard Windows icon sizes: 256, 128, 96, 64, 48, 32, 24, 16. Not supported on web"));
 
 	// Screen dimension functions
 
@@ -1853,14 +1866,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetRenderWidth());
 	});
 	raylibModule.SetValue("GetRenderWidth", WithNote(i,
-		"Get current render width which is equal to screen width*dpi scale"));
+		"Get current render width, which is equal to screen width * DPI scale"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetRenderHeight());
 	});
 	raylibModule.SetValue("GetRenderHeight", WithNote(i,
-		"Get current screen height which is equal to screen height*dpi scale"));
+		"Get current render height, which is equal to screen height * DPI scale"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(960));
@@ -1908,8 +1921,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 #endif
 	});
 	raylibModule.SetValue("WindowShouldClose", WithNote(i,
-		"Check if application should close NOTE: By default, if KEY_ESCAPE pressed or window close "
-		"icon clicked"));
+		"Check if application should close (by default, KEY_ESCAPE pressed or window close icon "
+		"clicked). Always false on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1927,7 +1940,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsWindowHidden());
 	});
 	raylibModule.SetValue("IsWindowHidden", WithNote(i,
-		"Check if window is currently hidden"));
+		"Check if window is currently hidden. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1938,7 +1951,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsWindowMinimized());
 	});
 	raylibModule.SetValue("IsWindowMinimized", WithNote(i,
-		"Check if window has been minimized"));
+		"Check if window has been minimized. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1949,7 +1962,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsWindowMaximized());
 	});
 	raylibModule.SetValue("IsWindowMaximized", WithNote(i,
-		"Check if window has been maximized"));
+		"Check if window has been maximized. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1960,7 +1973,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsWindowResized());
 	});
 	raylibModule.SetValue("IsWindowResized", WithNote(i,
-		"Check if window has been resizedLastFrame"));
+		"Check if window has been resized last frame. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
@@ -1973,7 +1986,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsWindowState(flags));
 	});
 	raylibModule.SetValue("IsWindowState", WithNote(i,
-		"Check if one specific window flag is enabled"));
+		"Check if one specific window flag (FLAG_*) is enabled. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
@@ -1987,7 +2000,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowState", WithNote(i,
-		"Set window configuration state using flags"));
+		"Set window configuration state using flags (FLAG_*). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
@@ -2001,7 +2014,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ClearWindowState", WithNote(i,
-		"Clear window configuration state flags"));
+		"Clear window configuration state flags (FLAG_*). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2021,7 +2034,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ToggleBorderlessWindowed", WithNote(i,
-		"Toggle borderless windowed mode"));
+		"Toggle borderless windowed mode. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2033,7 +2046,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("MaximizeWindow", WithNote(i,
-		"Set window state: maximized, if resizable"));
+		"Set window state: maximized, if resizable. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2045,7 +2058,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("MinimizeWindow", WithNote(i,
-		"Set window state: minimized"));
+		"Set window state: minimized. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2057,7 +2070,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("RestoreWindow", WithNote(i,
-		"Restore window from being minimized/maximized"));
+		"Restore window from being minimized/maximized. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x");
@@ -2073,7 +2086,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowPosition", WithNote(i,
-		"Set window position on screen (windowed mode)"));
+		"Set window position on screen (windowed mode). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor");
@@ -2087,7 +2100,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowMonitor", WithNote(i,
-		"Set monitor for the current window"));
+		"Set monitor for the current window. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -2103,7 +2116,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowMinSize", WithNote(i,
-		"Set window minimum dimensions (FLAG_WINDOW_RESIZABLE)"));
+		"Set window minimum dimensions (for FLAG_WINDOW_RESIZABLE). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -2119,7 +2132,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowMaxSize", WithNote(i,
-		"Set window maximum dimensions (FLAG_WINDOW_RESIZABLE)"));
+		"Set window maximum dimensions (for FLAG_WINDOW_RESIZABLE). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -2135,7 +2148,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowSize", WithNote(i,
-		"Set window dimensions"));
+		"Set window dimensions. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("opacity");
@@ -2149,7 +2162,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowOpacity", WithNote(i,
-		"Set window opacity, value opacity is between 0.0 and 1.0"));
+		"Set window opacity, from 0.0 to 1.0. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2161,7 +2174,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetWindowFocused", WithNote(i,
-		"Set window focused"));
+		"Set window focused. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2173,7 +2186,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value((double)(intptr_t)GetWindowHandle()));
 	});
 	raylibModule.SetValue("GetWindowHandle", WithNote(i,
-		"Get native window handle"));
+		"Get native window handle, as a number (for display/identification only). Not supported "
+		"on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2184,7 +2198,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorCount());
 	});
 	raylibModule.SetValue("GetMonitorCount", WithNote(i,
-		"Get number of monitors"));
+		"Get number of monitors. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2195,7 +2209,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetCurrentMonitor());
 	});
 	raylibModule.SetValue("GetCurrentMonitor", WithNote(i,
-		"Get current monitor where window is placed"));
+		"Get current monitor where window is placed. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2208,7 +2222,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(GetMonitorPosition(monitor)));
 	});
 	raylibModule.SetValue("GetMonitorPosition", WithNote(i,
-		"Get selected monitor position"));
+		"Get selected monitor position, as a map with x and y. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2221,7 +2235,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorWidth(monitor));
 	});
 	raylibModule.SetValue("GetMonitorWidth", WithNote(i,
-		"Get selected monitor width (currently used by monitor)"));
+		"Get selected monitor's current video mode width. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2234,7 +2248,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorHeight(monitor));
 	});
 	raylibModule.SetValue("GetMonitorHeight", WithNote(i,
-		"Get selected monitor height (currently used by monitor)"));
+		"Get selected monitor's current video mode height. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2247,7 +2261,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorPhysicalWidth(monitor));
 	});
 	raylibModule.SetValue("GetMonitorPhysicalWidth", WithNote(i,
-		"Get selected monitor physical width in millimetres"));
+		"Get selected monitor physical width in millimetres. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2260,7 +2274,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorPhysicalHeight(monitor));
 	});
 	raylibModule.SetValue("GetMonitorPhysicalHeight", WithNote(i,
-		"Get selected monitor physical height in millimetres"));
+		"Get selected monitor physical height in millimetres. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2273,7 +2287,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetMonitorRefreshRate(monitor));
 	});
 	raylibModule.SetValue("GetMonitorRefreshRate", WithNote(i,
-		"Get selected monitor refresh rate"));
+		"Get selected monitor refresh rate. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("monitor", Value::zero);
@@ -2298,7 +2312,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(GetWindowPosition()));
 	});
 	raylibModule.SetValue("GetWindowPosition", WithNote(i,
-		"Get window position XY on monitor"));
+		"Get window position on monitor, as a map with x and y. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2309,7 +2323,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(GetWindowScaleDPI()));
 	});
 	raylibModule.SetValue("GetWindowScaleDPI", WithNote(i,
-		"Get window scale DPI factor for current monitor"));
+		"Get window scale DPI factor for current monitor, as a map with x and y. Not supported on "
+		"web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2336,7 +2351,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(wheelMap));
 	});
 	raylibModule.SetValue("GetMouseWheelMoveV", WithNote(i,
-		"Get mouse wheel movement X/Y as a vector"));
+		"Get mouse wheel movement X/Y, as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x");
@@ -2360,7 +2375,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetMouseOffset", WithNote(i,
-		"Set mouse offset NOTE: Useful when rendering to different size targets"));
+		"Set mouse offset (useful when rendering to different size targets)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("scaleX");
@@ -2372,7 +2387,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetMouseScale", WithNote(i,
-		"Set mouse scaling NOTE: Useful when rendering to different size targets"));
+		"Set mouse scaling (useful when rendering to different size targets)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2417,7 +2432,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(posMap));
 	});
 	raylibModule.SetValue("GetTouchPosition", WithNote(i,
-		"Get touch position XY for a touch point index (relative to screen size)"));
+		"Get touch position for a touch point index (relative to screen size), as a map with x "
+		"and y"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("index", 0);
@@ -2454,21 +2470,21 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsGestureDetected(gesture));
 	});
 	raylibModule.SetValue("IsGestureDetected", WithNote(i,
-		"Check if gesture have been detected"));
+		"Check if a gesture (GESTURE_* constant) has been detected"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureDetected());
 	});
 	raylibModule.SetValue("GetGestureDetected", WithNote(i,
-		"Get latest detected gesture"));
+		"Get latest detected gesture (a GESTURE_* constant)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureHoldDuration());
 	});
 	raylibModule.SetValue("GetGestureHoldDuration", WithNote(i,
-		"Hold time measured in seconds"));
+		"Get gesture hold time in seconds"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2479,14 +2495,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(dragMap));
 	});
 	raylibModule.SetValue("GetGestureDragVector", WithNote(i,
-		"Get drag vector (between initial touch point to current)"));
+		"Get drag vector (from initial touch point to current), as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGestureDragAngle());
 	});
 	raylibModule.SetValue("GetGestureDragAngle", WithNote(i,
-		"Get drag angle NOTE: Angle in degrees, horizontal-right is 0, counterclockwise"));
+		"Get drag angle in degrees (horizontal-right is 0, counterclockwise)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2497,15 +2513,14 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(pinchMap));
 	});
 	raylibModule.SetValue("GetGesturePinchVector", WithNote(i,
-		"Get distance between two pinch points"));
+		"Get the vector between two pinch points, as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(GetGesturePinchAngle());
 	});
 	raylibModule.SetValue("GetGesturePinchAngle", WithNote(i,
-		"Get angle between two pinch points NOTE: Angle in degrees, horizontal-right is 0, "
-		"counterclockwise"));
+		"Get angle between two pinch points, in degrees (horizontal-right is 0, counterclockwise)"));
 
 	// 2D rendering mode functions
 
@@ -2525,7 +2540,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginMode2D", WithNote(i,
-		"Initialize 2D mode with custom camera (2D)"));
+		"Begin 2D mode with a custom camera: a map with offsetX, offsetY, targetX, targetY, "
+		"rotation (default 0) and zoom (default 1)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2551,7 +2567,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(GetCameraMatrix2D(camera)));
 	});
 	raylibModule.SetValue("GetCameraMatrix2D", WithNote(i,
-		"Get camera 2d transform matrix"));
+		"Get 2D camera transform matrix (camera map as for BeginMode2D)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -2574,7 +2590,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetWorldToScreen2D", WithNote(i,
-		"Get screen space position for a 2d camera world space position"));
+		"Get screen space position for a 2D camera world space position, as a map with x and y"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("position");
@@ -2597,7 +2613,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultMap));
 	});
 	raylibModule.SetValue("GetScreenToWorld2D", WithNote(i,
-		"Get world space position for a 2d camera screen space position"));
+		"Get world space position for a 2D camera screen space position, as a map with x and y"));
 
 	// Blend mode functions
 
@@ -2610,8 +2626,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginBlendMode", WithNote(i,
-		"Begin blending mode (alpha, additive, multiplied, subtract, custom) NOTE: Blend modes "
-		"supported are enumerated in BlendMode enum"));
+		"Begin blending mode (a BLEND_* constant: alpha, additive, multiplied, subtract, "
+		"custom...)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2639,8 +2655,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginScissorMode", WithNote(i,
-		"Begin scissor mode (define screen area for following drawing) NOTE: Scissor rec refers to "
-		"bottom-left corner, changing it to upper-left"));
+		"Begin scissor mode (define screen area for following drawing); x and y are the "
+		"upper-left corner"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2665,7 +2681,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginVrStereoMode", WithNote(i,
-		"Begin VR drawing configuration"));
+		"Begin VR drawing configuration. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2677,7 +2693,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EndVrStereoMode", WithNote(i,
-		"End VR drawing process (and desktop mirror)"));
+		"End VR drawing process (and desktop mirror). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("device");
@@ -2691,7 +2707,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(VrStereoConfigToValue(config));
 	});
 	raylibModule.SetValue("LoadVrStereoConfig", WithNote(i,
-		"Load VR stereo config for VR simulator device parameters"));
+		"Load VR stereo config for VR simulator device parameters (a VrDeviceInfo map). Not "
+		"supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("config");
@@ -2705,7 +2722,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadVrStereoConfig", WithNote(i,
-		"Unload VR stereo config properties"));
+		"Unload VR stereo config properties. Not supported on web"));
 
 	// Utility functions
 
@@ -2718,7 +2735,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("OpenURL", WithNote(i,
-		"Open a URL in the default browser.  Refused (does nothing) once sandboxed."));
+		"Open a URL in the default browser. Refused (does nothing) once sandboxed"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -2747,7 +2764,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("EnableEventWaiting", WithNote(i,
-		"Enable waiting for events on EndDrawing(), no automatic event polling"));
+		"Enable waiting for events on EndDrawing(), no automatic event polling. Not supported on "
+		"web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2759,7 +2777,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DisableEventWaiting", WithNote(i,
-		"Disable waiting for events on EndDrawing(), automatic events polling"));
+		"Disable waiting for events on EndDrawing(), automatic events polling. Not supported on "
+		"web"));
 
 #if !defined(PLATFORM_WEB)
 	i = Intrinsic::Create("");
@@ -2769,7 +2788,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(image));
 	});
 	raylibModule.SetValue("GetClipboardImage", WithNote(i,
-		"Get clipboard image"));
+		"Get clipboard image (desktop only)"));
 #endif
 
 	i = Intrinsic::Create("");
@@ -2781,7 +2800,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsFileExtension(fileName.c_str(), ext.c_str()));
 	});
 	raylibModule.SetValue("IsFileExtension", WithNote(i,
-		"Check file extension"));
+		"Check file extension, including the dot (e.g. \".png\"); ext may list several, like "
+		"\".png;.jpg\""));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -2792,7 +2812,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("TakeScreenshot", WithNote(i,
-		"Takes a screenshot of current screen"));
+		"Take a screenshot of current screen and save it as a PNG file. Refused (does nothing) "
+		"once sandboxed"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("flags");
@@ -2802,9 +2823,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetConfigFlags", WithNote(i,
-		"Set up window configuration flags (view FLAGS) NOTE: This function is expected to be "
-		"called before window creation, because it sets up some flags for the window creation "
-		"process To configure window states after creation, use SetWindowState()"));
+		"Set up window configuration flags (FLAG_*). Call this before InitWindow, since it sets "
+		"up flags for the window creation process; to change window states after creation, use "
+		"SetWindowState()"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("data");
@@ -2839,8 +2860,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("EncodeDataBase64", WithNote(i,
-		"Encode data to Base64 string NOTE: Returned string includes NULL terminator, considered "
-		"on outputSize"));
+		"Encode data (a string or RawData) to a Base64 string. If dataSize > 0, only that many "
+		"bytes are encoded"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("seconds", 1.0);
@@ -2851,11 +2872,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("WaitTime", WithNote(i,
-		"Wait for some time (stop program execution) NOTE: Sleep() granularity could be around 10 "
-		"ms, it means, Sleep() could take longer than expected... for that reason a busy wait loop "
-		"is used REF: "
-		"http://stackoverflow.com/questions/43057578/c-programming-win32-games-sleep-taking-longer-than-expected "
-		"REF: http://www.geisswerks.com/ryan/FAQS/timing.html --> All about timing on Win32!"));
+		"Wait for some time in seconds (default 1), halting program execution"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2868,7 +2885,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SwapScreenBuffer", WithNote(i,
-		"Swap back buffer with front buffer (screen drawing)"));
+		"Swap back buffer with front buffer (screen drawing). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -2880,7 +2897,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("PollInputEvents", WithNote(i,
-		"Register all input events"));
+		"Register all input events. Not supported on web"));
 
 	// Load text files
 	i = Intrinsic::Create("");
@@ -2897,8 +2914,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("LoadFileText", WithNote(i,
-		"Load text data from file, returns a '\\0' terminated string NOTE: text chars array should "
-		"be freed manually"));
+		"Load text data from file as a string, or null if it can't be read"));
 
 	// File system management
 
@@ -2944,7 +2960,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadFileData", WithNote(i,
-		"Unload file data allocated by LoadFileData()"));
+		"Release the buffer of a RawData from LoadFileData(), leaving it empty. Not needed: the "
+		"RawData is freed automatically. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -2968,7 +2985,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(SaveFileData(fileName.c_str(), (void*)bytes, byteCount));
 	});
 	raylibModule.SetValue("SaveFileData", WithNote(i,
-		"Save data to file from buffer"));
+		"Save data (RawData, string, or list of byte values) to file; if dataSize > 0, only that "
+		"many bytes are written. Returns true on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("data");
@@ -2992,7 +3010,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ExportDataAsCode(bytes, byteCount, fileName.c_str()));
 	});
 	raylibModule.SetValue("ExportDataAsCode", WithNote(i,
-		"Export data to code (.h), returns true on success"));
+		"Export data (RawData, string, or list of byte values) to code (.h); if dataSize > 0, "
+		"only that many bytes are exported. Returns true on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -3001,7 +3020,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadFileText", WithNote(i,
-		"Unload file text data allocated by LoadFileText()"));
+		"Does nothing; LoadFileText() returns an ordinary string, which needs no unloading"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3017,7 +3036,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(SaveFileText(fileName.c_str(), text.c_str()));
 	});
 	raylibModule.SetValue("SaveFileText", WithNote(i,
-		"Save text data to file (write), string must be '\\0' terminated"));
+		"Save text data to file (write). Returns true on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
@@ -3049,7 +3068,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetLoadFileDataCallback", WithNote(i,
-		"Set custom file binary data loader"));
+		"Set custom file binary data loader: a function(fileName) that returns the file's data "
+		"(RawData, string, or list of byte values), or null to clear. Refused once sandboxed; not "
+		"supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
@@ -3081,7 +3102,9 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetSaveFileDataCallback", WithNote(i,
-		"Set custom file binary data saver"));
+		"Set custom file binary data saver: a function(fileName, data, dataSize), where data is a "
+		"RawData, that returns true on success; or null to clear. Refused once sandboxed; not "
+		"supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
@@ -3113,7 +3136,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetLoadFileTextCallback", WithNote(i,
-		"Set custom file text data loader"));
+		"Set custom file text data loader: a function(fileName) that returns the text as a "
+		"string, or null to clear. Refused once sandboxed; not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("callback", Value::Null);
@@ -3145,7 +3169,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetSaveFileTextCallback", WithNote(i,
-		"Set custom file text data saver"));
+		"Set custom file text data saver: a function(fileName, text) that returns true on "
+		"success; or null to clear. Refused once sandboxed; not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3162,7 +3187,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileRename(fileName.c_str(), fileRename.c_str()));
 	});
 	raylibModule.SetValue("FileRename", WithNote(i,
-		"Rename file (if exists) NOTE: Only rename file name required, not full path"));
+		"Rename file (if it exists); returns 0 on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3176,7 +3201,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileRemove(fileName.c_str()));
 	});
 	raylibModule.SetValue("FileRemove", WithNote(i,
-		"Remove file (if exists)"));
+		"Remove file (if it exists); returns 0 on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("srcPath");
@@ -3193,8 +3218,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileCopy(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileCopy", WithNote(i,
-		"Copy file from one path to another NOTE: If destination path does not exist, it is "
-		"created!"));
+		"Copy file from one path to another; returns 0 on success. If the destination path does "
+		"not exist, it is created. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("srcPath");
@@ -3211,8 +3236,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileMove(srcPath.c_str(), dstPath.c_str()));
 	});
 	raylibModule.SetValue("FileMove", WithNote(i,
-		"Move file from one directory to another NOTE: If dst directories do not exists they are "
-		"created"));
+		"Move file from one directory to another; returns 0 on success. If destination "
+		"directories do not exist, they are created. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3230,7 +3255,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileTextReplace(fileName.c_str(), search.c_str(), replacement.c_str()));
 	});
 	raylibModule.SetValue("FileTextReplace", WithNote(i,
-		"Replace text in an existing file WARNING: DEPENDENCY: [rtext] module"));
+		"Replace text in an existing file; returns 0 on success. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3246,7 +3271,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FileTextFindIndex(fileName.c_str(), search.c_str()));
 	});
 	raylibModule.SetValue("FileTextFindIndex", WithNote(i,
-		"Find text index position in existing file WARNING: DEPENDENCY: [rtext] module"));
+		"Find text index position in an existing file, or -1 if not found. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3282,7 +3307,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(GetFileLength(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileLength", WithNote(i,
-		"Get file length in bytes NOTE: GetFileSize() conflicts with windows.h"));
+		"Get file length in bytes. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3296,7 +3321,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult((double)GetFileModTime(fileName.c_str()));
 	});
 	raylibModule.SetValue("GetFileModTime", WithNote(i,
-		"Get file modification time (last write time)"));
+		"Get file modification time (last write time), in seconds since the Unix epoch. Not "
+		"supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3380,7 +3406,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MakeDirectory(dirPath.c_str()));
 	});
 	raylibModule.SetValue("MakeDirectory", WithNote(i,
-		"Create directories (including full path requested), returns 0 on success"));
+		"Create directories (including full path requested); returns 0 on success. Not "
+		"supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
@@ -3395,7 +3422,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ChangeDirectory(dirPath.c_str()));
 	});
 	raylibModule.SetValue("ChangeDirectory", WithNote(i,
-		"Change working directory, returns 0 on success (nonzero on failure)"));
+		"Change working directory; returns 0 on success (nonzero on failure). Refused once "
+		"sandboxed; not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("path");
@@ -3409,7 +3437,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsPathFile(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathFile", WithNote(i,
-		"Check if provided path point to a file"));
+		"Check if provided path points to a file. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("path");
@@ -3425,7 +3453,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsPathDirectory(path.c_str()) && DirectoryExists(path.c_str()));
 	});
 	raylibModule.SetValue("IsPathDirectory", WithNote(i,
-		"Check if provided path points to an existing directory"));
+		"Check if provided path points to an existing directory. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("path");
@@ -3449,7 +3477,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsFileHidden(filePath.c_str()));
 	});
 	raylibModule.SetValue("IsFileHidden", WithNote(i,
-		"Check if file path (file or directory) is hidden by OS"));
+		"Check if file path (file or directory) is hidden by OS. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -3458,7 +3486,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsFileNameValid(fileName.c_str()));
 	});
 	raylibModule.SetValue("IsFileNameValid", WithNote(i,
-		"Check if fileName is valid for the platform/OS"));
+		"Check if file name is valid for the platform/OS"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
@@ -3490,9 +3518,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadDirectoryFiles", WithNote(i,
-		"Load directory filepaths NOTE: Base path is prepended to the scanned filepaths WARNING: "
-		"Directory is scanned twice, first time to get paths count Scanneed files and directories, "
-		"no recursive/subdirs scanning"));
+		"Get a list of the paths of files and directories in a directory (not recursive), with "
+		"the directory path prepended. Returns an empty list on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("basePath");
@@ -3515,10 +3542,10 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadDirectoryFilesEx", WithNote(i,
-		"Load directory filepaths with extension filtering and recursive directory scan Use "
-		"\"*.*\" to include all files and directories on scan Use \"FILES*\" to include only files "
-		"on scan Use \"DIRS*\" to include only directories on scan WARNING: Directory is scanned "
-		"twice, first time to get paths count"));
+		"Get a list of file paths in a directory, filtered by extension (e.g. \".png;.jpg\"), "
+		"optionally scanning subdirectories. Use \"*.*\" to include all files and directories, "
+		"\"FILES*\" for only files, or \"DIRS*\" for only directories. Returns an empty list once "
+		"sandboxed, and on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("files");
@@ -3527,7 +3554,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadDirectoryFiles", WithNote(i,
-		"Unload directory filepaths WARNING: files.count is not reseted to 0 after unloading"));
+		"Does nothing; LoadDirectoryFiles/LoadDirectoryFilesEx return ordinary lists, which need "
+		"no unloading"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -3538,7 +3566,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsFileDropped());
 	});
 	raylibModule.SetValue("IsFileDropped", WithNote(i,
-		"Check if file has been dropped into window"));
+		"Check if file has been dropped into window. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -3554,7 +3582,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadDroppedFiles", WithNote(i,
-		"Load dropped filepaths"));
+		"Get a list of the paths of files dropped into the window. Returns an empty list once "
+		"sandboxed, and on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("files");
@@ -3563,7 +3592,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadDroppedFiles", WithNote(i,
-		"Unload dropped filepaths"));
+		"Does nothing; LoadDroppedFiles returns an ordinary list, which needs no unloading"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dirPath");
@@ -3583,7 +3612,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult((int)GetDirectoryFileCount(dirPath.c_str()));
 	});
 	raylibModule.SetValue("GetDirectoryFileCount", WithNote(i,
-		"Get the number of files in a directory (0 on web)"));
+		"Get the number of files and directories in a directory (0 on web)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("basePath");
@@ -3602,7 +3631,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("GetDirectoryFileCountEx", WithNote(i,
 		"Count the files in a directory with the given extensions (e.g. \".png;.jpg\"; include "
-		"\"DIR\" to count directories too), optionally searching subdirectories.  Returns 0 once "
+		"\"DIR\" to count directories too), optionally searching subdirectories. Returns 0 once "
 		"sandboxed, and on web"));
 
 	// Compression and encoding helpers
@@ -3629,7 +3658,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("CompressData", WithNote(i,
 		"Compress data with DEFLATE: a RawData, a string, or a list of byte values; dataSize, if "
-		"given, uses only that many bytes.  Returns a RawData, or null"));
+		"given, uses only that many bytes. Returns a RawData, or null"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("compData");
@@ -3653,7 +3682,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("DecompressData", WithNote(i,
 		"Decompress DEFLATE data (as from CompressData): a RawData, a string, or a list of byte "
-		"values; compDataSize, if given, uses only that many bytes.  Returns a RawData, or null"));
+		"values; compDataSize, if given, uses only that many bytes. Returns a RawData, or null"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -3773,8 +3802,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(AutomationEventListToValue(list));
 	});
 	raylibModule.SetValue("LoadAutomationEventList", WithNote(i,
-		"Load automation events list from file, NULL for empty list, capacity = "
-		"MAX_AUTOMATION_EVENTS"));
+		"Load automation events list from file, or pass no file name (\"\") for a new empty list "
+		"(capacity MAX_AUTOMATION_EVENTS). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("list");
@@ -3802,7 +3831,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadAutomationEventList", WithNote(i,
-		"Unload automation events list from file"));
+		"Unload automation events list, leaving it empty. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("list");
@@ -3837,7 +3866,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ExportAutomationEventList(list, fileName.c_str()));
 	});
 	raylibModule.SetValue("ExportAutomationEventList", WithNote(i,
-		"Export automation events list as text file"));
+		"Export automation events list as text file; returns true on success. Not supported on "
+		"web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("list", Value::Null);
@@ -3859,7 +3889,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetAutomationEventList", WithNote(i,
-		"Setup automation event list to record to"));
+		"Set up automation event list to record to (null to clear). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("frame");
@@ -3873,7 +3903,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetAutomationEventBaseFrame", WithNote(i,
-		"Set automation event internal base frame to start recording"));
+		"Set automation event internal base frame to start recording. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -3886,7 +3916,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("StartAutomationEventRecording", WithNote(i,
-		"Start recording automation events (AutomationEventList must be set)"));
+		"Start recording automation events (an automation event list must be set with "
+		"SetAutomationEventList). Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -3900,7 +3931,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("StopAutomationEventRecording", WithNote(i,
-		"Stop recording automation events"));
+		"Stop recording automation events. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("event");
@@ -3914,7 +3945,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("PlayAutomationEvent", WithNote(i,
-		"Play a recorded automation event"));
+		"Play a recorded automation event. Not supported on web"));
 
 	// Random number generation
 	i = Intrinsic::Create("");
@@ -3958,7 +3989,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadRandomSequence", WithNote(i,
-		"Load random values sequence, no values repeated, min and max included"));
+		"Get a list of count random integers between min and max (inclusive), with no values "
+		"repeated"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("sequence", Value::Null);
@@ -3967,7 +3999,7 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadRandomSequence", WithNote(i,
-		"Unload random values sequence"));
+		"Does nothing; LoadRandomSequence returns an ordinary list, which needs no unloading"));
 
 	// Logging and tracing
 
@@ -4013,7 +4045,8 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetTraceLogCallback", WithNote(i,
-		"Set custom trace log"));
+		"Set custom trace log handler: a function(logLevel, text), or null to restore default "
+		"logging. Not supported on web"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("logLevel");
@@ -4025,5 +4058,5 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("TraceLog", WithNote(i,
-		"Show trace log messages (LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG)"));
+		"Log a message at the given level (LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG...)"));
 }

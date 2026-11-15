@@ -86,7 +86,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FontToValue(font));
 	});
 	raylibModule.SetValue("LoadFont", WithNote(i,
-		"Load Font from file into GPU memory (VRAM)"));
+		"Load a Font from file into GPU memory (VRAM).  Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -112,9 +112,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FontToValue(font));
 	});
 	raylibModule.SetValue("LoadFontEx", WithNote(i,
-		"Load font from file with defined codepoints and generation size NOTE: NULL for codepoints "
-		"and 0 for codepointCount to load the default character set (32..126), font size is "
-		"provided in pixels height"));
+		"Load a font from file at fontSize (in pixels of height), with the given codepoints (a list "
+		"of ints or a string of characters); null codepoints loads the default character set "
+		"(32..126).  codepointCount is ignored.  Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -136,7 +136,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FontToValue(font));
 	});
 	raylibModule.SetValue("LoadFontFromImage", WithNote(i,
-		"Load an Image font file (XNA style)"));
+		"Load a font from an Image (XNA style): glyphs separated by key color, starting at "
+		"firstChar (a codepoint or a one-character string)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -145,7 +146,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(IsFontValid(font));
 	});
 	raylibModule.SetValue("IsFontValid", WithNote(i,
-		"Check if font is valid (font data loaded) WARNING: GPU texture not checked"));
+		"Check if font is valid (font data loaded).  WARNING: GPU texture not checked"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -229,7 +230,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawFPS", WithNote(i,
-		"Draw current FPS NOTE: Uses default font"));
+		"Draw current FPS, using the default font"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -247,9 +248,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawText", WithNote(i,
-		"Draw text (using default font) NOTE: fontSize work like in any drawing program but if "
-		"fontSize is lower than font-base-size, then font-base-size is used NOTE: chars spacing is "
-		"proportional to fontSize"));
+		"Draw text using the default font.  If fontSize is smaller than the font's base size (10), "
+		"the base size is used.  Character spacing is proportional to fontSize"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -269,7 +269,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextEx", WithNote(i,
-		"Draw text using Font NOTE: chars spacing is NOT proportional to fontSize"));
+		"Draw text using Font.  Character spacing is NOT proportional to fontSize"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -293,7 +293,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextPro", WithNote(i,
-		"Draw text using Font and pro parameters (rotation)"));
+		"Draw text using Font, rotated (in degrees) around origin"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -311,7 +311,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextCodepoint", WithNote(i,
-		"Draw one character (codepoint)"));
+		"Draw one character, given as an int codepoint"));
 
 	// Text measurement
 
@@ -325,7 +325,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(width));
 	});
 	raylibModule.SetValue("MeasureText", WithNote(i,
-		"Measure string width for default font"));
+		"Measure text width in pixels, for the default font"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -342,7 +342,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(result));
 	});
 	raylibModule.SetValue("MeasureTextEx", WithNote(i,
-		"Measure string size for Font"));
+		"Measure text size for Font; returns a map with x (width) and y (height)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -364,7 +364,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(size));
 	});
 	raylibModule.SetValue("MeasureTextCodepoints", WithNote(i,
-		"Measure string size for an existing array of codepoints for Font"));
+		"Measure size of codepoints (a list of ints or a string) for Font; returns a map with x "
+		"(width) and y (height)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -376,8 +377,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(index));
 	});
 	raylibModule.SetValue("GetGlyphIndex", WithNote(i,
-		"Get index position for a unicode character on font NOTE: If codepoint is not found in the "
-		"font it fallbacks to '?'"));
+		"Get the glyph index of a Unicode codepoint in font.  If codepoint is not found in the "
+		"font, it falls back to '?'"));
 
 	// Additional font and text functions
 
@@ -411,8 +412,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RectangleToValue(rec));
 	});
 	raylibModule.SetValue("GetGlyphAtlasRec", WithNote(i,
-		"Get glyph rectangle in font atlas for a codepoint (unicode character) NOTE: If codepoint "
-		"is not found in the font it fallbacks to '?'"));
+		"Get glyph rectangle in font atlas for a codepoint (Unicode character).  If codepoint is "
+		"not found in the font, it falls back to '?'"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -433,8 +434,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetGlyphInfo", WithNote(i,
-		"Get glyph font info data for a codepoint (unicode character) NOTE: If codepoint is not "
-		"found in the font it fallbacks to '?'"));
+		"Get glyph info for a codepoint (Unicode character), as a map with value, offsetX, "
+		"offsetY, advanceX and image.  If codepoint is not found in the font, it falls back to '?'"));
 
 	// UTF-8 and codepoint functions
 
@@ -446,8 +447,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(count));
 	});
 	raylibModule.SetValue("GetCodepointCount", WithNote(i,
-		"Get total number of characters(codepoints) in a UTF-8 encoded text, until '\\0' is found "
-		"NOTE: If an invalid UTF-8 sequence is encountered a '?'(0x3f) codepoint is counted instead"));
+		"Get the number of characters (codepoints) in text.  An invalid UTF-8 sequence counts as "
+		"one '?' (0x3f) codepoint"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -463,11 +464,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepoint", WithNote(i,
-		"Get next codepoint in a UTF-8 encoded text, scanning until '\\0' is found When an invalid "
-		"UTF-8 byte is encountered, exit as soon as possible and a '?'(0x3f) codepoint is returned "
-		"Total number of bytes processed are returned as a parameter NOTE: The standard says "
-		"U+FFFD should be returned in case of errors but that character is not supported by the "
-		"default font in raylib"));
+		"Get the first codepoint in text.  Returns a map with codepoint and codepointSize (number "
+		"of UTF-8 bytes it used).  An invalid UTF-8 byte gives a '?' (0x3f) codepoint.  The "
+		"codepointSize parameter is ignored"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -483,7 +482,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepointNext", WithNote(i,
-		"Get next codepoint in a byte sequence and bytes processed"));
+		"Get the first codepoint in text.  Returns a map with codepoint and codepointSize (number "
+		"of UTF-8 bytes it used).  The codepointSize parameter is ignored"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -499,7 +499,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("GetCodepointPrevious", WithNote(i,
-		"Get previous codepoint in a byte sequence and bytes processed"));
+		"Get the codepoint before the start of text, as a map with codepoint and codepointSize "
+		"(number of UTF-8 bytes it used).  WARNING: text has nothing before its start, so the "
+		"result is not meaningful.  The codepointSize parameter is ignored"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("codepoint");
@@ -522,7 +524,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(equal));
 	});
 	raylibModule.SetValue("TextIsEqual", WithNote(i,
-		"Check if two text strings are equal REQUIRES: strcmp()"));
+		"Check if two text strings are equal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -544,8 +546,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(src));
 	});
 	raylibModule.SetValue("TextCopy", WithNote(i,
-		"Copy one string to another, returns bytes copied NOTE: Alternative implementation to "
-		"strcpy(dst, src) from C standard library"));
+		"Returns src unchanged (dst is ignored, since MiniScript strings cannot be modified)"));
 
 	// Memory-related functions
 
@@ -576,7 +577,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FontToValue(font));
 	});
 	raylibModule.SetValue("LoadFontFromMemory", WithNote(i,
-		"Load font from memory buffer, fileType refers to extension: i.e. \".ttf\""));
+		"Load a font from a RawData buffer.  fileType is the file extension, e.g. \".ttf\".  "
+		"codepoints is a list of ints or a string (null for the default set, 32..126); "
+		"codepointCount is ignored.  Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileData");
@@ -621,8 +624,10 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadFontData", WithNote(i,
-		"Load font data for further use NOTE: Requires TTF font memory data and can generate SDF "
-		"data"));
+		"Load glyph data from TTF font data (a RawData), for use with GenImageFontAtlas or "
+		"MakeFont.  codepoints is a list of ints or a string (null for 32..126); codepointCount is "
+		"ignored.  type: 0 = default, 1 = bitmap, 2 = SDF.  Returns a list of glyph maps (value, "
+		"offsetX, offsetY, advanceX, image); release the images with UnloadFontData"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("glyphs");
@@ -643,7 +648,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadFontData", WithNote(i,
-		"Unload font glyphs info data (RAM)"));
+		"Unload the glyph images in a list of glyph maps returned by LoadFontData"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -663,7 +668,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadCodepoints", WithNote(i,
-		"Load all codepoints from a UTF-8 text string, codepoints count returned by parameter"));
+		"Get all codepoints in a text string, as a list of ints"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("codepoints");
@@ -673,7 +678,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadCodepoints", WithNote(i,
-		"Unload codepoints data from memory"));
+		"Does nothing (codepoint lists are freed automatically); kept for raylib compatibility"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("codepoints");
@@ -693,8 +698,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(result));
 	});
 	raylibModule.SetValue("LoadUTF8", WithNote(i,
-		"Encode text codepoint into UTF-8 text REQUIRES: memcpy() WARNING: Allocated memory must "
-		"be manually freed"));
+		"Encode codepoints (a list of ints) into a UTF-8 string"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -704,7 +708,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadUTF8", WithNote(i,
-		"Unload UTF-8 text encoded from codepoints array"));
+		"Does nothing (strings are freed automatically); kept for raylib compatibility"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("font");
@@ -732,7 +736,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextCodepoints", WithNote(i,
-		"Draw multiple characters (codepoints)"));
+		"Draw multiple characters, given as a list of int codepoints or a string"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("glyphs");
@@ -785,7 +789,10 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(atlas));
 	});
 	raylibModule.SetValue("GenImageFontAtlas", WithNote(i,
-		"Generate image font atlas using chars info NOTE: Packing method: 0-Default, 1-Skyline"));
+		"Generate a font atlas Image from glyphs (a list of glyph maps, as from LoadFontData).  "
+		"glyphRecs is a list of the same length, which is filled with each glyph's rectangle in "
+		"the atlas.  packMethod: 0 = default, 1 = Skyline.  Returns null if the lists are empty "
+		"or differ in length"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -850,7 +857,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextFindIndex", WithNote(i,
-		"Find first text occurrence within a string REQUIRES: strstr()"));
+		"Find first occurrence of search within text; returns its byte index, or -1 if not found"));
 	i = Intrinsic::Create("");
 	i.AddParam("text");
 	i.AddParam("begin");
@@ -864,7 +871,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("GetTextBetween", WithNote(i,
-		"Get text between two strings"));
+		"Get the text between the first occurrence of begin and the next end after it (\"\" if "
+		"not found).  Result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -879,8 +887,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextReplace", WithNote(i,
-		"Replace text string REQUIRES: strstr(), memcpy() NOTE: Limited text replace "
-		"functionality, using static string"));
+		"Replace all occurrences of search in text with replacement.  Result is limited to 1023 "
+		"bytes; use TextReplaceAlloc for longer text"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -897,8 +905,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextReplaceAlloc", WithNote(i,
-		"Replace text string REQUIRES: strstr(), memcpy() WARNING: Allocated memory must be "
-		"manually freed"));
+		"Replace all occurrences of search in text with replacement, with no length limit"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -915,8 +922,9 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextReplaceBetween", WithNote(i,
-		"Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == "
-		"NULL) removes \"begin\"[ ]\"end\" text"));
+		"Replace the text between begin and end (keeping begin and end) with replacement; an "
+		"empty or null replacement just removes it.  Result is limited to 1023 bytes; use "
+		"TextReplaceBetweenAlloc for longer text"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -935,8 +943,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextReplaceBetweenAlloc", WithNote(i,
-		"Replace text between two specific strings REQUIRES: strncpy() NOTE: If (replacement == "
-		"NULL) remove \"begin\"[ ]\"end\" text WARNING: Returned string must be freed by user"));
+		"Replace the text between begin and end (keeping begin and end) with replacement, with no "
+		"length limit; an empty or null replacement just removes it"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -951,8 +959,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextInsert", WithNote(i,
-		"Insert text in a specific position, moves all text forward WARNING: Allocated memory must "
-		"be manually freed"));
+		"Insert text at a byte position, moving the rest forward.  Result is limited to 1023 "
+		"bytes; use TextInsertAlloc for longer text"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -976,7 +984,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextRemoveSpaces", WithNote(i,
-		"Remove all the spaces from a string"));
+		"Remove all the spaces from a string.  Result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -993,8 +1001,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextInsertAlloc", WithNote(i,
-		"Insert text in a specific position, moves all text forward WARNING: Allocated memory must "
-		"be manually freed"));
+		"Insert text at a byte position, moving the rest forward, with no length limit"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1039,7 +1046,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextJoin", WithNote(i,
-		"Join text strings with delimiter REQUIRES: memset(), memcpy()"));
+		"Join a list of strings with delimiter.  Result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1052,8 +1059,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextAppend", WithNote(i,
-		"Append text at specific position and move cursor WARNING: It's up to the user to make "
-		"sure appended text does not overflow the buffer!"));
+		"Returns text with append added to the end"));
 
 	// Text case conversion functions
 
@@ -1065,8 +1071,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextToUpper", WithNote(i,
-		"Get upper case version of provided string WARNING: Limited functionality, only basic "
-		"characters set TODO: Support UTF-8 diacritics (á, ñ, ü...) to upper-case, check codepoints"));
+		"Get upper case version of provided string.  Only basic (ASCII) letters are converted; "
+		"result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1076,8 +1082,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextToLower", WithNote(i,
-		"Get lower case version of provided string WARNING: Limited functionality, only basic "
-		"characters set"));
+		"Get lower case version of provided string.  Only basic (ASCII) letters are converted; "
+		"result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1087,8 +1093,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextToPascal", WithNote(i,
-		"Get Pascal case notation version of provided string WARNING: Limited functionality, only "
-		"basic characters set"));
+		"Get PascalCase version of provided string (from snake_case).  Only basic (ASCII) "
+		"characters are handled; result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1098,8 +1104,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextToSnake", WithNote(i,
-		"Get snake case notation version of provided string WARNING: Limited functionality, only "
-		"basic characters set"));
+		"Get snake_case version of provided string.  Only basic (ASCII) characters are handled; "
+		"result is limited to 1023 bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1109,8 +1115,8 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ret);
 	});
 	raylibModule.SetValue("TextToCamel", WithNote(i,
-		"Get Camel case notation version of provided string WARNING: Limited functionality, only "
-		"basic characters set"));
+		"Get camelCase version of provided string (from snake_case).  Only basic (ASCII) "
+		"characters are handled; result is limited to 1023 bytes"));
 
 	// Text to value conversion functions
 
@@ -1122,7 +1128,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextToInteger", WithNote(i,
-		"Get integer value from text NOTE: This function replaces atoi() [stdlib.h]"));
+		"Get integer value from text"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1132,8 +1138,7 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(result);
 	});
 	raylibModule.SetValue("TextToFloat", WithNote(i,
-		"Get float value from text NOTE: This function replaces atof() [stdlib.h] WARNING: Only "
-		"'.' character is understood as decimal point"));
+		"Get float value from text.  Only '.' is understood as decimal point"));
 
 	// Text line loading functions
 
@@ -1162,5 +1167,5 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadTextLines", WithNote(i,
-		"Unload text lines"));
+		"Does nothing (lists are freed automatically); kept for raylib compatibility"));
 }

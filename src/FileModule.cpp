@@ -552,7 +552,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("path");
 	i.set_Code(&intrinsic_chdir);
 	fileModule.SetValue("setdir", WithNote(i,
-		"Change current working directory"));
+		"Change the current working directory; returns true on success, false on failure"));
 
 	// The same change of directory, spelled as an assignment: file.curdir = p.
 	// setdir stays too -- this module is Mini Micro's, and there is public code
@@ -570,7 +570,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("path");
 	i.set_Code(&intrinsic_readdir);
 	fileModule.SetValue("children", WithNote(i,
-		"Get list of file and directory names in the given directory"));
+		"Get a list of file and directory names in the given directory "
+		"(default: the current directory)"));
 
 	// Get the filename (last path component) of a path string
 	i = Intrinsic::Create("");
@@ -591,14 +592,15 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("path");
 	i.set_Code(&intrinsic_info);
 	fileModule.SetValue("info", WithNote(i,
-		"Get a map of info (path, isDirectory, size, date) about the given path"));
+		"Get a map of info (path, isDirectory, size, date) about the given path "
+		"(default: the current directory), or null if it does not exist"));
 
 	// Create a directory at the given path
 	i = Intrinsic::Create("");
 	i.AddParam("path");
 	i.set_Code(&intrinsic_mkdir);
 	fileModule.SetValue("makedir", WithNote(i,
-		"Create a directory at the given path"));
+		"Create a directory at the given path.  Returns null on success, or an error."));
 
 	// Get the parent directory of the given path
 	i = Intrinsic::Create("");
@@ -621,7 +623,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("newPath");
 	i.set_Code(&intrinsic_rename);
 	fileModule.SetValue("move", WithNote(i,
-		"Move (rename) a file or directory"));
+		"Move (rename) a file or directory, replacing any existing file at newPath.  "
+		"Returns null on success, or an error."));
 
 	// Copy a file
 	i = Intrinsic::Create("");
@@ -629,14 +632,15 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("newPath");
 	i.set_Code(&intrinsic_copy);
 	fileModule.SetValue("copy", WithNote(i,
-		"Copy a file"));
+		"Copy a file, replacing any existing file at newPath.  "
+		"Returns null on success, or an error."));
 
 	// Delete a file or empty directory
 	i = Intrinsic::Create("");
 	i.AddParam("path");
 	i.set_Code(&intrinsic_remove);
 	fileModule.SetValue("delete", WithNote(i,
-		"Delete a file or empty directory"));
+		"Delete a file or empty directory.  Returns null on success, or an error."));
 
 	// Open a file; returns a FileHandle, or null on failure
 	i = Intrinsic::Create("");
@@ -644,14 +648,16 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("mode", "r+");
 	i.set_Code(&intrinsic_fopen);
 	fileModule.SetValue("open", WithNote(i,
-		"Open a file; returns a FileHandle, or null on failure"));
+		"Open a file; returns a FileHandle, or null on failure.  The default mode "
+		"\"r+\" opens for reading and writing, creating the file if needed."));
 
 	// Read all lines from a text file, returning a list of strings
 	i = Intrinsic::Create("");
 	i.AddParam("path");
 	i.set_Code(&intrinsic_readLines);
 	fileModule.SetValue("readLines", WithNote(i,
-		"Read all lines from a text file, returning a list of strings"));
+		"Read all lines from a text file, returning a list of strings "
+		"(or null if the file cannot be read)"));
 
 	// Write a list of strings (or a single string) to a text file
 	i = Intrinsic::Create("");
@@ -667,7 +673,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("path");
 	i.set_Code(&intrinsic_loadRaw);
 	fileModule.SetValue("loadRaw", WithNote(i,
-		"Load a binary file, returning a RawData object"));
+		"Load a binary file, returning a RawData object (or null on failure)"));
 
 	// Save a RawData object to a binary file
 	i = Intrinsic::Create("");
@@ -675,7 +681,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("data");
 	i.set_Code(&intrinsic_saveRaw);
 	fileModule.SetValue("saveRaw", WithNote(i,
-		"Save a RawData object to a binary file"));
+		"Save a RawData object to a binary file.  Returns null on success, or an error."));
 
 	// Enter sandbox mode (one-way; there is no way back)
 	i = Intrinsic::Create("");
@@ -689,14 +695,15 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("folderName");
 	i.set_Code(&intrinsic_mountAppData);
 	fileModule.SetValue("mountAppData", WithNote(i,
-		"Mount a folder of this application's own data as /usr or /usr2"));
+		"Mount a folder of this application's own data as /usr or /usr2; "
+		"returns true on success"));
 
 	// Unmount /usr or /usr2
 	i = Intrinsic::Create("");
 	i.AddParam("mountName", "usr");
 	i.set_Code(&intrinsic_unmount);
 	fileModule.SetValue("unmount", WithNote(i,
-		"Unmount /usr or /usr2"));
+		"Unmount /usr or /usr2; returns true on success"));
 
 	// Files the user has dropped on the window: [{name, isDirectory}]
 	i = Intrinsic::Create("");
@@ -716,7 +723,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("mountName", "usr");
 	i.set_Code(&intrinsic_mountDropped);
 	fileModule.SetValue("mountDropped", WithNote(i,
-		"Mount one of those dropped files as /usr or /usr2"));
+		"Mount one of the dropped files (by index into droppedFiles) as /usr or /usr2; "
+		"returns true on success"));
 
 	// Forget the dropped files (the next drop clears them anyway)
 	i = Intrinsic::Create("");
@@ -731,7 +739,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("self");
 	i.set_Code(&intrinsic_fclose);
 	fileHandleClass.SetValue("close", WithNote(i,
-		"Close the file handle, writing any changes to the disk"));
+		"Close the file handle, writing any changes to the disk.  "
+		"Returns 1 if closed, or 0 if it was already closed."));
 
 	// Get whether the file handle is still open
 	i = Intrinsic::Create("");
@@ -746,7 +755,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("data");
 	i.set_Code(&intrinsic_fwrite);
 	fileHandleClass.SetValue("write", WithNote(i,
-		"Write a string to the file"));
+		"Write a string to the file; returns the number of bytes written (0 on error)"));
 
 	// Write a string followed by a newline to the file
 	i = Intrinsic::Create("");
@@ -754,7 +763,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("data");
 	i.set_Code(&intrinsic_fwriteLine);
 	fileHandleClass.SetValue("writeLine", WithNote(i,
-		"Write a string followed by a newline to the file"));
+		"Write a string followed by a newline to the file; returns the number of "
+		"bytes written (0 on error)"));
 
 	// Read up to codePointCount characters from the file (or all remaining if -1)
 	i = Intrinsic::Create("");
@@ -762,21 +772,22 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("codePointCount", -1);
 	i.set_Code(&intrinsic_fread);
 	fileHandleClass.SetValue("read", WithNote(i,
-		"Read up to codePointCount characters from the file (or all remaining if -1)"));
+		"Read up to codePointCount characters from the file (or all remaining if -1); "
+		"returns null on failure"));
 
 	// Read the next line from the file
 	i = Intrinsic::Create("");
 	i.AddParam("self");
 	i.set_Code(&intrinsic_freadLine);
 	fileHandleClass.SetValue("readLine", WithNote(i,
-		"Read the next line from the file"));
+		"Read the next line from the file, or null at the end of the file"));
 
 	// Get the current read/write position in the file
 	i = Intrinsic::Create("");
 	i.AddParam("self");
 	i.set_Code(&intrinsic_fposition);
 	fileHandleClass.SetValue("position", WithNote(i,
-		"Get the current read/write position in the file"));
+		"Get the current read/write position in the file (null if the file is closed)"));
 
 	// Move the read/write position within the file
 	i = Intrinsic::Create("");

@@ -29,7 +29,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Clamp(value, min, max));
 	});
 	raylibModule.SetValue("Clamp", WithNote(i,
-		"Clamp float value"));
+		"Clamp value to the range [min, max]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("start", Value::zero);
@@ -42,7 +42,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Lerp(start, end, amount));
 	});
 	raylibModule.SetValue("Lerp", WithNote(i,
-		"Calculate linear interpolation between two floats"));
+		"Linearly interpolate between start and end; amount 0 gives start, 1 gives end"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("value", Value::zero);
@@ -55,7 +55,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Normalize(value, start, end));
 	});
 	raylibModule.SetValue("Normalize", WithNote(i,
-		"Normalize input value within input range"));
+		"Map value from the range [start, end] to the range [0, 1]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("value", Value::zero);
@@ -85,7 +85,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Wrap(value, min, max));
 	});
 	raylibModule.SetValue("Wrap", WithNote(i,
-		"Wrap input value from min to max"));
+		"Wrap value into the range [min, max)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -96,7 +96,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(FloatEquals(x, y));
 	});
 	raylibModule.SetValue("FloatEquals", WithNote(i,
-		"Check whether two given floats are almost equal"));
+		"Return true (1) if x and y are almost equal (within a small relative tolerance), "
+		"else false (0)"));
 
 	// Vector2 math
 	i = Intrinsic::Create("");
@@ -104,14 +105,14 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Zero()));
 	});
 	raylibModule.SetValue("Vector2Zero", WithNote(i,
-		"Vector with components value 0.0f"));
+		"Get a Vector2 map {x, y} with all components 0"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Vector2ToValue(Vector2One()));
 	});
 	raylibModule.SetValue("Vector2One", WithNote(i,
-		"Vector with components value 1.0f"));
+		"Get a Vector2 map {x, y} with all components 1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -133,7 +134,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector2AddValue", WithNote(i,
-		"Add vector and float value"));
+		"Add a number to each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -155,7 +156,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector2SubtractValue", WithNote(i,
-		"Subtract vector by float value"));
+		"Subtract a number from each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -173,7 +174,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector2LengthSqr", WithNote(i,
-		"Calculate vector square length"));
+		"Calculate vector squared length"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -184,7 +185,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector2DotProduct", WithNote(i,
-		"Calculate two vectors dot product"));
+		"Calculate the dot product of two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -195,7 +196,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2CrossProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector2CrossProduct", WithNote(i,
-		"Calculate two vectors cross product"));
+		"Calculate the 2D cross product of two vectors (v1.x*v2.y - v1.y*v2.x)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -217,7 +218,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector2DistanceSqr", WithNote(i,
-		"Calculate square distance between two vectors"));
+		"Calculate squared distance between two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -228,9 +229,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2Angle(v1, v2));
 	});
 	raylibModule.SetValue("Vector2Angle", WithNote(i,
-		"Calculate the signed angle from v1 to v2, relative to the origin (0, 0) NOTE: Coordinate "
-		"system convention: positive X right, positive Y down positive angles appear clockwise, "
-		"and negative angles appear counterclockwise"));
+		"Calculate the signed angle (in radians) from v1 to v2, relative to the origin (0, 0). "
+		"With positive X right and positive Y down, positive angles appear clockwise and "
+		"negative angles appear counterclockwise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("start", Vector2ToValue(Vector2{0, 0}));
@@ -241,8 +242,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2LineAngle(start, end));
 	});
 	raylibModule.SetValue("Vector2LineAngle", WithNote(i,
-		"Calculate angle defined by a two vectors line NOTE: Parameters need to be normalized "
-		"Current implementation should be aligned with glm::angle"));
+		"Calculate the angle (in radians) of the line from start to end, "
+		"i.e. -atan(end.y - start.y, end.x - start.x)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -264,7 +265,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Multiply", WithNote(i,
-		"Multiply vector by vector"));
+		"Multiply two vectors component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -284,7 +285,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector2Divide", WithNote(i,
-		"Divide vector by vector"));
+		"Divide v1 by v2 component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -293,7 +294,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Normalize(v)));
 	});
 	raylibModule.SetValue("Vector2Normalize", WithNote(i,
-		"Normalize provided vector"));
+		"Scale vector to length 1 (a zero vector is returned unchanged)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -328,7 +329,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Reflect(v, normal)));
 	});
 	raylibModule.SetValue("Vector2Reflect", WithNote(i,
-		"Calculate reflected vector to normal"));
+		"Calculate the reflection of v off a surface with the given normal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector2ToValue(Vector2{0, 0}));
@@ -361,7 +362,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Rotate(v, angle)));
 	});
 	raylibModule.SetValue("Vector2Rotate", WithNote(i,
-		"Rotate vector by angle"));
+		"Rotate vector by angle (in radians)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -374,7 +375,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector2MoveTowards", WithNote(i,
-		"Move Vector towards target"));
+		"Move vector v towards target by at most maxDistance"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -383,7 +384,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Invert(v)));
 	});
 	raylibModule.SetValue("Vector2Invert", WithNote(i,
-		"Invert the given vector"));
+		"Get the component-wise reciprocal of the vector (1/x, 1/y)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -421,7 +422,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2Equals(p, q));
 	});
 	raylibModule.SetValue("Vector2Equals", WithNote(i,
-		"Check whether two given vectors are almost equal"));
+		"Return true (1) if two vectors are almost equal (within a small relative tolerance), "
+		"else false (0)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector2ToValue(Vector2{0, 0}));
@@ -434,10 +436,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector2ToValue(Vector2Refract(v, n, r)));
 	});
 	raylibModule.SetValue("Vector2Refract", WithNote(i,
-		"Compute the direction of a refracted ray v: normalized direction of the incoming ray n: "
-		"normalized normal vector of the interface of two optical media r: ratio of the refractive "
-		"index of the medium from where the ray comes to the refractive index of the medium on the "
-		"other side of the surface"));
+		"Compute the direction of a refracted ray. v: normalized direction of the incoming ray; "
+		"n: normalized normal vector of the interface between the two media; r: ratio of the "
+		"refractive index of the medium the ray comes from to that of the medium on the other side"));
 
 	// Vector3 math (initial tranche)
 	i = Intrinsic::Create("");
@@ -445,14 +446,14 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Zero()));
 	});
 	raylibModule.SetValue("Vector3Zero", WithNote(i,
-		"Vector with components value 0.0f"));
+		"Get a Vector3 map {x, y, z} with all components 0"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Vector3ToValue(Vector3One()));
 	});
 	raylibModule.SetValue("Vector3One", WithNote(i,
-		"Vector with components value 1.0f"));
+		"Get a Vector3 map {x, y, z} with all components 1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -474,7 +475,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector3AddValue", WithNote(i,
-		"Add vector and float value"));
+		"Add a number to each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -496,7 +497,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector3SubtractValue", WithNote(i,
-		"Subtract vector by float value"));
+		"Subtract a number from each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -518,7 +519,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Multiply", WithNote(i,
-		"Multiply vector by vector"));
+		"Multiply two vectors component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -538,7 +539,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Perpendicular(v)));
 	});
 	raylibModule.SetValue("Vector3Perpendicular", WithNote(i,
-		"Calculate one vector perpendicular vector"));
+		"Calculate a vector perpendicular to v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -556,7 +557,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector3LengthSqr", WithNote(i,
-		"Calculate vector square length"));
+		"Calculate vector squared length"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -567,7 +568,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector3DotProduct", WithNote(i,
-		"Calculate two vectors dot product"));
+		"Calculate the dot product of two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -589,7 +590,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector3DistanceSqr", WithNote(i,
-		"Calculate square distance between two vectors"));
+		"Calculate squared distance between two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -600,7 +601,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3Angle(v1, v2));
 	});
 	raylibModule.SetValue("Vector3Angle", WithNote(i,
-		"Calculate angle between two vectors"));
+		"Calculate the angle (in radians) between two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -620,7 +621,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector3Divide", WithNote(i,
-		"Divide vector by vector"));
+		"Divide v1 by v2 component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -629,7 +630,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Normalize(v)));
 	});
 	raylibModule.SetValue("Vector3Normalize", WithNote(i,
-		"Normalize provided vector"));
+		"Scale vector to length 1 (a zero vector is returned unchanged)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -666,8 +667,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("Vector3OrthoNormalize", WithNote(i,
-		"Orthonormalize provided vectors Makes vectors normalized and orthogonal to each other "
-		"Gram-Schmidt function implementation"));
+		"Orthonormalize v1 and v2 (Gram-Schmidt); returns a map with keys v1 and v2, "
+		"which are normalized and orthogonal to each other"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -702,7 +703,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3RotateByAxisAngle(v, axis, angle)));
 	});
 	raylibModule.SetValue("Vector3RotateByAxisAngle", WithNote(i,
-		"Rotates a vector around an axis"));
+		"Rotate vector v around axis by angle (in radians)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -715,7 +716,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector3MoveTowards", WithNote(i,
-		"Move Vector towards target"));
+		"Move vector v towards target by at most maxDistance"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -758,7 +759,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Reflect(v, normal)));
 	});
 	raylibModule.SetValue("Vector3Reflect", WithNote(i,
-		"Calculate reflected vector to normal"));
+		"Calculate the reflection of v off a surface with the given normal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector3ToValue(Vector3{0, 0, 0}));
@@ -795,8 +796,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Barycenter(p, a, b, c)));
 	});
 	raylibModule.SetValue("Vector3Barycenter", WithNote(i,
-		"Compute barycenter coordinates (u, v, w) for point p with respect to triangle (a, b, c) "
-		"NOTE: Assumes P is on the plane of the triangle"));
+		"Compute barycentric coordinates (u, v, w), returned as {x, y, z}, for point p "
+		"with respect to triangle (a, b, c). Assumes p lies in the plane of the triangle"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("source", Vector3ToValue(Vector3{0, 0, 0}));
@@ -809,8 +810,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Unproject(source, projection, view)));
 	});
 	raylibModule.SetValue("Vector3Unproject", WithNote(i,
-		"Projects a Vector3 from screen space into object space NOTE: Self-contained function, no "
-		"other raymath functions are called"));
+		"Unproject a point from normalized device coordinates (-1 to 1) into world space, "
+		"using the given projection and view matrices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -824,7 +825,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("Vector3ToFloatV", WithNote(i,
-		"Get Vector3 as float array"));
+		"Get vector components as a list [x, y, z]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -833,7 +834,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Invert(v)));
 	});
 	raylibModule.SetValue("Vector3Invert", WithNote(i,
-		"Invert the given vector"));
+		"Get the component-wise reciprocal of the vector (1/x, 1/y, 1/z)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -860,7 +861,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3ClampValue(v, min, max)));
 	});
 	raylibModule.SetValue("Vector3ClampValue", WithNote(i,
-		"Clamp the magnitude of the vector between two values"));
+		"Clamp the magnitude of the vector between min and max values"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p", Vector3ToValue(Vector3{0, 0, 0}));
@@ -871,7 +872,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3Equals(p, q));
 	});
 	raylibModule.SetValue("Vector3Equals", WithNote(i,
-		"Check whether two given vectors are almost equal"));
+		"Return true (1) if two vectors are almost equal (within a small relative tolerance), "
+		"else false (0)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector3ToValue(Vector3{0, 0, 0}));
@@ -884,10 +886,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(Vector3Refract(v, n, r)));
 	});
 	raylibModule.SetValue("Vector3Refract", WithNote(i,
-		"Compute the direction of a refracted ray v: normalized direction of the incoming ray n: "
-		"normalized normal vector of the interface of two optical media r: ratio of the refractive "
-		"index of the medium from where the ray comes to the refractive index of the medium on the "
-		"other side of the surface"));
+		"Compute the direction of a refracted ray. v: normalized direction of the incoming ray; "
+		"n: normalized normal vector of the interface between the two media; r: ratio of the "
+		"refractive index of the medium the ray comes from to that of the medium on the other side"));
 
 	// Vector4 math
 	i = Intrinsic::Create("");
@@ -895,14 +896,14 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Zero()));
 	});
 	raylibModule.SetValue("Vector4Zero", WithNote(i,
-		"Get  vector zero"));
+		"Get a Vector4 map {x, y, z, w} with all components 0"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Vector4ToValue(Vector4One()));
 	});
 	raylibModule.SetValue("Vector4One", WithNote(i,
-		"Get vector one"));
+		"Get a Vector4 map {x, y, z, w} with all components 1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -924,7 +925,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4AddValue(v, add)));
 	});
 	raylibModule.SetValue("Vector4AddValue", WithNote(i,
-		"Add value to vector components"));
+		"Add a number to each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -935,7 +936,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Subtract(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Subtract", WithNote(i,
-		"Substract vectors"));
+		"Subtract two vectors (v1 - v2)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -946,7 +947,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4SubtractValue(v, sub)));
 	});
 	raylibModule.SetValue("Vector4SubtractValue", WithNote(i,
-		"Substract value from vector components"));
+		"Subtract a number from each component of vector v"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -955,7 +956,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4Length(v));
 	});
 	raylibModule.SetValue("Vector4Length", WithNote(i,
-		"Vector length"));
+		"Calculate vector length"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -964,7 +965,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4LengthSqr(v));
 	});
 	raylibModule.SetValue("Vector4LengthSqr", WithNote(i,
-		"Vector square length"));
+		"Calculate vector squared length"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -975,7 +976,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4DotProduct(v1, v2));
 	});
 	raylibModule.SetValue("Vector4DotProduct", WithNote(i,
-		"Vectors dot product"));
+		"Calculate the dot product of two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -997,7 +998,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4DistanceSqr(v1, v2));
 	});
 	raylibModule.SetValue("Vector4DistanceSqr", WithNote(i,
-		"Calculate square distance between two vectors"));
+		"Calculate squared distance between two vectors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -1019,7 +1020,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Multiply(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Multiply", WithNote(i,
-		"Multiply vector by vector"));
+		"Multiply two vectors component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -1039,7 +1040,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Divide(v1, v2)));
 	});
 	raylibModule.SetValue("Vector4Divide", WithNote(i,
-		"Divide vector by vector"));
+		"Divide v1 by v2 component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -1048,7 +1049,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Normalize(v)));
 	});
 	raylibModule.SetValue("Vector4Normalize", WithNote(i,
-		"Normalize provided vector"));
+		"Scale vector to length 1 (a zero vector is returned unchanged)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v1", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -1096,7 +1097,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4MoveTowards(v, target, maxDistance)));
 	});
 	raylibModule.SetValue("Vector4MoveTowards", WithNote(i,
-		"Move Vector towards target"));
+		"Move vector v towards target by at most maxDistance"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("v", Vector4ToValue(Vector4{1, 1, 1, 1}));
@@ -1105,7 +1106,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4ToValue(Vector4Invert(v)));
 	});
 	raylibModule.SetValue("Vector4Invert", WithNote(i,
-		"Invert the given vector"));
+		"Get the component-wise reciprocal of the vector (1/x, 1/y, 1/z, 1/w)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("p", Vector4ToValue(Vector4{0, 0, 0, 0}));
@@ -1116,7 +1117,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector4Equals(p, q));
 	});
 	raylibModule.SetValue("Vector4Equals", WithNote(i,
-		"Check whether two given vectors are almost equal"));
+		"Return true (1) if two vectors are almost equal (within a small relative tolerance), "
+		"else false (0)"));
 
 	// Matrix math
 	i = Intrinsic::Create("");
@@ -1144,7 +1146,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixTranspose(mat)));
 	});
 	raylibModule.SetValue("MatrixTranspose", WithNote(i,
-		"Transposes provided matrix"));
+		"Transpose provided matrix"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("mat", MatrixToValue(MatrixIdentity()));
@@ -1193,7 +1195,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixMultiply(left, right)));
 	});
 	raylibModule.SetValue("MatrixMultiply", WithNote(i,
-		"Get two matrix multiplication NOTE: When multiplying matrices... the order matters!"));
+		"Multiply two matrices; note that the order of the arguments matters"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("left", MatrixToValue(MatrixIdentity()));
@@ -1217,7 +1219,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixTranslate(x, y, z)));
 	});
 	raylibModule.SetValue("MatrixTranslate", WithNote(i,
-		"Get translation matrix"));
+		"Get translation matrix for offset (x, y, z)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("axis", Vector3ToValue(Vector3{0, 1, 0}));
@@ -1228,7 +1230,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotate(axis, angle)));
 	});
 	raylibModule.SetValue("MatrixRotate", WithNote(i,
-		"Create rotation matrix from axis and angle NOTE: Angle should be provided in radians"));
+		"Create rotation matrix from axis and angle (in radians)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
@@ -1237,7 +1239,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotateX(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateX", WithNote(i,
-		"Get x-rotation matrix NOTE: Angle must be provided in radians"));
+		"Get rotation matrix about the X axis; angle is in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
@@ -1246,7 +1248,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotateY(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateY", WithNote(i,
-		"Get y-rotation matrix NOTE: Angle must be provided in radians"));
+		"Get rotation matrix about the Y axis; angle is in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Value::zero);
@@ -1255,7 +1257,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotateZ(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateZ", WithNote(i,
-		"Get z-rotation matrix NOTE: Angle must be provided in radians"));
+		"Get rotation matrix about the Z axis; angle is in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Vector3ToValue(Vector3{0, 0, 0}));
@@ -1264,7 +1266,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotateXYZ(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateXYZ", WithNote(i,
-		"Get xyz-rotation matrix NOTE: Angle must be provided in radians"));
+		"Get xyz-rotation matrix; angle is a Vector3 of rotations about each axis, in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("angle", Vector3ToValue(Vector3{0, 0, 0}));
@@ -1273,7 +1275,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixRotateZYX(angle)));
 	});
 	raylibModule.SetValue("MatrixRotateZYX", WithNote(i,
-		"Get zyx-rotation matrix NOTE: Angle must be provided in radians"));
+		"Get zyx-rotation matrix; angle is a Vector3 of rotations about each axis, in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::one);
@@ -1286,7 +1288,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixScale(x, y, z)));
 	});
 	raylibModule.SetValue("MatrixScale", WithNote(i,
-		"Get scaling matrix"));
+		"Get scaling matrix for scale factors (x, y, z)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("left", Value(-1));
@@ -1320,7 +1322,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(MatrixToValue(MatrixPerspective(fovY, aspect, nearPlane, farPlane)));
 	});
 	raylibModule.SetValue("MatrixPerspective", WithNote(i,
-		"Get perspective projection matrix NOTE: Fovy angle must be provided in radians"));
+		"Get perspective projection matrix; fovY is the vertical field of view in radians"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("left", Value(-1));
@@ -1364,7 +1366,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("MatrixToFloatV", WithNote(i,
-		"Get float array of matrix data"));
+		"Get matrix data as a flat list of 16 numbers, in column-major order"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("translation", Vector3ToValue(Vector3{0, 0, 0}));
@@ -1395,9 +1397,9 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("MatrixDecompose", WithNote(i,
-		"Decompose a transformation matrix into its rotational, translational and scaling "
-		"components and remove shear TODO: WARNING: Following raymath convention and make the "
-		"function self-contained"));
+		"Decompose a transformation matrix into translation, rotation and scale (removing "
+		"any shear); returns a map with keys translation (Vector3), rotation (Quaternion) "
+		"and scale (Vector3)"));
 
 	// Quaternion math
 	i = Intrinsic::Create("");
@@ -1420,7 +1422,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionAddValue(q, add)));
 	});
 	raylibModule.SetValue("QuaternionAddValue", WithNote(i,
-		"Add quaternion and float value"));
+		"Add a number to each component of quaternion q"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
@@ -1442,7 +1444,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionSubtractValue(q, sub)));
 	});
 	raylibModule.SetValue("QuaternionSubtractValue", WithNote(i,
-		"Subtract quaternion and float value"));
+		"Subtract a number from each component of quaternion q"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1458,7 +1460,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionLength(q));
 	});
 	raylibModule.SetValue("QuaternionLength", WithNote(i,
-		"Computes the length of a quaternion"));
+		"Compute the length of a quaternion"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
@@ -1487,7 +1489,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionMultiply(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionMultiply", WithNote(i,
-		"Calculate two quaternion multiplication"));
+		"Multiply two quaternions (q1 * q2)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
@@ -1509,7 +1511,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionDivide(q1, q2)));
 	});
 	raylibModule.SetValue("QuaternionDivide", WithNote(i,
-		"Divide two quaternions"));
+		"Divide q1 by q2 component-wise"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
@@ -1548,7 +1550,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionSlerp(q1, q2, amount)));
 	});
 	raylibModule.SetValue("QuaternionSlerp", WithNote(i,
-		"Calculates spherical linear interpolation between two quaternions"));
+		"Calculate spherical linear interpolation between two quaternions"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q1", QuaternionToValue(QuaternionIdentity()));
@@ -1607,7 +1609,7 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionFromAxisAngle(axis, angle)));
 	});
 	raylibModule.SetValue("QuaternionFromAxisAngle", WithNote(i,
-		"Get rotation quaternion for an angle and axis NOTE: Angle must be provided in radians"));
+		"Get rotation quaternion for an axis and angle (in radians)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
@@ -1622,7 +1624,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(result));
 	});
 	raylibModule.SetValue("QuaternionToAxisAngle", WithNote(i,
-		"Get the rotation angle and axis for a given quaternion"));
+		"Get the rotation axis and angle for a given quaternion; returns a map with "
+		"keys axis (Vector3) and angle (in radians)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("pitch", Value::zero);
@@ -1635,7 +1638,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionToValue(QuaternionFromEuler(pitch, yaw, roll)));
 	});
 	raylibModule.SetValue("QuaternionFromEuler", WithNote(i,
-		"Get the quaternion equivalent to Euler angles NOTE: Rotation order is ZYX"));
+		"Get the quaternion equivalent to Euler angles (in radians): pitch (about X), "
+		"yaw (about Y) and roll (about Z). Rotation order is ZYX"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
@@ -1644,8 +1648,8 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Vector3ToValue(QuaternionToEuler(q)));
 	});
 	raylibModule.SetValue("QuaternionToEuler", WithNote(i,
-		"Get the Euler angles equivalent to quaternion (roll, pitch, yaw) NOTE: Angles are "
-		"returned in a Vector3 struct in radians"));
+		"Get the Euler angles equivalent to quaternion, as a Vector3 of rotations (in "
+		"radians) about the X, Y and Z axes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("q", QuaternionToValue(QuaternionIdentity()));
@@ -1667,5 +1671,6 @@ void AddRMathMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(QuaternionEquals(p, q));
 	});
 	raylibModule.SetValue("QuaternionEquals", WithNote(i,
-		"Check whether two given quaternions are almost equal"));
+		"Return true (1) if two quaternions are almost equal (within a small relative tolerance), "
+		"else false (0)"));
 }

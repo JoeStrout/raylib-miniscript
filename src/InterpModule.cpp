@@ -290,7 +290,7 @@ const Value& InterpClass() {
 	});
 	// release this interpreter and its VM
 	interpClass.SetValue("dispose", WithNote(f,
-		"release this interpreter and its VM"));
+		"release this interpreter and its VM (an error if it is currently running)"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -349,8 +349,8 @@ const Value& InterpClass() {
 	// load and compile a program into the child, with empty globals; check
 	// `error` for a compile error, and runUntilDone to run it
 	interpClass.SetValue("load", WithNote(f,
-		"load and compile a program into the child, with empty globals; check `error` for a "
-		"compile error, and runUntilDone to run it"));
+		"load and compile a program into the child, with empty globals; sourceName is used "
+		"in error messages.  Check `error` for a compile error, and runUntilDone to run it"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -433,7 +433,7 @@ const Value& InterpClass() {
 	});
 	// the inverse of done
 	interpClass.SetValue("running", WithNote(f,
-		"the inverse of done"));
+		"true while the child still has code to run (the inverse of done)"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -445,7 +445,7 @@ const Value& InterpClass() {
 	});
 	// interrupt the child (this is what ctrl-C is)
 	interpClass.SetValue("stop", WithNote(f,
-		"interrupt the child (this is what ctrl-C is)"));
+		"interrupt the child (like pressing ctrl-C)"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -499,7 +499,8 @@ const Value& InterpClass() {
 	});
 	// list of strings, captured where the error was raised
 	interpClass.SetValue("stackTrace", WithNote(f,
-		"list of strings, captured where the error was raised"));
+		"stack trace of the child's last error, as a list of strings captured where the "
+		"error was raised (null for a compile error, or if there is no error)"));
 
 	f = Intrinsic::Create("");
 	f.AddParam("self");
@@ -524,7 +525,8 @@ const Value& InterpClass() {
 	});
 	// drain and clear whatever the child printed to stdout
 	interpClass.SetValue("takeOutput", WithNote(f,
-		"drain and clear whatever the child printed to stdout"));
+		"return and clear whatever the child has printed since the last call "
+		"(null if nothing)"));
 
 	classValue = GCManager::NewMapFromDict(interpClass);   // shares interpClass's storage
 	GCManager::AddRoot(classValue);

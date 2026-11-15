@@ -1319,7 +1319,7 @@ const Value& MatrixClass() {
 		return IntrinsicResult(vOut);
 	});
 	matrixClass.SetValue("gemm", WithNote(f,
-		"General matrix multiply-add: alpha * A * B + beta * addend, with optional transposes"));
+		"General matrix multiply-add: alpha * self * B + beta * addend, with optional transposes"));
 
 	// ---- Elementwise, in place ----
 	//

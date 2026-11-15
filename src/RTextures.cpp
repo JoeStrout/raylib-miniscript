@@ -33,7 +33,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(img));
 	});
 	raylibModule.SetValue("LoadImage", WithNote(i,
-		"Load image from file into CPU memory (RAM)"));
+		"Load image from file into CPU memory (RAM); returns null on failure"));
 
 	// Image generation
 
@@ -54,10 +54,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(img));
 	});
 	raylibModule.SetValue("GenImageGradientLinear", WithNote(i,
-		"Generate image: linear gradient The direction value specifies the direction of the "
-		"gradient (in degrees) with 0 being vertical (from top to bottom), 90 being horizontal "
-		"(from left to right) The gradient effectively rotates counter-clockwise by the specified "
-		"amount"));
+		"Generate image: linear gradient. direction is in degrees: 0 is vertical (from top to "
+		"bottom), 90 is horizontal (from left to right); the gradient rotates counter-clockwise "
+		"by the specified amount"));
 
 	// Image management
 
@@ -86,7 +85,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(TextureToValue(tex));
 	});
 	raylibModule.SetValue("LoadTexture", WithNote(i,
-		"Load texture from file into GPU memory (VRAM)"));
+		"Load texture from file into GPU memory (VRAM); returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -97,7 +96,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(TextureToValue(tex));
 	});
 	raylibModule.SetValue("LoadTextureFromImage", WithNote(i,
-		"Load a texture from image data NOTE: image is not unloaded, it must be done manually"));
+		"Load a texture from image data. The image is not affected and remains usable"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -141,7 +140,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextureV", WithNote(i,
-		"Draw a texture with position defined as Vector2"));
+		"Draw a texture with position defined as a Vector2"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -159,7 +158,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextureEx", WithNote(i,
-		"Draw a texture with rotation and scale NOTE: Rotation applied from top-left corner origin"));
+		"Draw a texture with rotation (degrees) and scale. NOTE: Rotation is around the top-left "
+		"corner"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -195,8 +195,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTexturePro", WithNote(i,
-		"Draw a part of a texture (defined by a rectangle) with 'pro' parameters NOTE: origin is "
-		"relative to destination rectangle size"));
+		"Draw a part of a texture (source rectangle) into a destination rectangle, with origin "
+		"and rotation (degrees). NOTE: origin is relative to the destination rectangle"));
 
 	// More image generation functions
 
@@ -272,7 +272,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(img));
 	});
 	raylibModule.SetValue("GenImageChecked", WithNote(i,
-		"Generate image: checked"));
+		"Generate image: checkerboard"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(256));
@@ -287,7 +287,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(img));
 	});
 	raylibModule.SetValue("GenImageWhiteNoise", WithNote(i,
-		"Generate image: white noise NOTE: It requires GetRandomValue(), defined in [rcore]"));
+		"Generate image: white noise; factor (0-1) is the fraction of white pixels"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(256));
@@ -330,8 +330,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageCrop", WithNote(i,
-		"Crop an image to area defined by a rectangle NOTE: Security checks are performed in case "
-		"rectangle goes out of bounds"));
+		"Crop an image (in place) to the area defined by a rectangle. The rectangle is clamped "
+		"to the image bounds"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -348,9 +348,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageResize", WithNote(i,
-		"Resize and image to new size NOTE: Uses stb default scaling filters (both bicubic): "
-		"STBIR_DEFAULT_FILTER_UPSAMPLE    STBIR_FILTER_CATMULLROM STBIR_DEFAULT_FILTER_DOWNSAMPLE  "
-		"STBIR_FILTER_MITCHELL   (high-quality Catmull-Rom)"));
+		"Resize an image (in place) to a new size, using high-quality bicubic filtering"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -367,7 +365,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageResizeNN", WithNote(i,
-		"Resize and image to new size using Nearest-Neighbor scaling algorithm"));
+		"Resize an image (in place) to a new size using nearest-neighbor scaling"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -402,7 +400,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageRotateCW", WithNote(i,
-		"Rotate image clockwise 90deg"));
+		"Rotate image clockwise 90 degrees"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -415,7 +413,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageRotateCCW", WithNote(i,
-		"Rotate image counter-clockwise 90deg"));
+		"Rotate image counter-clockwise 90 degrees"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -465,7 +463,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageColorContrast", WithNote(i,
-		"Modify image color: contrast NOTE: Contrast values between -100 and 100"));
+		"Modify image color: contrast (-100 to 100)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -478,7 +476,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageColorBrightness", WithNote(i,
-		"Modify image color: brightness NOTE: Brightness values between -255 and 255"));
+		"Modify image color: brightness (-255 to 255)"));
 
 	// Image drawing functions
 
@@ -510,7 +508,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawPixel", WithNote(i,
-		"Draw pixel within an image NOTE: Compressed image formats not supported"));
+		"Draw pixel within an image. NOTE: Compressed image formats not supported"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -692,7 +690,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawRectanglePro", WithNote(i,
-		"Draw a color-filled rectangle with pro parameters within and image"));
+		"Draw a color-filled rectangle with origin and rotation (degrees) within an image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -753,8 +751,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawImageEx", WithNote(i,
-		"Draw an image with scaling and rotation within an image NOTE: Rotation applied from "
-		"top-left corner origin"));
+		"Draw an image with scaling and rotation (degrees) within an image. NOTE: Rotation is "
+		"around the top-left corner"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -797,7 +795,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 	});
 	raylibModule.SetValue("ImageDrawImagePro", WithNote(i,
 		"Draw a part of an image defined by a rectangle into destination rectangle, with scaling, "
-		"within an image NOTE: origin and rotation are currently ignored by raylib"));
+		"within an image. NOTE: origin and rotation are currently ignored by raylib"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -818,7 +816,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawText", WithNote(i,
-		"Draw text (default font) within an image (destination)"));
+		"Draw text (default font) within an image"));
 
 	// Texture configuration
 
@@ -832,7 +830,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetTextureFilter", WithNote(i,
-		"Set texture scaling filter mode"));
+		"Set texture scaling filter mode (a TEXTURE_FILTER_* value)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -844,7 +842,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetTextureWrap", WithNote(i,
-		"Set texture wrapping mode"));
+		"Set texture wrapping mode (a TEXTURE_WRAP_* value)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -887,7 +885,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RenderTextureToValue(renderTexture));
 	});
 	raylibModule.SetValue("LoadRenderTextureEx", WithNote(i,
-		"Load texture for rendering (framebuffer), with specific pixel format"));
+		"Load texture for rendering (framebuffer), with specific pixel format (a PIXELFORMAT_* "
+		"value)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("target");
@@ -912,7 +911,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("BeginTextureMode", WithNote(i,
-		"Initializes render texture for drawing"));
+		"Begin drawing to render texture"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -935,7 +934,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorAlpha", WithNote(i,
-		"Get color with alpha applied, alpha goes from 0.0f to 1.0f"));
+		"Get color with alpha applied, alpha goes from 0.0 to 1.0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -961,7 +960,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorBrightness", WithNote(i,
-		"Get color with brightness correction, brightness factor goes from -1.0f to 1.0f"));
+		"Get color with brightness correction, brightness factor goes from -1.0 to 1.0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("color");
@@ -973,7 +972,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorContrast", WithNote(i,
-		"Get color with contrast correction NOTE: Contrast values between -1.0f and 1.0f"));
+		"Get color with contrast correction, contrast goes from -1.0 to 1.0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("hue");
@@ -987,11 +986,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorFromHSV", WithNote(i,
-		"Get a Color from HSV values Implementation reference: "
-		"https://en.wikipedia.org/wiki/HSL_and_HSV#Alternative_HSV_conversion NOTE: "
-		"Color->HSV->Color conversion will not yield exactly the same color due to rounding errors "
-		"Hue is provided in degrees: [0..360] Saturation/Value are provided normalized: "
-		"[0.0f..1.0f]"));
+		"Get a color from HSV values. Hue is in degrees [0..360]; saturation and value are "
+		"[0.0..1.0]. NOTE: Color->HSV->Color conversion may not yield exactly the same color due "
+		"to rounding errors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("normalized");
@@ -1006,7 +1003,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorFromNormalized", WithNote(i,
-		"Get color from normalized values [0..1]"));
+		"Get color from a map of normalized values [0..1]: x=red, y=green, z=blue, w=alpha "
+		"(w defaults to 1)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("col1");
@@ -1032,7 +1030,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("ColorLerp", WithNote(i,
-		"Get color lerp interpolation between two colors, factor [0.0f..1.0f]"));
+		"Get color linearly interpolated between two colors, amount [0.0..1.0]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("color");
@@ -1047,7 +1045,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("ColorNormalize", WithNote(i,
-		"Get color normalized as float [0..1]"));
+		"Get color normalized as a map of values [0..1]: x=red, y=green, z=blue, w=alpha"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("color");
@@ -1073,7 +1071,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("ColorToHSV", WithNote(i,
-		"Get HSV values for a Color NOTE: Hue is returned as degrees [0..360]"));
+		"Get HSV values for a color, as a map: x=hue in degrees [0..360], y=saturation and "
+		"z=value in [0..1]"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("color");
@@ -1083,7 +1082,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(result));
 	});
 	raylibModule.SetValue("ColorToInt", WithNote(i,
-		"Get hexadecimal value for a Color"));
+		"Get a color as a 32-bit integer (0xRRGGBBAA); may be negative when red >= 128"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("color");
@@ -1095,7 +1094,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("Fade", WithNote(i,
-		"Get color with alpha applied, alpha goes from 0.0f to 1.0f"));
+		"Get color with alpha applied, alpha goes from 0.0 to 1.0"));
 
 	// Pixel/Color accessor functions
 
@@ -1107,7 +1106,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("GetColor", WithNote(i,
-		"Get a Color struct from hexadecimal value"));
+		"Get a color from a 32-bit integer value (0xRRGGBBAA)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("srcPtr");
@@ -1121,7 +1120,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ColorToValue(result));
 	});
 	raylibModule.SetValue("GetPixelColor", WithNote(i,
-		"Get color from a pixel from certain format"));
+		"Get the color of the pixel at the start of a RawData, interpreted in the given pixel "
+		"format (a PIXELFORMAT_* value)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -1135,8 +1135,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(result));
 	});
 	raylibModule.SetValue("GetPixelDataSize", WithNote(i,
-		"Get pixel data size in bytes for certain format NOTE: Size can be requested for Image or "
-		"Texture data"));
+		"Get pixel data size in bytes for the given width, height, and pixel format (works for "
+		"image or texture data)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dstPtr");
@@ -1152,7 +1152,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("SetPixelColor", WithNote(i,
-		"Set pixel color formatted into destination pointer"));
+		"Write a color, in the given pixel format (a PIXELFORMAT_* value), to the start of a "
+		"RawData"));
 
 	// Additional image generation functions
 
@@ -1188,7 +1189,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("GenImageText", WithNote(i,
-		"Generate image: grayscale image from text data"));
+		"Generate image: text drawn in the default font (same as ImageText)"));
 
 	// Validation functions
 
@@ -1200,7 +1201,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(result));
 	});
 	raylibModule.SetValue("IsImageValid", WithNote(i,
-		"Check if an image is ready"));
+		"Check if an image is valid (has data and a valid size and format)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("target");
@@ -1240,9 +1241,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("LoadImageAnim", WithNote(i,
-		"Load animated image data  - Image.data buffer includes all frames: "
-		"[image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' "
-		"parameter  - All frames are returned in RGBA format  - Frames delay data is discarded"));
+		"Load animated image data (e.g. GIF). Returns a map with 'image' and 'frames' (the frame "
+		"count). The image's pixel data holds all frames back to back, in RGBA format; frame "
+		"delays are discarded. The frames argument is ignored"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileType");
@@ -1262,9 +1263,10 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(resultDict));
 	});
 	raylibModule.SetValue("LoadImageAnimFromMemory", WithNote(i,
-		"Load animated image data from memory  - Image.data buffer includes all frames: "
-		"[image#0][image#1][image#2][...]  - Number of frames is returned through 'frames' "
-		"parameter  - All frames are returned in RGBA format  - Frames delay data is discarded"));
+		"Load animated image data from a RawData; fileType is the extension, e.g. \".gif\". "
+		"Returns a map with 'image' and 'frames' (the frame count). The image's pixel data holds "
+		"all frames back to back, in RGBA format; frame delays are discarded. The frames argument "
+		"is ignored"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1281,8 +1283,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadImageColors", WithNote(i,
-		"Load color data from image as a Color array (RGBA - 32bit) NOTE: Memory allocated should "
-		"be freed using UnloadImageColors();"));
+		"Get the pixel colors of an image as a list of colors, row by row from the top-left"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileType");
@@ -1297,8 +1298,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("LoadImageFromMemory", WithNote(i,
-		"Load image from memory buffer, fileType refers to extension: i.e. \".png\" WARNING: File "
-		"extension must be provided in lower-case"));
+		"Load image from file data in a RawData; fileType is the extension, e.g. \".png\" "
+		"(must be lower-case). Returns null on failure"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1318,7 +1319,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("LoadImageFromTexture", WithNote(i,
-		"Load image from GPU texture data NOTE: Compressed texture formats not supported"));
+		"Load image from GPU texture data. NOTE: Compressed texture formats not supported"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1330,7 +1331,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ExportImage(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImage", WithNote(i,
-		"Export image data to file NOTE: File format depends on fileName extension"));
+		"Export image data to file; the file format depends on the fileName extension. Returns "
+		"true on success"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1358,7 +1360,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ExportImageAsCode(img, path.c_str()));
 	});
 	raylibModule.SetValue("ExportImageAsCode", WithNote(i,
-		"Export image as code file (.h) defining an array of bytes"));
+		"Export image as a C code file (.h) defining an array of bytes. Returns true on success"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1376,8 +1378,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("LoadImagePalette", WithNote(i,
-		"Load colors palette from image as a Color array (RGBA - 32bit) NOTE: Memory allocated "
-		"should be freed using UnloadImagePalette()"));
+		"Get the distinct colors used in an image, as a list of up to colorCount colors"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
@@ -1398,7 +1399,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("LoadImageRaw", WithNote(i,
-		"Load an image from RAW file data"));
+		"Load an image from a raw pixel data file, with the given size, pixel format (a "
+		"PIXELFORMAT_* value), and number of header bytes to skip. Returns null on failure"));
 
 	// Memory management functions (no-ops as MiniScript handles memory)
 
@@ -1409,7 +1411,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadImageColors", WithNote(i,
-		"Unload color data loaded with LoadImageColors()"));
+		"Does nothing; provided for compatibility (LoadImageColors returns an ordinary list)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("palette");
@@ -1418,7 +1420,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UnloadImagePalette", WithNote(i,
-		"Unload colors palette loaded with LoadImagePalette()"));
+		"Does nothing; provided for compatibility (LoadImagePalette returns an ordinary list)"));
 
 	// Image manipulation - Alpha/Color
 
@@ -1433,7 +1435,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RectangleToValue(result));
 	});
 	raylibModule.SetValue("GetImageAlphaBorder", WithNote(i,
-		"Get image alpha border rectangle NOTE: Threshold is defined as a percentage: 0.0f -> 1.0f"));
+		"Get the rectangle bounding the image's non-transparent pixels; threshold is an alpha "
+		"level from 0.0 to 1.0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1462,7 +1465,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageAlphaClear", WithNote(i,
-		"Clear alpha channel to desired color NOTE: Threshold defines the alpha limit, 0.0f to 1.0f"));
+		"Replace pixels with alpha at or below threshold (0.0 to 1.0) with the given color"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1477,8 +1480,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageAlphaCrop", WithNote(i,
-		"Crop image depending on alpha value NOTE: Threshold is defined as a percentage: 0.0f -> "
-		"1.0f"));
+		"Crop image (in place) to its non-transparent area; threshold is an alpha level from 0.0 "
+		"to 1.0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1492,8 +1495,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageAlphaMask", WithNote(i,
-		"Apply alpha mask to image NOTE 1: Returned image is GRAY_ALPHA (16bit) or RGBA (32bit) "
-		"NOTE 2: alphaMask should be same size as image"));
+		"Apply alpha mask to image (in place); the image becomes GRAY_ALPHA or RGBA format. "
+		"alphaMask should be the same size as image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1534,7 +1537,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageBlurGaussian", WithNote(i,
-		"Apply box blur to image"));
+		"Apply Gaussian blur (box blur approximation) to image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1554,9 +1557,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDither", WithNote(i,
-		"Dither image data to 16bpp or lower (Floyd-Steinberg dithering) NOTE: In case selected "
-		"bpp do not represent a known 16bit format, dithered data is stored in the LSB part of the "
-		"unsigned short"));
+		"Dither image data to 16bpp or lower (Floyd-Steinberg dithering), given bits per channel "
+		"for r, g, b, a"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1571,7 +1573,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageFormat", WithNote(i,
-		"Convert image data to desired format"));
+		"Convert image data (in place) to desired pixel format (a PIXELFORMAT_* value)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1584,7 +1586,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("ImageFromChannel", WithNote(i,
-		"Create an image from a selected channel of another image"));
+		"Create a grayscale image from a selected channel (0-3 for R, G, B, A) of another image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1597,7 +1599,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("ImageFromImage", WithNote(i,
-		"Create an image from another image piece"));
+		"Create an image from a rectangular piece of another image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1618,8 +1620,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageKernelConvolution", WithNote(i,
-		"Apply custom square convolution kernel to image NOTE: The convolution kernel matrix is "
-		"expected to be square"));
+		"Apply custom square convolution kernel to image. kernel is a list of numbers, row by row; "
+		"kernelSize is the total number of values (e.g. 9 for a 3x3 kernel)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1632,9 +1634,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageMipmaps", WithNote(i,
-		"Generate all mipmap levels for a provided image NOTE 1: Supports POT and NPOT images NOTE "
-		"2: image.data is scaled to include mipmap levels NOTE 3: Mipmaps format is the same as "
-		"base image"));
+		"Generate all mipmap levels for an image (in place); the image's pixel data grows to "
+		"include them. Works with power-of-two and other sizes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1657,8 +1658,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageResizeCanvas", WithNote(i,
-		"Resize canvas and fill with color NOTE: Resize offset is relative to the top-left corner "
-		"of the original image"));
+		"Resize canvas (in place) and fill new area with color. NOTE: offset is relative to the "
+		"top-left corner of the original image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1673,7 +1674,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageRotate", WithNote(i,
-		"Rotate image in degrees"));
+		"Rotate image (in place) by the given degrees"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -1686,7 +1687,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageToPOT", WithNote(i,
-		"Convert image to POT (power-of-two) NOTE: It could be useful on OpenGL ES 2.0 (RPI, HTML5)"));
+		"Convert image (in place) to power-of-two size, padding with black. Can be useful on "
+		"OpenGL ES 2.0 (web)"));
 
 	// Image drawing functions
 
@@ -1762,7 +1764,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawLineEx", WithNote(i,
-		"Draw a line defining thickness within an image"));
+		"Draw a line with given thickness within an image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1784,7 +1786,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawLineStrip", WithNote(i,
-		"Draw a lines sequence within an image"));
+		"Draw a sequence of connected lines within an image, given a list of at least 2 points"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1799,7 +1801,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawRectangleV", WithNote(i,
-		"Draw rectangle within an image (Vector version)"));
+		"Draw rectangle within an image; rec gives the position (x, y) and size (width, height)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1822,7 +1824,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawTextEx", WithNote(i,
-		"Draw text (custom sprite font) within an image (destination)"));
+		"Draw text (custom font) within an image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1886,7 +1888,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawTriangleFan", WithNote(i,
-		"Draw a triangle fan defined by points within an image (first vertex is the center)"));
+		"Draw a triangle fan defined by a list of at least 3 points within an image (first point "
+		"is the center)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
@@ -1927,7 +1930,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawTriangleStrip", WithNote(i,
-		"Draw a triangle strip defined by points within an image"));
+		"Draw a triangle strip defined by a list of at least 3 points within an image"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("text");
@@ -1961,7 +1964,7 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(ImageToValue(result));
 	});
 	raylibModule.SetValue("ImageTextEx", WithNote(i,
-		"Create an image from text (custom sprite font) WARNING: Module required: rtext"));
+		"Create an image from text (custom font)"));
 
 	// Additional texture functions
 
@@ -1994,7 +1997,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("DrawTextureNPatch", WithNote(i,
-		"Draw a texture (or part of it) that stretches or shrinks nicely using n-patch info"));
+		"Draw a texture (or part of it) that stretches or shrinks nicely using n-patch info: a "
+		"map with source (rectangle), left, top, right, bottom, and layout"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -2007,8 +2011,8 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateTexture", WithNote(i,
-		"Update GPU texture with new data NOTE 1: pixels data must match texture.format NOTE 2: "
-		"pixels data must contain at least as many pixels as texture"));
+		"Update GPU texture with new pixel data from a RawData. NOTE: pixels must match the "
+		"texture's format and contain at least as many pixels as the texture"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("texture");
@@ -2023,9 +2027,9 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("UpdateTextureRec", WithNote(i,
-		"Update GPU texture rectangle with new data NOTE 1: pixels data must match texture.format "
-		"NOTE 2: pixels data must contain as many pixels as rec contains NOTE 3: rec must fit "
-		"completely within texture's width and height"));
+		"Update GPU texture rectangle with new pixel data from a RawData. NOTE: pixels must match "
+		"the texture's format and contain as many pixels as rec; rec must fit completely within "
+		"the texture"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
@@ -2038,5 +2042,5 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(TextureToValue(result));
 	});
 	raylibModule.SetValue("LoadTextureCubemap", WithNote(i,
-		"Load cubemap from image, multiple image cubemap layouts supported"));
+		"Load cubemap from image; layout is a CUBEMAP_LAYOUT_* value"));
 }

@@ -436,7 +436,9 @@ void AddHttpIntrinsics() {
 	i.AddParam("headers");
 	i.set_Code(intrinsic_http_post);
 	httpMap.SetValue("post", WithNote(i,
-		"Send an HTTP POST request; returns the response body as a string"));
+		"Send an HTTP POST request; returns the response body as a string (or an error "
+		"message string on failure).  data may be a string, or a map to send as form "
+		"data; headers is an optional map of header names to values."));
 
 	// Wrap and root the module now that it is built (see httpMapValue above).
 	httpMapValue = GCManager::NewMapFromDict(httpMap);

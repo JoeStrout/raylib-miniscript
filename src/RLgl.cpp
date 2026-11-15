@@ -126,7 +126,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlMatrixMode", WithNote(i,
-		"Choose the current matrix to be transformed"));
+		"Choose the current matrix to be transformed (RL_MODELVIEW or RL_PROJECTION)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -134,7 +134,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlPushMatrix", WithNote(i,
-		"Push the current matrix into RLGL.State.stack"));
+		"Push the current matrix onto the matrix stack"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -142,7 +142,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlPopMatrix", WithNote(i,
-		"Pop latest inserted matrix from RLGL.State.stack"));
+		"Pop the most recently pushed matrix from the matrix stack"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -180,8 +180,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlRotatef", WithNote(i,
-		"Multiply the current matrix by a rotation matrix NOTE: The provided angle must be in "
-		"degrees"));
+		"Multiply the current matrix by a rotation of angle degrees about the axis (x, y, z)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value(1));
@@ -210,7 +209,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlMultMatrixf", WithNote(i,
-		"Multiply the current matrix by another matrix"));
+		"Multiply the current matrix by another matrix, given as a list of 16 numbers in "
+		"column-major (OpenGL) order; missing entries are 0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("left");
@@ -279,21 +279,21 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetClipPlanes", WithNote(i,
-		"Set clip planes distances"));
+		"Set the near and far clip plane distances"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value(rlGetCullDistanceNear()));
 	});
 	raylibModule.SetValue("rlGetCullDistanceNear", WithNote(i,
-		"Get cull plane distance near"));
+		"Get the near clip plane distance"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
 		return IntrinsicResult(Value(rlGetCullDistanceFar()));
 	});
 	raylibModule.SetValue("rlGetCullDistanceFar", WithNote(i,
-		"Get cull plane distance far"));
+		"Get the far clip plane distance"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -375,7 +375,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlEnableSmoothLines", WithNote(i,
-		"Enable line aliasing"));
+		"Enable line antialiasing"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -383,7 +383,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDisableSmoothLines", WithNote(i,
-		"Disable line aliasing"));
+		"Disable line antialiasing"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width", Value(1));
@@ -410,7 +410,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawRenderBatchActive", WithNote(i,
-		"Update and draw internal render batch"));
+		"Draw (flush) the active render batch now"));
 
 	// Get/set matrices (rlgl)
 
@@ -508,7 +508,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlBegin", WithNote(i,
-		"Initialize drawing mode (how to organize vertex)"));
+		"Begin defining vertices, organized as mode (RL_LINES, RL_TRIANGLES or RL_QUADS); finish "
+		"with rlEnd"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -516,7 +517,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlEnd", WithNote(i,
-		"Finish vertex providing"));
+		"Finish defining vertices begun with rlBegin"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -528,7 +529,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlVertex2i", WithNote(i,
-		"Define one vertex (position)"));
+		"Add one vertex at (x, y), using the current color, texture coordinate and normal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -540,7 +541,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlVertex2f", WithNote(i,
-		"Define one vertex (position)"));
+		"Add one vertex at (x, y), using the current color, texture coordinate and normal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -554,8 +555,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlVertex3f", WithNote(i,
-		"Define one vertex (position) NOTE: Vertex position data is the basic information required "
-		"for drawing"));
+		"Add one vertex at (x, y, z), using the current color, texture coordinate and normal"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -567,7 +567,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlTexCoord2f", WithNote(i,
-		"Define one vertex (texture coordinate) NOTE: Texture coordinates are limited to QUADS only"));
+		"Set the texture coordinate for the following vertices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::zero);
@@ -581,7 +581,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlNormal3f", WithNote(i,
-		"Define one vertex (normal) NOTE: Normals limited to TRIANGLES only?"));
+		"Set the normal for the following vertices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("r", Value(255));
@@ -597,7 +597,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlColor4ub", WithNote(i,
-		"Define one vertex (color)"));
+		"Set the color (components 0-255) for the following vertices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::one);
@@ -611,7 +611,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlColor3f", WithNote(i,
-		"Define one vertex (color)"));
+		"Set the color (r, g, b as x, y, z, each 0-1; alpha 1) for the following vertices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("x", Value::one);
@@ -627,7 +627,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlColor4f", WithNote(i,
-		"Define one vertex (color)"));
+		"Set the color (r, g, b, a as x, y, z, w, each 0-1) for the following vertices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id", Value::zero);
@@ -637,7 +637,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetTexture", WithNote(i,
-		"Set current texture to use"));
+		"Set the texture id used by the following vertices (0 for none)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("vCount");
@@ -646,8 +646,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(rlCheckRenderBatchLimit(vCount));
 	});
 	raylibModule.SetValue("rlCheckRenderBatchLimit", WithNote(i,
-		"Check internal buffer overflow for a given number of vertex and force a rlRenderBatch "
-		"draw call if required"));
+		"Check whether adding vCount vertices would overflow the active render batch, and if so "
+		"draw (flush) it; returns true if it was flushed"));
 
 	// More render state (rlgl)
 
@@ -691,7 +691,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetCullFace", WithNote(i,
-		"Set face culling mode"));
+		"Set which faces are culled (RL_CULL_FACE_BACK or RL_CULL_FACE_FRONT)"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -779,7 +779,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlClearColor", WithNote(i,
-		"Clear color buffer with color"));
+		"Set the color (components 0-255) used to clear the screen"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -805,7 +805,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetBlendMode", WithNote(i,
-		"Set blend mode"));
+		"Set the blend mode (e.g. RL_BLEND_ALPHA)"));
 
 	// Quick and dirty cube/quad buffers load->draw->unload
 
@@ -815,7 +815,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlLoadDrawCube", WithNote(i,
-		"Load and draw a cube in NDC"));
+		"Load and draw a cube in normalized device coordinates"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -823,7 +823,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlLoadDrawQuad", WithNote(i,
-		"Load and draw a quad in NDC"));
+		"Load and draw a quad in normalized device coordinates"));
 
 	// rlgl queries
 
@@ -832,7 +832,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(rlGetVersion()));
 	});
 	raylibModule.SetValue("rlGetVersion", WithNote(i,
-		"Get current OpenGL version"));
+		"Get the current OpenGL version, as an RL_OPENGL_ constant (e.g. RL_OPENGL_33)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -894,7 +894,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicList(result));
 	});
 	raylibModule.SetValue("rlGetShaderLocsDefault", WithNote(i,
-		"Get default shader locs"));
+		"Get a list of the default shader's locations (a copy; changing it has no effect)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("format");
@@ -915,7 +915,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlActiveTextureSlot", WithNote(i,
-		"Select and active a texture slot"));
+		"Select and activate a texture slot"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1058,7 +1058,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlBlitFramebuffer", WithNote(i,
-		"Blit active framebuffer to main framebuffer"));
+		"Copy a rectangle of the read framebuffer to the draw framebuffer (see rlBindFramebuffer); "
+		"bufferMask: 0x4000 color (default), 0x0100 depth, 0x0400 stencil"));
 
 	// Activates `count` color attachments (up to 8) for multiple render
 	// targets.
@@ -1070,7 +1071,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlActiveDrawBuffers", WithNote(i,
-		"Activate multiple draw color buffers NOTE: One color buffer is always active by default"));
+		"Activate count color attachments (up to 8) as draw buffers, for multiple render targets; "
+		"one is active by default"));
 
 	// Custom render batches (rlgl)
 
@@ -1093,7 +1095,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(map));
 	});
 	raylibModule.SetValue("rlLoadRenderBatch", WithNote(i,
-		"Load render batch"));
+		"Create a custom render batch with numBuffers buffers of bufferElements quads each; returns "
+		"a batch map, or null on failure.  Unload with rlUnloadRenderBatch"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("batch");
@@ -1112,7 +1115,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadRenderBatch", WithNote(i,
-		"Unload default internal buffers vertex data from CPU and GPU"));
+		"Unload a render batch made by rlLoadRenderBatch (switching back to the default batch if it "
+		"was active)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("batch");
@@ -1123,8 +1127,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawRenderBatch", WithNote(i,
-		"Draw render batch NOTE: Batch is reseted and current buffer is updated (for multi-buffer "
-		"config)"));
+		"Draw a render batch; this resets it and moves on to its next buffer (if it has several)"));
 
 	// batch = null goes back to rlgl's default batch
 	i = Intrinsic::Create("");
@@ -1138,7 +1141,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetRenderBatchActive", WithNote(i,
-		"Set the active render batch for rlgl"));
+		"Set the render batch rlgl draws into (null for the default batch)"));
 
 	// Vertex buffer state (rlgl)
 
@@ -1149,7 +1152,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(rlEnableVertexArray(vaoId));
 	});
 	raylibModule.SetValue("rlEnableVertexArray", WithNote(i,
-		"Enable vertex array object (VAO)"));
+		"Enable (bind) a vertex array object (VAO); returns true if VAOs are supported"));
 
 	i = Intrinsic::Create("");
 	i.set_Code(INTRINSIC_LAMBDA {
@@ -1256,8 +1259,9 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value((int)rlLoadVertexBufferElement(bytes, size, dynamic)));
 	});
 	raylibModule.SetValue("rlLoadVertexBufferElement", WithNote(i,
-		"Load an element (index) buffer from a RawData; size, if not 0, uses only that many bytes. "
-		" Returns its id"));
+		"Create an element (index) buffer from a RawData and return its id.  buffer may be null to "
+		"allocate size bytes without filling them; size <= 0 uses the whole RawData.  dynamic hints "
+		"that the data will be updated often"));
 
 	// dataSize <= 0 means the whole RawData; offset is in bytes
 	i = Intrinsic::Create("");
@@ -1278,7 +1282,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUpdateVertexBuffer", WithNote(i,
-		"Update vertex buffer with new data NOTE: dataSize and offset must be provided in bytes"));
+		"Update a vertex buffer with data from a RawData, starting offset bytes into the buffer; "
+		"dataSize (in bytes) <= 0 uses the whole RawData"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1298,8 +1303,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUpdateVertexBufferElements", WithNote(i,
-		"Update vertex buffer elements with new data NOTE: dataSize and offset must be provided in "
-		"bytes"));
+		"Update an element (index) buffer with data from a RawData, starting offset bytes into the "
+		"buffer; dataSize (in bytes) <= 0 uses the whole RawData"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("vaoId");
@@ -1340,7 +1345,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetVertexAttribute", WithNote(i,
-		"Set vertex attribute"));
+		"Describe vertex attribute index of the bound vertex buffer: compSize components of type "
+		"(e.g. RL_FLOAT), whether normalized, and stride and offset in bytes"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("index");
@@ -1352,7 +1358,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetVertexAttributeDivisor", WithNote(i,
-		"Set vertex attribute divisor"));
+		"Set vertex attribute divisor (for instanced drawing)"));
 
 	// value: a number, vector map, list of numbers, or RawData of floats.
 	// count <= 0 means the number of components in attribType.
@@ -1383,7 +1389,9 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetVertexAttributeDefault", WithNote(i,
-		"Set shader value attribute"));
+		"Set the default value of a vertex attribute (used when no buffer feeds it); value is a "
+		"number, vector map, list of numbers, or RawData of floats; count <= 0 uses the number of "
+		"components in attribType"));
 
 	// Draws with RL_TRIANGLES; offset and count are in vertices
 	i = Intrinsic::Create("");
@@ -1397,7 +1405,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArray", WithNote(i,
-		"Draw vertex array"));
+		"Draw count vertices of the bound vertex array as triangles, starting at vertex offset"));
 
 	// Draws indexed RL_TRIANGLES from the bound element buffer, whose indices
 	// must be 16-bit (ushort).  offset is in indices; buffer is a byte offset
@@ -1416,7 +1424,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArrayElements", WithNote(i,
-		"Draw vertex array elements (buffer must be 0)"));
+		"Draw count indices of the bound element buffer (16-bit indices) as triangles, starting at "
+		"index offset; buffer must be 0"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("offset", Value::zero);
@@ -1431,7 +1440,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArrayInstanced", WithNote(i,
-		"Draw vertex array instanced"));
+		"Draw count vertices of the bound vertex array as triangles, starting at vertex offset, "
+		"instances times"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("offset", Value::zero);
@@ -1448,7 +1458,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlDrawVertexArrayElementsInstanced", WithNote(i,
-		"Draw vertex array elements instanced (buffer must be 0)"));
+		"Draw count indices of the bound element buffer (16-bit indices) as triangles, starting at "
+		"index offset, instances times; buffer must be 0"));
 
 	// Texture management (rlgl).  Pixel data is given and returned as RawData.
 
@@ -1537,8 +1548,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUpdateTexture", WithNote(i,
-		"Update already loaded texture in GPU with new data WARNING: Not possible to know safely "
-		"if internal texture format is the expected one..."));
+		"Update a width x height region of a loaded texture, at offsetX, offsetY, with pixel data "
+		"from a RawData; format should match the texture's own format (this can't be checked)"));
 
 	// Returns a map with glInternalFormat, glFormat and glType
 	i = Intrinsic::Create("");
@@ -1554,7 +1565,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(DynamicMap(map));
 	});
 	raylibModule.SetValue("rlGetGlTextureFormats", WithNote(i,
-		"Get OpenGL internal formats and data type from raylib PixelFormat"));
+		"Get the OpenGL formats and data type for a raylib pixel format, as a map with "
+		"glInternalFormat, glFormat and glType"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1582,7 +1594,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(mipmaps));
 	});
 	raylibModule.SetValue("rlGenTextureMipmaps", WithNote(i,
-		"Generate mipmap data for selected texture NOTE: Only supports GPU mipmap generation"));
+		"Generate mipmaps for a texture on the GPU; returns the resulting number of mipmap levels"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1601,7 +1613,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(RawDataToValue(new BinaryData((unsigned char*)pixels, size, true)));
 	});
 	raylibModule.SetValue("rlReadTexturePixels", WithNote(i,
-		"Read texture pixel data"));
+		"Read a texture's pixel data as a RawData; null on failure or if width or height < 1"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("width");
@@ -1643,8 +1655,9 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlFramebufferAttach", WithNote(i,
-		"Attach color buffer texture to a framebuffer object (unloads previous attachment) NOTE: "
-		"Attach type: 0-Color, 1-Depth renderbuffer, 2-Depth texture"));
+		"Attach a texture or renderbuffer to a framebuffer object.  attachType: an RL_ATTACHMENT_ "
+		"constant (COLOR_CHANNEL0-7, DEPTH or STENCIL); texType: RL_ATTACHMENT_TEXTURE2D, "
+		"RL_ATTACHMENT_RENDERBUFFER, or an RL_ATTACHMENT_CUBEMAP_ side"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1653,7 +1666,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(rlFramebufferComplete(id));
 	});
 	raylibModule.SetValue("rlFramebufferComplete", WithNote(i,
-		"Verify render texture is complete"));
+		"Check whether a framebuffer is complete (ready to draw to)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1663,8 +1676,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadFramebuffer", WithNote(i,
-		"Unload framebuffer from GPU memory NOTE: All attached textures/cubemaps/renderbuffers are "
-		"also deleted"));
+		"Unload a framebuffer from GPU memory; its depth texture or renderbuffer (if any) is also "
+		"deleted, but color attachments are not"));
 
 	// Shader management (rlgl)
 
@@ -1715,7 +1728,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlUnloadShader", WithNote(i,
-		"Delete shader"));
+		"Delete a compiled shader stage (from rlLoadShader)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1736,7 +1749,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(rlGetLocationUniform(id, uniformName.c_str())));
 	});
 	raylibModule.SetValue("rlGetLocationUniform", WithNote(i,
-		"Get shader location uniform NOTE: First parameter refers to shader program id"));
+		"Get the location of a uniform in shader program id; -1 if not found"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("id");
@@ -1747,7 +1760,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult(Value(rlGetLocationAttrib(id, attribName.c_str())));
 	});
 	raylibModule.SetValue("rlGetLocationAttrib", WithNote(i,
-		"Get shader location attribute NOTE: First parameter refers to shader program id"));
+		"Get the location of a vertex attribute in shader program id; -1 if not found"));
 
 	// Sets a uniform of the shader enabled with rlEnableShader.  value may be a
 	// number, vector map, list (flat or of vectors), or RawData; count <= 0
@@ -1774,7 +1787,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetUniform", WithNote(i,
-		"Set shader value uniform"));
+		"Set a uniform of the shader enabled with rlEnableShader; value may be a number, vector map, "
+		"list (flat or of vectors), or RawData; count <= 0 infers it from value"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("locIndex");
@@ -1786,7 +1800,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetUniformMatrix", WithNote(i,
-		"Set shader value uniform matrix"));
+		"Set a matrix uniform of the shader enabled with rlEnableShader"));
 
 	// mats is a list of matrices
 	i = Intrinsic::Create("");
@@ -1812,7 +1826,8 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetUniformMatrices", WithNote(i,
-		"Set shader value uniform matrix"));
+		"Set a matrix-array uniform of the shader enabled with rlEnableShader from a list of "
+		"matrices"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("locIndex");
@@ -1824,7 +1839,7 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetUniformSampler", WithNote(i,
-		"Set shader value uniform sampler"));
+		"Set a sampler uniform of the shader enabled with rlEnableShader to a texture id"));
 
 	// Sets the shader the render batch draws with.  locs is a list of up to
 	// RL_MAX_SHADER_LOCATIONS locations (missing ones are -1), or null for the
@@ -1847,5 +1862,6 @@ void AddRLglMethods(ValueDict& raylibModule) {
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("rlSetShader", WithNote(i,
-		"Set shader currently active (id and locations)"));
+		"Set the shader the render batch draws with: program id, and locs as a list of locations "
+		"(missing ones are -1) or null for the default shader's"));
 }

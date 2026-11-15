@@ -986,8 +986,8 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		return IntrinsicResult::Null;
 	});
 	physicsModule.SetValue("updateGeometry", WithNote(f,
-		"Transform shapes into world coordinates and compute their bounds, for the bodies in "
-		"bodyMask"));
+		"Transform shapes into world coordinates and compute their bounds, for the bodies "
+		"whose row in bodyMask is nonzero (or all bodies, if bodyMask is null)"));
 
 	// physicsCore.findPairs shapes, invMass, margin, pairs -> count
 	//
@@ -1018,7 +1018,8 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		return IntrinsicResult(Value(count));
 	});
 	physicsModule.SetValue("findPairs", WithNote(f,
-		"Find the pairs of shapes whose bounding boxes overlap and that may collide"));
+		"Find the pairs of shapes whose bounding boxes come within margin and that may collide; "
+		"fills the pairs matrix and returns the number of pairs"));
 
 	// physicsCore.solveContacts contacts, pos, vel, invMass, dt, iterations,
 	//   biasFactor, slop, restThreshold
@@ -1099,8 +1100,8 @@ static void AddPhysicsCoreMethods(ValueDict& physicsModule) {
 		return IntrinsicResult(Value(touching));
 	});
 	physicsModule.SetValue("collidePairs", WithNote(f,
-		"Collide shape pairs into a contact matrix (one row per point), warm-started from "
-		"prevContacts"));
+		"Collide shape pairs into the contacts matrix (one row per point), warm-started from "
+		"prevContacts (or null); returns how many pairs are touching"));
 }
 
 } // namespace MiniScript
