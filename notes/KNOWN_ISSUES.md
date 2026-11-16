@@ -11,13 +11,6 @@ or, for the ones that need a window, `tests/known_issues_window.ms`
 The entries below were found during the 2026-11-15 review of the API notes
 (`WithNote`).  All are confirmed by failing tests.
 
-## GetCodepointPrevious reads before the string
-
-`GetCodepointPrevious` (src/RText.cpp) passes the start of `text.c_str()`, so
-raylib walks backward into memory before the string.  The result is meaningless
-and the read is out of bounds.  It probably needs an index or offset parameter
-(or to point at the end of the string).
-
 ## TakeScreenshot doesn't resolve its path
 
 `TakeScreenshot` (src/RCore.cpp) passes the script's filename straight to

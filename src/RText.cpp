@@ -452,59 +452,6 @@ void AddRTextMethods(ValueDict& raylibModule) {
 		"one '?' (0x3f) codepoint"));
 
 	i = Intrinsic::Create("");
-	i.AddParam("text");
-	i.AddParam("codepointSize", Value::Null);
-	i.set_Code(INTRINSIC_LAMBDA {
-		String text = context.GetArg(0).ToString();
-		int codepointSize = 0;
-		int codepoint = GetCodepoint(text.c_str(), &codepointSize);
-
-		ValueDict result;
-		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
-		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(DynamicMap(result));
-	});
-	raylibModule.SetValue("GetCodepoint", WithNote(i,
-		"Get the first codepoint in text.  Returns a map with codepoint and codepointSize (number "
-		"of UTF-8 bytes it used).  An invalid UTF-8 byte gives a '?' (0x3f) codepoint.  The "
-		"codepointSize parameter is ignored"));
-
-	i = Intrinsic::Create("");
-	i.AddParam("text");
-	i.AddParam("codepointSize", Value::Null);
-	i.set_Code(INTRINSIC_LAMBDA {
-		String text = context.GetArg(0).ToString();
-		int codepointSize = 0;
-		int codepoint = GetCodepointNext(text.c_str(), &codepointSize);
-
-		ValueDict result;
-		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
-		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(DynamicMap(result));
-	});
-	raylibModule.SetValue("GetCodepointNext", WithNote(i,
-		"Get the first codepoint in text.  Returns a map with codepoint and codepointSize (number "
-		"of UTF-8 bytes it used).  The codepointSize parameter is ignored"));
-
-	i = Intrinsic::Create("");
-	i.AddParam("text");
-	i.AddParam("codepointSize", Value::Null);
-	i.set_Code(INTRINSIC_LAMBDA {
-		String text = context.GetArg(0).ToString();
-		int codepointSize = 0;
-		int codepoint = GetCodepointPrevious(text.c_str(), &codepointSize);
-
-		ValueDict result;
-		result.SetValue(CACHED_KEY("codepoint"), Value(codepoint));
-		result.SetValue(CACHED_KEY("codepointSize"), Value(codepointSize));
-		return IntrinsicResult(DynamicMap(result));
-	});
-	raylibModule.SetValue("GetCodepointPrevious", WithNote(i,
-		"Get the codepoint before the start of text, as a map with codepoint and codepointSize "
-		"(number of UTF-8 bytes it used).  WARNING: text has nothing before its start, so the "
-		"result is not meaningful.  The codepointSize parameter is ignored"));
-
-	i = Intrinsic::Create("");
 	i.AddParam("codepoint");
 	i.set_Code(INTRINSIC_LAMBDA {
 		int codepoint = context.GetArg(0).IntValue();
