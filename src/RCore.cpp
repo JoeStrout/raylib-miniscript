@@ -2808,14 +2808,22 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("fileName");
 	i.set_Code(INTRINSIC_LAMBDA {
-		if (fs::RefuseWhenSandboxed("TakeScreenshot")) return IntrinsicResult::Null;
-		String fileName = context.GetArg(0).ToString();
-		TakeScreenshot(fileName.c_str());
+		// Resolve through the file system, as ExportImage does, so the path is
+		// relative to file.curdir and subject to the sandbox's mounts.
+		String path;
+		if (!fs::HostPathForWrite(context.GetArg(0), path)) return IntrinsicResult::Null;
+		// raylib puts a relative path under the working directory it saw at
+		// InitWindow, so hand it an absolute one.
+		const char* p = path.c_str();
+		bool absolute = (p[0] == '/' || p[0] == '\\'
+			|| (p[0] != '\0' && p[1] == ':'));   // Windows drive letter
+		if (!absolute) path = String(GetWorkingDirectory()) + "/" + path;
+		TakeScreenshot(path.c_str());
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("TakeScreenshot", WithNote(i,
-		"Take a screenshot of current screen and save it as a PNG file. Refused (does nothing) "
-		"once sandboxed"));
+		"Take a screenshot of current screen and save it to a file; the file format depends on "
+		"the fileName extension (e.g. .png)"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("flags");

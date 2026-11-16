@@ -198,7 +198,7 @@ Unmounting is safe to expose directly, for user disks.
 - Raylib loaders taking a file name: `LoadTexture`, `LoadImage`, `LoadSound`,
   `LoadMusicStream`, `LoadFont`, `LoadFontEx`, `LoadShader`, `LoadFileText`,
   `LoadFileData`, `SaveFileText`, `SaveFileData`, `ExportImage`,
-  `ExportImageAsCode`.
+  `ExportImageAsCode`, `TakeScreenshot`.
 
 `LoadFileText`/`LoadFileData` and `SaveFileText`/`SaveFileData` deserve
 emphasis: today they are unrestricted read and write primitives over raw host
@@ -207,8 +207,6 @@ virtual path.
 
 ### Reject when sandboxed
 
-- `TakeScreenshot` — writes to the real working directory; raylib refuses paths
-  in it anyway.
 - `ChangeDirectory`, `GetWorkingDirectory` — the virtual cwd belongs to the
   `file` module; these leak real paths and desync it.
 - `SetLoadFileDataCallback`, `SetSaveFileDataCallback`,

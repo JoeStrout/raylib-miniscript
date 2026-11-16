@@ -8,11 +8,4 @@ the fix lands) in `tests/known_issues_tests.cpp`
 or, for the ones that need a window, `tests/known_issues_window.ms`
 (`./build/raylib-miniscript tests/known_issues_window.ms`, run by hand).
 
-The entries below were found during the 2026-11-15 review of the API notes
-(`WithNote`).  All are confirmed by failing tests.
-
-## TakeScreenshot doesn't resolve its path
-
-`TakeScreenshot` (src/RCore.cpp) passes the script's filename straight to
-raylib without `fs::HostPath` / `HostPathForWrite`, unlike the other file
-functions.  It is refused once sandboxed, so this matters only in unsandboxed runs.
+None at the moment.
