@@ -82,6 +82,19 @@ static fs::OpenFile* OpenFileFor(Value self) {
 	return (fs::OpenFile*)fileWrapper.HandlePtr();
 }
 
+// The error every FileHandle method (but close and isOpen) returns when its
+// handle is closed, or self is not a FileHandle at all.
+static IntrinsicResult NotOpenError() {
+	return IntrinsicResult(ErrorTypes::FileError("file is not open"));
+}
+
+// Like OpenFileFor, but also null when the file has been closed.
+static fs::OpenFile* LiveFileFor(Value self) {
+	fs::OpenFile* file = OpenFileFor(self);
+	if (file == nullptr || !file->IsOpen()) return nullptr;
+	return file;
+}
+
 //--------------------------------------------------------------------------------
 // Path string helpers
 //--------------------------------------------------------------------------------
@@ -96,12 +109,23 @@ static IntrinsicResult intrinsic_getcwd(Context context, IntrinsicResult partial
 	return IntrinsicResult(fs::Cwd());
 }
 
-static IntrinsicResult intrinsic_chdir(Context context, IntrinsicResult partialResult) {
-	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult::Zero;
-	String pathStr = path.ToString();
-	if (pathStr.empty()) return IntrinsicResult::Zero;
-	return IntrinsicResult(Value::Truth(fs::SetCwd(pathStr)));
+// Shared by setdir and curdir=, which differ only in their parameter name and
+// in the name the error message gives.  Null on success, or an error.
+static IntrinsicResult ChangeDir(const char* who, Value path) {
+	String pathStr;
+	if (!path.IsNull()) pathStr = path.ToString();
+	if (pathStr.empty() || !fs::SetCwd(pathStr)) {
+		return IntrinsicResult(ErrorTypes::FileError(String(who) + ": could not change directory"));
+	}
+	return IntrinsicResult::Null;
+}
+
+static IntrinsicResult intrinsic_setdir(Context context, IntrinsicResult partialResult) {
+	return ChangeDir("setdir", context.GetVar("path"));
+}
+
+static IntrinsicResult intrinsic_setCurdir(Context context, IntrinsicResult partialResult) {
+	return ChangeDir("curdir", context.GetVar("value"));
 }
 
 static IntrinsicResult intrinsic_readdir(Context context, IntrinsicResult partialResult) {
@@ -110,9 +134,10 @@ static IntrinsicResult intrinsic_readdir(Context context, IntrinsicResult partia
 	if (path.IsNull() || pathStr.empty()) pathStr = fs::Cwd();
 	std::vector<String> names;
 	ValueList result;
-	if (fs::ListDir(pathStr, names)) {
-		for (size_t i = 0; i < names.size(); i++) result.Add(names[i]);
+	if (!fs::ListDir(pathStr, names)) {
+		return IntrinsicResult(ErrorTypes::FileError("children: cannot read directory"));
 	}
+	for (size_t i = 0; i < names.size(); i++) result.Add(names[i]);
 	return IntrinsicResult(DynamicList(result));
 }
 
@@ -184,7 +209,7 @@ static IntrinsicResult intrinsic_child(Context context, IntrinsicResult partialR
 
 static IntrinsicResult intrinsic_exists(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult::Null;
+	if (path.IsNull()) return IntrinsicResult::Zero;
 	return IntrinsicResult(Value::Truth(fs::Exists(path.ToString())));
 }
 
@@ -237,7 +262,7 @@ static IntrinsicResult FileResult(const char* who, const String& err) {
 
 static IntrinsicResult intrinsic_mkdir(Context context, IntrinsicResult partialResult) {
 	Value path = context.GetVar("path");
-	if (path.IsNull()) return IntrinsicResult::Null;
+	if (path.IsNull()) return FileResult("makedir", "could not create directory");
 	return FileResult("makedir", fs::MakeDir(path.ToString()));
 }
 
@@ -288,7 +313,7 @@ static void SplitLines(const String& text, ValueList& out) {
 static IntrinsicResult intrinsic_readLines(Context context, IntrinsicResult partialResult) {
 	String path = context.GetVar("path").ToString();
 	String text;
-	if (!fs::ReadText(path, text)) return IntrinsicResult::Null;
+	if (!fs::ReadText(path, text)) return FileResult("readLines", "cannot open file");
 	ValueList list;
 	SplitLines(text, list);
 	return IntrinsicResult(DynamicList(list));
@@ -341,12 +366,12 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 	}
 
 	fs::Resolved resolved;
-	if (!fs::Resolve(path, resolved)) return IntrinsicResult::Null;
+	if (!fs::Resolve(path, resolved)) return FileResult("open", "could not open file");
 
 	fs::OpenFile* file = new fs::OpenFile(resolved, mode);
 	if (!file->error.empty()) {
 		delete file;
-		return IntrinsicResult::Null;
+		return FileResult("open", "could not open file");
 	}
 
 	ValueDict instance;
@@ -360,24 +385,20 @@ static IntrinsicResult intrinsic_fopen(Context context, IntrinsicResult partialR
 }
 
 static IntrinsicResult intrinsic_fclose(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
-	if (!file->IsOpen()) return IntrinsicResult::Zero;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
 	// Close is where a handle's writes actually reach the disk, so a script
 	// that never closes never persists anything.
-	file->Close();
-	return IntrinsicResult::One;
+	if (file != nullptr) file->Close();
+	return IntrinsicResult::Null;
 }
 
 static IntrinsicResult intrinsic_isOpen(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
-	return IntrinsicResult(Value::Truth(file->IsOpen()));
+	return IntrinsicResult(Value::Truth(LiveFileFor(context.GetVar("self")) != nullptr));
 }
 
 static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	String data = context.GetVar("data").ToString();
 	file->error = String();
 	file->Write(data);
@@ -386,8 +407,8 @@ static IntrinsicResult intrinsic_fwrite(Context context, IntrinsicResult partial
 }
 
 static IntrinsicResult intrinsic_fwriteLine(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	String data = context.GetVar("data").ToString();
 	file->error = String();
 	file->Write(data + "\n");
@@ -396,8 +417,8 @@ static IntrinsicResult intrinsic_fwriteLine(Context context, IntrinsicResult par
 }
 
 static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	int count = (int)context.GetVar("codePointCount").IntValue();
 	if (count == 0) return IntrinsicResult::EmptyString;
 	String result;
@@ -407,31 +428,37 @@ static IntrinsicResult intrinsic_fread(Context context, IntrinsicResult partialR
 }
 
 static IntrinsicResult intrinsic_freadLine(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	String result;
 	if (!file->ReadLine(result)) return IntrinsicResult::Null;
 	return IntrinsicResult(result);
 }
 
 static IntrinsicResult intrinsic_fposition(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
-	if (!file->IsOpen()) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	return IntrinsicResult(Value((double)file->Position()));
 }
 
-static IntrinsicResult intrinsic_fseek(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
-	file->SetPosition((long)context.GetVar("pos").IntValue());
+static IntrinsicResult Seek(Value self, Value pos) {
+	fs::OpenFile* file = LiveFileFor(self);
+	if (file == nullptr) return NotOpenError();
+	file->SetPosition((long)pos.IntValue());
 	return IntrinsicResult::Null;
 }
 
+static IntrinsicResult intrinsic_fseek(Context context, IntrinsicResult partialResult) {
+	return Seek(context.GetVar("self"), context.GetVar("pos"));
+}
+
+static IntrinsicResult intrinsic_setPosition(Context context, IntrinsicResult partialResult) {
+	return Seek(context.GetVar("self"), context.GetVar("value"));
+}
+
 static IntrinsicResult intrinsic_feof(Context context, IntrinsicResult partialResult) {
-	fs::OpenFile* file = OpenFileFor(context.GetVar("self"));
-	if (file == nullptr) return IntrinsicResult::Null;
-	if (!file->IsOpen()) return IntrinsicResult::Null;
+	fs::OpenFile* file = LiveFileFor(context.GetVar("self"));
+	if (file == nullptr) return NotOpenError();
 	return IntrinsicResult(Value::Truth(file->IsAtEnd()));
 }
 
@@ -550,9 +577,9 @@ void AddFileModuleIntrinsics() {
 	// Change current working directory
 	i = Intrinsic::Create("");
 	i.AddParam("path");
-	i.set_Code(&intrinsic_chdir);
+	i.set_Code(&intrinsic_setdir);
 	fileModule.SetValue("setdir", WithNote(i,
-		"Change the current working directory; returns true on success, false on failure"));
+		"Change the current working directory.  Returns null on success, or an error."));
 
 	// The same change of directory, spelled as an assignment: file.curdir = p.
 	// setdir stays too -- this module is Mini Micro's, and there is public code
@@ -560,8 +587,8 @@ void AddFileModuleIntrinsics() {
 	//
 	// Change current working directory (same as setdir)
 	i = Intrinsic::Create("");
-	i.AddParam("path");
-	i.set_Code(&intrinsic_chdir);
+	i.AddParam("value");
+	i.set_Code(&intrinsic_setCurdir);
 	fileModule.SetValue("curdir=", WithNote(i,
 		"Change current working directory (same as setdir)"));
 
@@ -571,7 +598,7 @@ void AddFileModuleIntrinsics() {
 	i.set_Code(&intrinsic_readdir);
 	fileModule.SetValue("children", WithNote(i,
 		"Get a list of file and directory names in the given directory "
-		"(default: the current directory)"));
+		"(default: the current directory), or an error if it cannot be read"));
 
 	// Get the filename (last path component) of a path string
 	i = Intrinsic::Create("");
@@ -648,7 +675,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("mode", "r+");
 	i.set_Code(&intrinsic_fopen);
 	fileModule.SetValue("open", WithNote(i,
-		"Open a file; returns a FileHandle, or null on failure.  The default mode "
+		"Open a file; returns a FileHandle, or an error on failure.  The default mode "
 		"\"r+\" opens for reading and writing, creating the file if needed."));
 
 	// Read all lines from a text file, returning a list of strings
@@ -657,7 +684,7 @@ void AddFileModuleIntrinsics() {
 	i.set_Code(&intrinsic_readLines);
 	fileModule.SetValue("readLines", WithNote(i,
 		"Read all lines from a text file, returning a list of strings "
-		"(or null if the file cannot be read)"));
+		"(or an error if the file cannot be read)"));
 
 	// Write a list of strings (or a single string) to a text file
 	i = Intrinsic::Create("");
@@ -740,7 +767,7 @@ void AddFileModuleIntrinsics() {
 	i.set_Code(&intrinsic_fclose);
 	fileHandleClass.SetValue("close", WithNote(i,
 		"Close the file handle, writing any changes to the disk.  "
-		"Returns 1 if closed, or 0 if it was already closed."));
+		"Closing a handle that is already closed does nothing."));
 
 	// Get whether the file handle is still open
 	i = Intrinsic::Create("");
@@ -755,7 +782,8 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("data");
 	i.set_Code(&intrinsic_fwrite);
 	fileHandleClass.SetValue("write", WithNote(i,
-		"Write a string to the file; returns the number of bytes written (0 on error)"));
+		"Write a string to the file; returns the number of bytes written (0 on error), "
+		"or an error if the file is not open"));
 
 	// Write a string followed by a newline to the file
 	i = Intrinsic::Create("");
@@ -764,7 +792,7 @@ void AddFileModuleIntrinsics() {
 	i.set_Code(&intrinsic_fwriteLine);
 	fileHandleClass.SetValue("writeLine", WithNote(i,
 		"Write a string followed by a newline to the file; returns the number of "
-		"bytes written (0 on error)"));
+		"bytes written (0 on error), or an error if the file is not open"));
 
 	// Read up to codePointCount characters from the file (or all remaining if -1)
 	i = Intrinsic::Create("");
@@ -780,14 +808,15 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("self");
 	i.set_Code(&intrinsic_freadLine);
 	fileHandleClass.SetValue("readLine", WithNote(i,
-		"Read the next line from the file, or null at the end of the file"));
+		"Read the next line from the file, or null at the end of the file "
+		"(an error if the file is not open)"));
 
 	// Get the current read/write position in the file
 	i = Intrinsic::Create("");
 	i.AddParam("self");
 	i.set_Code(&intrinsic_fposition);
 	fileHandleClass.SetValue("position", WithNote(i,
-		"Get the current read/write position in the file (null if the file is closed)"));
+		"Get the current read/write position in the file (an error if the file is not open)"));
 
 	// Move the read/write position within the file
 	i = Intrinsic::Create("");
@@ -795,7 +824,7 @@ void AddFileModuleIntrinsics() {
 	i.AddParam("pos", Value::zero);
 	i.set_Code(&intrinsic_fseek);
 	fileHandleClass.SetValue("seek", WithNote(i,
-		"Move the read/write position within the file"));
+		"Move the read/write position within the file (an error if the file is not open)"));
 
 	// The same seek, spelled as an assignment: f.position = n.  seek stays,
 	// for the same reason file.setdir does.
@@ -803,17 +832,17 @@ void AddFileModuleIntrinsics() {
 	// Move the read/write position within the file (same as seek)
 	i = Intrinsic::Create("");
 	i.AddParam("self");
-	i.AddParam("pos", Value::zero);
-	i.set_Code(&intrinsic_fseek);
+	i.AddParam("value", Value::zero);
+	i.set_Code(&intrinsic_setPosition);
 	fileHandleClass.SetValue("position=", WithNote(i,
-		"Move the read/write position within the file (same as seek)"));
+		"Move the read/write position within the file (same as seek; an error if the file is not open)"));
 
 	// Get whether the file position is at the end of the file
 	i = Intrinsic::Create("");
 	i.AddParam("self");
 	i.set_Code(&intrinsic_feof);
 	fileHandleClass.SetValue("atEnd", WithNote(i,
-		"Get whether the file position is at the end of the file"));
+		"Get whether the file position is at the end of the file (an error if the file is not open)"));
 
 	// Wrap and root both maps now that they are built (see the Values above).
 	fileModuleValue = GCManager::NewMapFromDict(fileModule);

@@ -829,7 +829,7 @@
 |DisableEventWaiting | |Disable waiting for events on EndDrawing(), automatic events polling. Not supported on web |
 |GetClipboardImage | |Get clipboard image (desktop only) |
 |IsFileExtension |**fileName**, **ext** |Check file extension, including the dot (e.g. ".png"); ext may list several, like ".png;.jpg" |
-|TakeScreenshot |**fileName** |Take a screenshot of current screen and save it as a PNG file. Refused (does nothing) once sandboxed |
+|TakeScreenshot |**fileName** |Take a screenshot of current screen and save it to a file; the file format depends on the fileName extension (e.g. .png) |
 |SetConfigFlags |**flags** |Set up window configuration flags (FLAG_*). Call this before InitWindow, since it sets up flags for the window creation process; to change window states after creation, use SetWindowState() |
 |EncodeDataBase64 |**data**, **dataSize** |Encode data (a string or RawData) to a Base64 string. If dataSize > 0, only that many bytes are encoded |
 |WaitTime |**seconds**=1.0 |Wait for some time in seconds (default 1), halting program execution |
@@ -986,9 +986,9 @@
 |Name | Parameters | Purpose |
 |-----|------------|---------|
 |curdir | |Get current working directory |
-|setdir |**path** |Change the current working directory; returns true on success, false on failure |
-|curdir= |**path** |Change current working directory (same as setdir) |
-|children |**path** |Get a list of file and directory names in the given directory (default: the current directory) |
+|setdir |**path** |Change the current working directory.  Returns null on success, or an error. |
+|curdir= |**value** |Change current working directory (same as setdir) |
+|children |**path** |Get a list of file and directory names in the given directory (default: the current directory), or an error if it cannot be read |
 |name |**path** |Get the filename (last path component) of a path string |
 |exists |**path** |Get whether a file or directory exists at the given path |
 |info |**path** |Get a map of info (path, isDirectory, size, date) about the given path (default: the current directory), or null if it does not exist |
@@ -998,8 +998,8 @@
 |move |**oldPath**, **newPath** |Move (rename) a file or directory, replacing any existing file at newPath.  Returns null on success, or an error. |
 |copy |**oldPath**, **newPath** |Copy a file, replacing any existing file at newPath.  Returns null on success, or an error. |
 |delete |**path** |Delete a file or empty directory.  Returns null on success, or an error. |
-|open |**path**, **mode**="r+" |Open a file; returns a FileHandle, or null on failure.  The default mode "r+" opens for reading and writing, creating the file if needed. |
-|readLines |**path** |Read all lines from a text file, returning a list of strings (or null if the file cannot be read) |
+|open |**path**, **mode**="r+" |Open a file; returns a FileHandle, or an error on failure.  The default mode "r+" opens for reading and writing, creating the file if needed. |
+|readLines |**path** |Read all lines from a text file, returning a list of strings (or an error if the file cannot be read) |
 |writeLines |**path**, **lines** |Write a list of strings (or one string) to a text file, a line each.  Returns null on success, or an error. |
 |loadRaw |**path** |Load a binary file, returning a RawData object (or null on failure) |
 |saveRaw |**path**, **data** |Save a RawData object to a binary file.  Returns null on success, or an error. |
@@ -1015,16 +1015,16 @@
 
 |Name | Parameters | Purpose |
 |-----|------------|---------|
-|close | |Close the file handle, writing any changes to the disk.  Returns 1 if closed, or 0 if it was already closed. |
+|close | |Close the file handle, writing any changes to the disk.  Closing a handle that is already closed does nothing. |
 |isOpen | |Get whether the file handle is still open |
-|write |**data** |Write a string to the file; returns the number of bytes written (0 on error) |
-|writeLine |**data** |Write a string followed by a newline to the file; returns the number of bytes written (0 on error) |
+|write |**data** |Write a string to the file; returns the number of bytes written (0 on error), or an error if the file is not open |
+|writeLine |**data** |Write a string followed by a newline to the file; returns the number of bytes written (0 on error), or an error if the file is not open |
 |read |**codePointCount**=-1 |Read up to codePointCount characters from the file (or all remaining if -1); returns null on failure |
-|readLine | |Read the next line from the file, or null at the end of the file |
-|position | |Get the current read/write position in the file (null if the file is closed) |
-|seek |**pos**=0 |Move the read/write position within the file |
-|position= |**pos**=0 |Move the read/write position within the file (same as seek) |
-|atEnd | |Get whether the file position is at the end of the file |
+|readLine | |Read the next line from the file, or null at the end of the file (an error if the file is not open) |
+|position | |Get the current read/write position in the file (an error if the file is not open) |
+|seek |**pos**=0 |Move the read/write position within the file (an error if the file is not open) |
+|position= |**value**=0 |Move the read/write position within the file (same as seek; an error if the file is not open) |
+|atEnd | |Get whether the file position is at the end of the file (an error if the file is not open) |
 
 ## http module
 
