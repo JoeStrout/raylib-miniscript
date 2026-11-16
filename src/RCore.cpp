@@ -1563,10 +1563,12 @@ void AddRCoreMethods(ValueDict& raylibModule) {
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);
 	i.set_Code(INTRINSIC_LAMBDA {
-		return IntrinsicResult(GetGamepadName(context.GetArg(0).IntValue()));
+		const char* name = GetGamepadName(context.GetArg(0).IntValue());
+		if (name == nullptr) return IntrinsicResult(String());
+		return IntrinsicResult(String(name));
 	});
 	raylibModule.SetValue("GetGamepadName", WithNote(i,
-		"Get the internal name of a gamepad"));
+		"Get the internal name of a gamepad, or \"\" if there is none"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("gamepad", 0);

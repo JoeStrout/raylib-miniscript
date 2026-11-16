@@ -1680,19 +1680,19 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
-	i.AddParam("offsetX");
-	i.AddParam("offsetY");
 	i.AddParam("newWidth");
 	i.AddParam("newHeight");
+	i.AddParam("offsetX");
+	i.AddParam("offsetY");
 	i.AddParam("fill");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value imageVal = context.GetArg(0);
 		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
-		int offsetX = context.GetArg(1).IntValue();
-		int offsetY = context.GetArg(2).IntValue();
-		int newWidth = context.GetArg(3).IntValue();
-		int newHeight = context.GetArg(4).IntValue();
+		int newWidth = context.GetArg(1).IntValue();
+		int newHeight = context.GetArg(2).IntValue();
+		int offsetX = context.GetArg(3).IntValue();
+		int offsetY = context.GetArg(4).IntValue();
 		Color fill = ValueToColor(context.GetArg(5));
 		ImageResizeCanvas(image, newWidth, newHeight, offsetX, offsetY, fill);
 		UpdateImageValue(imageVal);
@@ -1719,16 +1719,18 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("image");
+	i.AddParam("fill");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Value imageVal = context.GetArg(0);
 		Image* image = ValueToImagePtr(imageVal);
 		if (!image) return IntrinsicResult::Null;
-		ImageToPOT(image, BLACK);
+		Color fill = ValueToColor(context.GetArg(1));
+		ImageToPOT(image, fill);
 		UpdateImageValue(imageVal);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageToPOT", WithNote(i,
-		"Convert image (in place) to power-of-two size, padding with black. Can be useful on "
+		"Convert image (in place) to power-of-two size, padding with fill color. Can be useful on "
 		"OpenGL ES 2.0 (web)"));
 
 	// Image drawing functions
@@ -1831,18 +1833,21 @@ void AddRTexturesMethods(ValueDict& raylibModule) {
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");
-	i.AddParam("rec");
+	i.AddParam("position");
+	i.AddParam("size");
 	i.AddParam("color");
 	i.set_Code(INTRINSIC_LAMBDA {
 		Image* dst = ValueToImagePtr(context.GetArg(0));
 		if (!dst) return IntrinsicResult::Null;
-		Rectangle rec = ValueToRectangle(context.GetArg(1));
-		Color color = ValueToColor(context.GetArg(2));
-		ImageDrawRectangleV(dst, CLITERAL(Vector2){rec.x, rec.y}, CLITERAL(Vector2){rec.width, rec.height}, color);
+		Vector2 position = ValueToVector2(context.GetArg(1));
+		Vector2 size = ValueToVector2(context.GetArg(2));
+		Color color = ValueToColor(context.GetArg(3));
+		ImageDrawRectangleV(dst, position, size, color);
 		return IntrinsicResult::Null;
 	});
 	raylibModule.SetValue("ImageDrawRectangleV", WithNote(i,
-		"Draw rectangle within an image; rec gives the position (x, y) and size (width, height)"));
+		"Draw rectangle within an image, given its top-left position and its size (x = width, y = "
+		"height) as Vector2s"));
 
 	i = Intrinsic::Create("");
 	i.AddParam("dst");

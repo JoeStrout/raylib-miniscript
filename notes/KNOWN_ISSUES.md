@@ -18,21 +18,6 @@ raylib walks backward into memory before the string.  The result is meaningless
 and the read is out of bounds.  It probably needs an index or offset parameter
 (or to point at the end of the string).
 
-## GetGamepadName doesn't guard against NULL
-
-`GetGamepadName` (src/RCore.cpp) builds its result directly from raylib's
-`const char*`.  If raylib returns NULL (e.g. no gamepad), that could crash.
-`GetKeyName` already guards against this case.
-
-## Image wrappers that differ from raylib's signatures
-
-In src/RTextures.cpp:
-- `ImageResizeCanvas` takes `(image, offsetX, offsetY, newWidth, newHeight, fill)`;
-  raylib's order is `(image, newWidth, newHeight, offsetX, offsetY, fill)`.
-- `ImageDrawRectangleV` takes a single `rec` instead of `position` and `size`,
-  so it duplicates `ImageDrawRectangleRec`.
-- `ImageToPOT` has no fill color parameter; it always pads with BLACK.
-
 ## TakeScreenshot doesn't resolve its path
 
 `TakeScreenshot` (src/RCore.cpp) passes the script's filename straight to
