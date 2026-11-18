@@ -14,6 +14,16 @@ function preventGameKeyDefaults(e) {
         return;
     }
 
+    // A key that types a character: let its keydown through.  Cancelling a
+    // keydown stops the browser from sending the keypress that follows, and
+    // keypress is where Emscripten's GLFW gets typed characters (raylib's
+    // GetCharPressed); so cancelling here would make typing impossible.  The
+    // keypress is cancelled below instead, which still stops browser actions
+    // such as space scrolling the page.
+    if (e.type === 'keydown' && e.key.length === 1) {
+        return;
+    }
+
     // Prevent default for everything else - this allows games to use any key
     // without triggering browser actions (arrows scrolling, space page down, etc.)
     e.preventDefault();

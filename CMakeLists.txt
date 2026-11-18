@@ -166,6 +166,15 @@ if(EMSCRIPTEN)
         target_link_options(raylib-miniscript PRIVATE --shell-file ${CMAKE_SOURCE_DIR}/web/shell.html)
     endif()
 
+    # The --pre-js and --shell-file inputs go into the linked output, but as
+    # link flags CMake doesn't know that; without this, editing only one of
+    # them leaves the build thinking it's up to date, and nothing relinks.
+    set(WEB_LINK_DEPENDS ${CMAKE_SOURCE_DIR}/web/prevent-defaults.js)
+    if(EXISTS ${CMAKE_SOURCE_DIR}/web/shell.html)
+        list(APPEND WEB_LINK_DEPENDS ${CMAKE_SOURCE_DIR}/web/shell.html)
+    endif()
+    set_target_properties(raylib-miniscript PROPERTIES LINK_DEPENDS "${WEB_LINK_DEPENDS}")
+
     # Copy index.html to build directory
     if(EXISTS ${CMAKE_SOURCE_DIR}/web/index.html)
         add_custom_command(TARGET raylib-miniscript POST_BUILD
